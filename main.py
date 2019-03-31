@@ -77,7 +77,6 @@ def train_generator_PG(gen, gen_opt, oracle, dis, g_step, current_k):
 
         if cfg.seq_update:
             '''PG loss for total sequence'''
-            # rewards = dis.batchClassify(target)  # reward without MC search
             rewards = rollout_func.get_reward(target, cfg.rollout_num, dis, current_k)  # reward with MC search
 
             gen_opt.zero_grad()
@@ -117,36 +116,31 @@ def train_discriminator(dis, dis_opt, gen_list, oracle_list, oracle_samples_list
     pos_val = []
     neg_val = []
     for i in range(cfg.k_label):
-        # pos_val.append(oracle_list[i].sample(100 * k_label))
         pos_val.append(oracle_list[i].sample(100))
         neg_val.append(gen_list[i].sample(100))
 
-    # val_inp, val_target = helpers.prepare_discriminator_data(pos_val, neg_val, gpu=CUDA)
     val_inp, val_target = helpers.prepare_senti_discriminator_data(pos_val, neg_val, cfg.k_label, gpu=cfg.CUDA)
 
+    # loss_fn = nn.BCELoss()
+    loss_fn = nn.CrossEntropyLoss()
     for d_step in range(d_steps):
-        # s = helpers.batchwise_sample(gen, POS_NEG_SAMPLES, BATCH_SIZE)
         gen_samples_list = []
         for i in range(cfg.k_label):
             gen_samples_list.append(gen_list[i].sample(cfg.samples_num))
 
-        # dis_inp, dis_target = helpers.prepare_discriminator_data(oracle_samples_list, gen_samples_list, gpu=CUDA)
         dis_inp, dis_target = helpers.prepare_senti_discriminator_data(oracle_samples_list, gen_samples_list,
                                                                        cfg.k_label, gpu=cfg.CUDA)
         for epoch in range(epochs):
             _print('d-step %d epoch %d : ' % (d_step + 1, epoch + 1))
             total_loss = 0
             total_acc = 0
-            train_size = 2 * cfg.samples_num * cfg.k_label
+            train_size = cfg.samples_num * cfg.k_label + cfg.samples_num
             global_step = 0
             for i in range(0, train_size, cfg.batch_size):
                 inp, target = dis_inp[i:i + cfg.batch_size], dis_target[i:i + cfg.batch_size]
 
                 dis_opt.zero_grad()
-                # out = dis.batchClassify(inp)
-                out = dis.batchClasssifySenti(inp)
-                # loss_fn = nn.BCELoss()
-                loss_fn = nn.CrossEntropyLoss()
+                out = dis.batchClassify(inp)
 
                 # loss = loss_fn(out, target.float())
                 loss = loss_fn(out, target)
@@ -162,24 +156,15 @@ def train_discriminator(dis, dis_opt, gen_list, oracle_list, oracle_samples_list
                 total_acc += torch.sum((out.argmax(dim=-1) == target)).data.item()
                 # total_acc += torch.sum((out > 0.5) == (target > 0.5)).data.item()
 
-                # if (i / BATCH_SIZE) % ceil(ceil(2 * POS_NEG_SAMPLES / float(
-                #         BATCH_SIZE)) / 10.) == 0:  # roughly every 10% of an epoch
-                #     _print('.')
                 if (i / cfg.batch_size) % ceil(ceil(train_size / float(
                         cfg.batch_size)) / 10.) == 0:  # roughly every 10% of an epoch
                     _print('.')
 
-            # total_loss /= ceil(2 * POS_NEG_SAMPLES / float(BATCH_SIZE))
-            # total_acc /= float(2 * POS_NEG_SAMPLES)
             total_loss /= ceil(train_size / float(cfg.batch_size))
             total_acc /= float(train_size)
 
-            # val_size = 400.
-            # val_pred = dis.batchClassify(val_inp)
-            # _print(' average_loss = %.4f, train_acc = %.4f, val_acc = %.4f\n' % (
-            #     total_loss, total_acc, torch.sum((val_pred > 0.5) == (val_target > 0.5)).data.item() / val_size))
-            val_pred = dis.batchClasssifySenti(val_inp)
-            val_size = 400.
+            val_pred = dis.batchClassify(val_inp)
+            val_size = 200 * cfg.k_label
             val_acc = torch.sum((val_pred.argmax(dim=-1) == val_target)).data.item() / val_size
             _print(' average_loss = %.4f, train_acc = %.4f, val_acc = %.4f\n' % (
                 total_loss, total_acc, val_acc))
@@ -268,8 +253,10 @@ if __name__ == '__main__':
         gen_list.append(generator.Generator(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                                             oracle_init=True, gpu=cfg.CUDA))
 
-    dis = discriminator.Discriminator(cfg.dis_embed_dim, cfg.dis_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
+    dis = discriminator.Discriminator(cfg.dis_embed_dim, cfg.vocab_size, cfg.dis_filter_sizes, cfg.dis_num_filters,
                                       cfg.k_label, gpu=cfg.CUDA)
+    # dis = discriminator.GRU_Discriminator(cfg.dis_embed_dim, cfg.dis_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
+    #                                   cfg.k_label, gpu=cfg.CUDA)
 
     if cfg.CUDA:
         for i in range(cfg.k_label):

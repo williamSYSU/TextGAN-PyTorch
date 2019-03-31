@@ -112,11 +112,12 @@ if __name__ == '__main__':
     # log_file_list = ['log_0324_2233','log_0324_2233_2','log_0324_2234','log_0324_2236']
     # log_file_list = ['log_0325_0944','log_0325_0944_2','log_0325_0944_3','log_0325_0945']
     # log_file_list = ['log_0325_1439','log_0325_1439_2','log_0325_1439_3','log_0325_1439_4']
-    log_file_list = ['log_0325_2324', 'log_0325_2324_2', 'log_0325_2324_3', 'log_0325_2324_4']
+    # log_file_list = ['log_0325_2324', 'log_0325_2324_2', 'log_0325_2324_3', 'log_0325_2324_4']
+    log_file_list = ['log_0329_2152', 'log_0329_2152_2', 'log_0329_2152_3', 'log_0329_2152_4']
 
     color_id = 0
     index = 0
-    gen = 1
+    gen = 0
     plt.clf()
     plt.title(title_dict[index].format(gen))
     all_data_list = []

@@ -143,3 +143,24 @@ class Generator(nn.Module):
                 # print('reward: ', reward[j], 1 - reward[j])
 
         return loss / batch_size
+
+
+class Leak_Generator(nn.Module):
+
+    def __init__(self):
+        super(Leak_Generator, self).__init__()
+
+    def forward(self, *input):
+        pass
+
+    def sample(self, num_samples, start_letter=0):
+        pass
+
+    def batchNLLLoss(self, inp, target):
+        pass
+
+    def batchPGLoss(self, inp, target, reward):
+        pass
+
+    def ini_hidden(self, batch_size=1):
+        pass

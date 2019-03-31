@@ -67,7 +67,7 @@ class ROLLOUT():
             for given_num in range(1, self.max_seq_len + 1):
                 samples = self.rollout_mc_search(sentences, given_num)
                 # reward = discriminator.batchClassify(samples)
-                out = discriminator.batchClasssifySenti(samples)
+                out = discriminator.batchClasssify(samples)
                 out = F.softmax(out, dim=-1)
                 # print('out:', out)
                 reward = out[:, current_k + 1]

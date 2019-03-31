@@ -17,17 +17,17 @@ if_reward = True
 CUDA = True
 multi_gpu = False
 if_save = True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 
 seq_update = True  # True，是否是更新整个序列
 no_log = True  # False，是否取消log操作
 
 # =====Basic Train=====
-samples_num = 5000  # 10000
+samples_num = 10000  # 10000
 MLE_train_epoch = 100  # 100
-ADV_train_epoch = 150  # 50
-k_label = 2  # num of labels
+ADV_train_epoch = 1  # 50
+k_label = 1  # num of labels
 batch_size = 32  # 32
 max_seq_len = 20  # 20
 start_letter = 0
@@ -46,6 +46,8 @@ ADV_d_step = 2  # 5
 ADV_d_epoch = 5 if k_label == 2 else 3  # 3
 dis_embed_dim = 64  # 64
 dis_hidden_dim = 64  # 64
+dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
+dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
 
 # =====Save Model and samples=====
 # oracle_samples_path = './oracle_samples.trc'
