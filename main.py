@@ -134,7 +134,7 @@ def train_discriminator(dis, dis_opt, gen_list, oracle_list, oracle_samples_list
             _print('d-step %d epoch %d : ' % (d_step + 1, epoch + 1))
             total_loss = 0
             total_acc = 0
-            train_size = cfg.samples_num * cfg.k_label + cfg.samples_num
+            train_size = 2 * cfg.k_label * cfg.samples_num
             global_step = 0
             for i in range(0, train_size, cfg.batch_size):
                 inp, target = dis_inp[i:i + cfg.batch_size], dis_target[i:i + cfg.batch_size]
@@ -164,7 +164,7 @@ def train_discriminator(dis, dis_opt, gen_list, oracle_list, oracle_samples_list
             total_acc /= float(train_size)
 
             val_pred = dis.batchClassify(val_inp)
-            val_size = 200 * cfg.k_label
+            val_size = 2 * cfg.k_label * 100
             val_acc = torch.sum((val_pred.argmax(dim=-1) == val_target)).data.item() / val_size
             _print(' average_loss = %.4f, train_acc = %.4f, val_acc = %.4f\n' % (
                 total_loss, total_acc, val_acc))

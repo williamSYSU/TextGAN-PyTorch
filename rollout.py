@@ -51,12 +51,12 @@ class ROLLOUT():
 
         return samples
 
-    def get_reward(self, sentences, rollout_num, discriminator, current_k):
+    def get_reward(self, sentences, rollout_num, dis, current_k):
         """
         get reward via Monte Carlo search
         :param sentences: size of batch_size * max_seq_len
         :param rollout_num:
-        :param discriminator:
+        :param dis:
         :param current_k: current training generator
         :return:
         """
@@ -67,7 +67,7 @@ class ROLLOUT():
             for given_num in range(1, self.max_seq_len + 1):
                 samples = self.rollout_mc_search(sentences, given_num)
                 # reward = discriminator.batchClassify(samples)
-                out = discriminator.batchClasssify(samples)
+                out = dis.batchClassify(samples)
                 out = F.softmax(out, dim=-1)
                 # print('out:', out)
                 reward = out[:, current_k + 1]
@@ -89,22 +89,16 @@ class ROLLOUT():
         rewards = torch.sum(rewards, dim=0) / (rollout_num * self.max_seq_len)
         return rewards
 
-    def get_token_reward(self, sentences, rollout_num, discriminator, current_k, given_num):
+    def get_token_reward(self, sentences, rollout_num, dis, current_k, given_num):
         """
         get reward of each token in sequence via Monte Carlo search
-        :param sentences:
-        :param rollout_num:
-        :param discriminator:
-        :param current_k:
-        :param given_num:
-        :return:
         """
         batch_size = sentences.size()[0]
         rewards = torch.zeros([rollout_num, batch_size]).float()
         idx = 0
         for i in range(rollout_num):
             samples = self.rollout_mc_search(sentences, given_num)
-            out = discriminator.batchClasssifySenti(samples)
+            out = dis.batchClassify(samples)
             out = F.softmax(out, dim=-1)
             reward = out[:, current_k + 1]
             rewards[idx] = reward

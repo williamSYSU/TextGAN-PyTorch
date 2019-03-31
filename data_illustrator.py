@@ -9,6 +9,7 @@
 
 import torch
 import os
+import shutil
 import matplotlib.pyplot as plt
 
 title_dict = {0: 'gen{}_oracle_nll',
@@ -123,6 +124,9 @@ if __name__ == '__main__':
     all_data_list = []
     for item in log_file_list:
         log_file = log_file_root + item + '.txt'
+        # save log file
+        shutil.copyfile(log_file, 'save/' + log_file)
+
         # all_data = get_data(log_file)
         all_data = get_incomplete_data(log_file)
 

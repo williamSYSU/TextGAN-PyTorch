@@ -76,7 +76,7 @@ if not if_test:
     dict_file = open(log_filename + '_dict.txt', 'w')
 
 '''Create dir for model'''
-dir_list = ['save', 'savefig', 'log', 'pretrain', 'log/tensor_log', 'dataset',
+dir_list = ['save', 'savefig', 'log', 'pretrain', 'log/tensor_log', 'save/log', 'dataset',
             'pretrain/NUM{}'.format(samples_num)]
 for d in dir_list:
     if not os.path.exists(d):
