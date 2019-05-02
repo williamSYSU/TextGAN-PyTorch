@@ -1,1 +1,1 @@
-# SeqGAN-william
+# TextGAN-william
