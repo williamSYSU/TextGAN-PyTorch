@@ -12,52 +12,73 @@ import os
 from datetime import datetime
 
 # =====Program=====
-if_test = False
 if_reward = True
 CUDA = True
 multi_gpu = False
 if_save = True
-gen_pretrain = True
+oracle_pretrain = True  # True
+gen_pretrain = False
 dis_pretrain = False
 
 seq_update = True  # True，是否是更新整个序列
-no_log = True  # False，是否取消log操作
+no_log = False  # False，是否取消log操作。False: 有log，在算NLL loss时使用；True: 无log，采样时使用
+
+run_model = 'relgan'
 
 # =====Basic Train=====
 samples_num = 10000  # 10000
-MLE_train_epoch = 100  # 100
-ADV_train_epoch = 1  # 50
+MLE_train_epoch = 300  # 8
+ADV_train_epoch = 1  # 150
+inter_epoch = 1  # 10
 k_label = 1  # num of labels
-batch_size = 32  # 32
+batch_size = 64  # 64
 max_seq_len = 20  # 20
-start_letter = 0
+start_letter = 1
+padding_idx = 0
 vocab_size = 5000  # 5000
+gen_lr = 0.01  # 0.01
+dis_lr = 5e-5  # 5e-5 for CNN dis
 
 # =====Generator=====
 ADV_g_step = 1  # 1
-rollout_num = 32  # 3
+rollout_num = 4  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
+goal_size = 16
+step_size = 4
 
 # =====Discriminator=====
-d_step = 50  # 50
-d_epoch = 5 if k_label == 2 else 3  # 3
-ADV_d_step = 2  # 5
-ADV_d_epoch = 5 if k_label == 2 else 3  # 3
-dis_embed_dim = 64  # 64
-dis_hidden_dim = 64  # 64
-dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
-dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
+d_step = 0  # 5
+d_epoch = 3  # 3
+ADV_d_step = 3  # 3
+ADV_d_epoch = 3  # 3
+if max_seq_len == 20:
+    dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
+    dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
+    # gen_lr = 0.0015
+    dis_embed_dim = 64
+    dis_hidden_dim = 64
+    goal_out_size = sum(dis_num_filters)
+    # goal_out_size = 300
+elif max_seq_len == 40:
+    dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40]
+    dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160, 160]
+    # gen_lr = 0.0005
+    dis_embed_dim = 64
+    dis_hidden_dim = 64
+    goal_out_size = sum(dis_num_filters)
+    # goal_out_size = 300
+else:
+    exit(0)
 
 # =====Save Model and samples=====
-# oracle_samples_path = './oracle_samples.trc'
-# oracle_state_dict_path = './oracle_EMBDIM32_HIDDENDIM32_VOCAB5000_MAXSEQLEN20.trc'
-oracle_samples_path = './save/oracle{}_samples_NUM{}_lstm.pkl'
-oracle_state_dict_path = './save/oracle{}_EMB32_HID32_VOC5000_SEQ20_lstm.pkl'
+oracle_samples_path = './save/oracle_samples_NUM{}_lstm.pkl'
+oracle_state_dict_path = './save/oracle_EMB32_HID32_VOC5000_SEQ20_lstm.pkl'
 
-pretrain_root = './pretrain/NUM{}/'.format(samples_num)
-pretrained_gen_path = pretrain_root + 'gen{}_MLE_pretrain_EMB32_HID32_VOC5000_SEQ20_lstm.pkl'
-pretrained_dis_path = pretrain_root + 'dis_pretrain_K{}_EMB64_HID64_VOC5000_SEQ20_lstm.pkl'
+pretrain_root = './pretrain_generator/NUM{}/'.format(samples_num)
+pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_EMB32_HID32_VOC5000_SEQ20_leak.pkl'
+pretrained_dis_path = pretrain_root + 'dis_pretrain_EMB64_HID64_VOC5000_SEQ20_leak.pkl'
+signal_file = 'run_signal.txt'
 
 tips = ''
 
@@ -70,14 +91,10 @@ if os.path.exists(log_filename + '.txt'):
             log_filename = log_filename + '_%d' % i
             break
         i += 1
-# print('***Log in:', log_filename, '***')
-if not if_test:
-    log = open(log_filename + '.txt', 'w')
-    dict_file = open(log_filename + '_dict.txt', 'w')
 
 '''Create dir for model'''
-dir_list = ['save', 'savefig', 'log', 'pretrain', 'log/tensor_log', 'save/log', 'dataset',
-            'pretrain/NUM{}'.format(samples_num)]
+dir_list = ['save', 'savefig', 'log', 'pretrain_generator', 'log/tensor_log', 'save/log', 'dataset',
+            'pretrain_generator/NUM{}'.format(samples_num)]
 for d in dir_list:
     if not os.path.exists(d):
         os.mkdir(d)
@@ -99,25 +116,22 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = device_dict[device]
 # device=3
 torch.cuda.set_device(device)
-
-
-# print('***Current Device: ', device_dict[device], '***')
+print('device: ', device)
 
 
 def init_param(opt):
     global MLE_train_epoch, ADV_train_epoch, k_label, samples_num, batch_size, ADV_g_step, \
         rollout_num, d_step, d_epoch, ADV_d_step, ADV_d_epoch, vocab_size, max_seq_len, \
         start_letter, gen_embed_dim, gen_hidden_dim, dis_embed_dim, dis_hidden_dim, \
-        CUDA, if_save, if_test, if_reward, gen_pretrain, dis_pretrain, log_filename, tips, \
-        device, seq_update, no_log
+        CUDA, if_save, if_reward, gen_pretrain, dis_pretrain, log_filename, tips, \
+        device, seq_update, no_log, oracle_pretrain, gen_lr, dis_lr, inter_epoch, run_model
 
+    run_model = opt.run_model
     MLE_train_epoch = opt.mle_epoch
     ADV_train_epoch = opt.adv_epoch
-    k_label = opt.k_label
-    samples_num = opt.samples_num
+    inter_epoch = opt.inter_epoch
     batch_size = opt.batch_size
     ADV_g_step = opt.adv_g_step
     rollout_num = opt.rollout_num
@@ -125,22 +139,12 @@ def init_param(opt):
     d_epoch = opt.d_epoch
     ADV_d_step = opt.adv_d_step
     ADV_d_epoch = opt.adv_d_epoch
-
-    vocab_size = opt.vocab_size
-    max_seq_len = opt.max_seq_len
-    start_letter = opt.start_letter
-    gen_embed_dim = opt.gen_embed_dim
-    gen_hidden_dim = opt.gen_hidden_dim
-    dis_embed_dim = opt.dis_embed_dim
-    dis_hidden_dim = opt.dis_hidden_dim
+    gen_lr = opt.gen_lr
+    dis_lr = opt.dis_lr
 
     device = opt.device
-    seq_update = opt.seq_update
-    no_log = opt.no_log
     CUDA = True if opt.cuda == 1 else False
-    if_save = True if opt.if_save == 1 else False
-    if_test = True if opt.if_test == 1 else False
-    if_reward = True if opt.if_reward == 1 else False
+    oracle_pretrain = True if opt.ora_pretrain == 1 else False
     gen_pretrain = True if opt.gen_pretrain == 1 else False
     dis_pretrain = True if opt.dis_pretrain == 1 else False
     log_filename = opt.log_file
