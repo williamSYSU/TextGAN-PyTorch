@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
-# @Project      : SeqGAN-william
+# @Project      : TextGAN-william
 # @FileName     : RelGAN_D.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
