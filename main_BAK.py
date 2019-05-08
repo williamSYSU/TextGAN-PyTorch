@@ -84,8 +84,8 @@ def train_generator_MLE(gen, gen_opt, oracle, dis, real_data_samples, epochs):
                 # gen_optimize(gen_opt, [mana_loss, work_loss])
                 gen_optimize([gen_opt], [loss])
 
-                # pre_mana_loss += mana_loss.data.item()
-                # pre_work_loss += work_loss.data.item()
+                # pre_mana_loss += mana_loss.loader.item()
+                # pre_work_loss += work_loss.loader.item()
                 pre_mana_loss += loss.data.item()
 
                 if (i / cfg.batch_size) % ceil(
@@ -142,8 +142,8 @@ def train_generator_PG(gen, gen_opt, oracle, dis, g_step, current_k=0):
         # gen_optimize(gen_opt, [mana_loss, work_loss])
         gen_optimize([gen_opt], [pg_loss])
 
-        # adv_mana_loss += mana_loss.data.item()
-        # adv_work_loss += work_loss.data.item()
+        # adv_mana_loss += mana_loss.loader.item()
+        # adv_work_loss += work_loss.loader.item()
         adv_mana_loss += pg_loss.data.item()
 
     # =====Test=====
@@ -159,7 +159,7 @@ def train_discriminator(dis, dis_opt, gen, oracle, d_steps, epochs):
     Training the discriminator on real_data_samples (positive) and generated samples from gen (negative).
     Samples are drawn d_steps times, and the discriminator is trained for epochs epochs.
     """
-    # prepare data for validate
+    # prepare loader for validate
     with torch.no_grad():
         pos_val = oracle.sample(cfg.samples_num)
         neg_val = gen.sample(cfg.samples_num, dis)
@@ -169,7 +169,7 @@ def train_discriminator(dis, dis_opt, gen, oracle, d_steps, epochs):
     # loss_fn = nn.BCELoss()
     loss_fn = nn.CrossEntropyLoss()
     for d_step in range(d_steps):
-        # prepare data for training
+        # prepare loader for training
         with torch.no_grad():
             oracle_samples = oracle.sample(cfg.samples_num)
             gen_samples = gen.sample(cfg.samples_num, dis)
@@ -337,7 +337,7 @@ def test_func():
     #
     # t0 = time.time()
     # adv_mana_loss, adv_work_loss = leakgan.adversarial_loss(inp, target, rewards, dis, cfg.start_letter)
-    # print('adversarial loss: ', adv_mana_loss.data, adv_work_loss.data)
+    # print('adversarial loss: ', adv_mana_loss.loader, adv_work_loss.loader)
     # t1 = time.time()
     # print('time-adversarial train: ', t1 - t0)
     #

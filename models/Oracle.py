@@ -17,5 +17,5 @@ class Oracle(LSTMGenerator):
         self.name = 'oracle'
 
         # initialise oracle network with N(0,1)
-        # otherwise variance of initialisation is very small => high NLL for data sampled from the same model
+        # otherwise variance of initialisation is very small => high NLL for loader sampled from the same model
         self.init_oracle()

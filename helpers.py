@@ -58,7 +58,7 @@ def prepare_generator_batch(samples, start_letter=cfg.start_letter, gpu=False):
 
 def prepare_discriminator_data(pos_samples, neg_samples, gpu=False):
     """
-    Takes positive (target) samples, negative (gen) samples and prepares inp and target data for discriminator.
+    Takes positive (target) samples, negative (gen) samples and prepares inp and target loader for discriminator.
 
     Inputs: pos_samples, neg_samples
         - pos_samples: pos_size x seq_len
@@ -70,11 +70,11 @@ def prepare_discriminator_data(pos_samples, neg_samples, gpu=False):
     """
 
     inp = torch.cat((pos_samples, neg_samples), dim=0).long()
-    target = torch.ones(pos_samples.size()[0] + neg_samples.size()[0]).long()
-    target[pos_samples.size()[0]:] = 0
+    target = torch.ones(pos_samples.size(0) + neg_samples.size(0)).long()
+    target[pos_samples.size(0):] = 0
 
     # shuffle
-    perm = torch.randperm(target.size()[0])
+    perm = torch.randperm(target.size(0))
     target = target[perm]
     inp = inp[perm]
 
@@ -87,7 +87,7 @@ def prepare_discriminator_data(pos_samples, neg_samples, gpu=False):
 
 def prepare_senti_discriminator_data(pos_samples_list, neg_samples_list, k_label):
     """
-    Prepare multi-class data for discriminator
+    Prepare multi-class loader for discriminator
     :param pos_samples_list: list: k_label x sample_size or k_label x (k_label x sample_size)
     :param neg_samples_list: list: k_label x sample_size
     :param k_label:
@@ -101,13 +101,13 @@ def prepare_senti_discriminator_data(pos_samples_list, neg_samples_list, k_label
 
     # initial
     inp = torch.cat((pos_samples, neg_samples), dim=0).long()
-    target = torch.zeros(pos_samples.size()[0] + neg_samples.size()[0]).long()
-    s_size = pos_samples_list[0].size()[0]
+    target = torch.zeros(pos_samples.size(0) + neg_samples.size(0)).long()
+    s_size = pos_samples_list[0].size(0)
     for i in range(k_label):
         target[s_size * i:s_size * (i + 1)] = i + 1
 
     # shuffle
-    perm = torch.randperm(target.size()[0])
+    perm = torch.randperm(target.size(0))
     inp = inp[perm]
     target = target[perm]
 
@@ -134,7 +134,7 @@ def batchwise_oracle_nll(gen, dis, oracle, num_samples, batch_size, max_seq_len,
     oracle_nll = 0
     for i in range(0, num_samples, batch_size):
         inp, target = prepare_generator_batch(s[i:i + batch_size], start_letter, gpu)
-        oracle_loss = oracle.batchNLLLoss(inp, target) / max_seq_len
+        oracle_loss = oracle.batchNLLLoss(inp, target)
         oracle_nll += oracle_loss.data.item()
 
     return oracle_nll / (num_samples // batch_size)

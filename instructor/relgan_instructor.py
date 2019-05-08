@@ -10,14 +10,17 @@
 from math import ceil
 import sys
 import time
+from tqdm import tqdm
 
 import torch
 import torch.optim as optim
 import torch.nn as nn
+import torch.nn.functional as F
 
 import helpers
 import rollout
 import config as cfg
+from data_utils import GenDataIter, DisDataIter
 from instructor.instructor import BasicInstructor
 from models.RelGAN_G import RelGAN_G
 from models.RelGAN_D import RelGAN_D
@@ -28,70 +31,162 @@ class RelGANInstructor(BasicInstructor):
         super(RelGANInstructor, self).__init__(opt)
 
         # generator, discriminator
-        self.gen = RelGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                                    cfg.padding_idx, gpu=cfg.CUDA)
-        self.dis = RelGAN_D(cfg.dis_embed_dim, cfg.vocab_size, cfg.dis_filter_sizes, cfg.dis_num_filters,
-                                    cfg.k_label, cfg.padding_idx, gpu=cfg.CUDA)
+        self.gen = RelGAN_G(cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim, cfg.gen_hidden_dim,
+                            cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
+        self.dis = RelGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.dis_filter_sizes,
+                            cfg.dis_num_filters, cfg.padding_idx, gpu=cfg.CUDA)
 
         self.init_model()
 
-        # optimizer
+        # Optimizer
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
+        self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
 
+        # Criterion
+        self.mle_criterion = nn.NLLLoss()
+        self.adv_criterion = nn.BCEWithLogitsLoss()
+
+        # DataLoader
+        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
+
     def _run(self):
-        oracle_samples = self.oracle.sample(cfg.samples_num, cfg.batch_size)
-        # oracle_samples = self.oracle.sample(cfg.samples_num, cfg.samples_num)
+        # ==========PRE-TRAINING (GENERATOR)==========
+        if not cfg.gen_pretrain:
+            self._print('\nStarting Generator MLE Training...\n')
+            self.pretrain_generator(cfg.MLE_train_epoch)
+            if cfg.if_save:
+                torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
 
-        # PRE-TRAIN GENERATOR
-        self._print('\nStarting Generator MLE Training...\n')
+        oracle_nll, gen_nll = self.cal_nll()
+        self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f\n' % (oracle_nll, gen_nll))
 
-        self._print('Generator MLE training...\n')
-        self.pretrain_generator(oracle_samples, cfg.MLE_train_epoch)
+        # # ==========ADVERSARIAL TRAINING==========
+        self._print('\nStarting Adversarial Training...\n')
+        progress = tqdm(range(cfg.ADV_train_epoch))
+        self.tmp_real_samples = self.oracle.sample(cfg.batch_size, cfg.batch_size)
+        for adv_epoch in progress:
+            self.sig.update()
+            if self.sig.adv_sig:
+                g_loss = self.adv_train_generator(cfg.ADV_g_step)  # Generator
+                d_loss = self.adv_train_discriminator(cfg.ADV_d_step)  # Discriminator
 
-    def pretrain_generator(self, real_samples, epochs):
+                progress.set_description('g_loss: %.4f, d_loss: %.4f,' % (g_loss, d_loss))
+
+                # TEST
+                if adv_epoch % cfg.adv_log_step == 0:
+                    oracle_nll, gen_nll = self.cal_nll()
+                    self._print(
+                        '[ADV] epoch %d: g_loss: %.4f, d_loss: %.4f, oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+                            adv_epoch, g_loss, d_loss, oracle_nll, gen_nll))
+            else:
+                self._print('\n>>> Stop by adv_signal! Finishing adversarial training...\n')
+                progress.close()
+                break
+
+    def _test(self):
+        print('>>> Begin test...')
+
+        # t0 = time.time()
+        # gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True).cuda()
+        # t1 = time.time()
+        # print('sample time: ', t1 - t0)
+        #
+        # t0 = time.time()
+        # d_out_fake = self.dis(gen_samples)
+        # t1 = time.time()
+        # print('dis time: ', t1 - t0)
+        #
+        # t0 = time.time()
+        # self.adv_train_generator(1)
+        # t1 = time.time()
+        # print('adv gen time: ', t1 - t0)
+        #
+        # t0 = time.time()
+        # self.adv_train_discriminator(5)
+        # t1 = time.time()
+        # print('adv dis time: ', t1 - t0)
+        self._run()
+        pass
+
+    def pretrain_generator(self, epochs):
         """
-        Max Likelihood Pretraining for the gen
-
-        - gen_opt: [mana_opt, work_opt]
+        Max Likelihood Pre-training for the generator
         """
+        t0 = time.time()
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
-                self._print('epoch %d : ' % (epoch + 1))
-                pre_loss = 0
-
-                t0 = time.time()
-                for i in range(0, cfg.samples_num, cfg.batch_size):
-                    # =====Train=====
-                    self.gen.train()
-                    self.dis.train()
-
-                    inp, target = helpers.prepare_generator_batch(real_samples[i:i + cfg.batch_size],
-                                                                  start_letter=cfg.start_letter, gpu=cfg.CUDA)
-
-                    loss = self.gen.batchNLLLoss(inp, target)
-
-                    # update parameters
-                    self.optimize(self.gen_opt, loss)
-
-                    pre_loss += loss.data.item() / cfg.max_seq_len
-
-                    if (i / cfg.batch_size) % ceil(
-                            ceil(cfg.samples_num / float(cfg.batch_size)) / 10.) == 0:  # roughly every 10% of an epoch
-                        self._print('.')
-
-                # each loss in a batch is loss per sample
-                pre_loss = pre_loss / ceil(cfg.samples_num / float(cfg.batch_size))
+                pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
 
                 # =====Test=====
-                oracle_nll, gen_nll = self.eval_gen()
+                if epoch % cfg.pre_log_step == 0:
+                    oracle_nll, gen_nll = self.cal_nll()
+                    t1 = time.time()
+                    self._print(
+                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, time = %.4f\n' % (
+                            epoch, pre_loss, oracle_nll, gen_nll, t1 - t0))
+                    t0 = time.time()
 
-                t1 = time.time()
-
-                self._print(' pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, time = %.4f\n' % (
-                    pre_loss, oracle_nll, gen_nll, t1 - t0))
-
+                    if cfg.if_save:
+                        torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
             else:
                 self._print('\n>>> Stop by pre signal, skip to adversarial training...')
                 break
+
+    def adv_train_generator(self, g_step):
+        total_loss = 0
+        for step in range(g_step):
+            real_samples = self.oracle_data.randam_batch()['target']
+            gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
+            if cfg.CUDA:
+                real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
+            real_samples = F.one_hot(real_samples, cfg.vocab_size).float()
+
+            # =====Train=====
+            # self.gen.train()
+            # self.dis.train()
+
+            d_out_real = self.dis(real_samples)
+            d_out_fake = self.dis(gen_samples)
+            g_loss = self.adv_criterion(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
+
+            self.optimize(self.gen_adv_opt, g_loss)
+            total_loss += g_loss.item()
+
+        if g_step == 0:
+            return 0
+        return total_loss / g_step
+
+    def adv_train_discriminator(self, d_step):
+        total_loss = 0
+        for step in range(d_step):
+            real_samples = self.oracle_data.randam_batch()['target']
+            gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
+            if cfg.CUDA:
+                real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
+            real_samples = F.one_hot(real_samples, cfg.vocab_size).float()
+
+            # =====Train=====
+            # self.gen.train()
+            # self.dis.train()
+
+            d_out_real = self.dis(real_samples)
+            d_out_fake = self.dis(gen_samples)
+            d_loss = self.adv_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
+
+            self.optimize(self.dis_opt, d_loss)
+            total_loss += d_loss.item()
+
+        if d_step == 0:
+            return 0
+        return total_loss / d_step
+
+    def cal_nll(self):
+        oracle_nll = self.eval_gen(self.oracle,
+                                   self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size)),
+                                   self.mle_criterion)
+        gen_nll = self.eval_gen(self.gen,
+                                self.oracle_data.loader,
+                                self.mle_criterion)
+        return oracle_nll, gen_nll

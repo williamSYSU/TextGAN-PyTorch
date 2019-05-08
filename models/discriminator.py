@@ -5,30 +5,41 @@ import torch.nn.functional as F
 
 
 class CNNDiscriminator(nn.Module):
-    def __init__(self, embedding_dim, vocab_size, filter_sizes, num_filters, k_label, padding_idx, gpu=False,
+    def __init__(self, embed_dim, vocab_size, filter_sizes, num_filters, padding_idx, gpu=False,
                  dropout=0.2):
         super(CNNDiscriminator, self).__init__()
-        self.embedding_dim = embedding_dim
+        self.embedding_dim = embed_dim
         self.vocab_size = vocab_size
         self.padding_idx = padding_idx
         self.feature_dim = sum(num_filters)
         self.gpu = gpu
 
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
+        self.embeddings = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
         self.convs = nn.ModuleList([
-            nn.Conv2d(1, n, (f, embedding_dim)) for (n, f) in zip(num_filters, filter_sizes)
+            nn.Conv2d(1, n, (f, embed_dim)) for (n, f) in zip(num_filters, filter_sizes)
         ])
         self.highway = nn.Linear(self.feature_dim, self.feature_dim)
-        self.feature2out = nn.Linear(self.feature_dim, k_label + 1)
+        self.feature2out = nn.Linear(self.feature_dim, 2)
         self.dropout = nn.Dropout(dropout)
 
         self.init_parameters()
 
     def forward(self, inp):
         """
-        Get final feature of discriminator
+        Get final predictions of discriminator
         :param inp: batch_size * seq_len
-        :return: pred: feature of discriminator
+        :return: pred: batch_size * seq_len * vocab_size
+        """
+        feature = self.get_feature(inp)
+        pred = self.feature2out(self.dropout(feature))
+
+        return pred
+
+    def get_feature(self, inp):
+        """
+        Get feature vector of given sentences
+        :param inp: batch_size * max_seq_len
+        :return: batch_size * feature_dim
         """
         emb = self.embeddings(inp).unsqueeze(1)  # batch_size * 1 * max_seq_len * embed_dim
         convs = [F.relu(conv(emb)).squeeze(3) for conv in self.convs]  # [batch_size * num_filter * length]
@@ -39,24 +50,6 @@ class CNNDiscriminator(nn.Module):
 
         return pred
 
-    def batchClassify(self, inp):
-        """
-        Get scores of each label
-        :param inp: batch_size * seq_len
-        :return:
-        """
-        pred = self.forward(inp)
-        pred = self.feature2out(self.dropout(pred))
-        return pred
-
-    def get_feature(self, inp):
-        """
-        Get feature vector of given sentences
-        :param inp: batch_size * max_seq_len
-        :return: batch_size * feature_dim
-        """
-        return self.forward(inp)
-
     def init_parameters(self):
         for param in self.parameters():
             param.data.uniform_(-0.05, 0.05)
@@ -64,7 +57,7 @@ class CNNDiscriminator(nn.Module):
 
 class GRUDiscriminator(nn.Module):
 
-    def __init__(self, embedding_dim, vocab_size, hidden_dim, feature_dim, max_seq_len, k_label, padding_idx,
+    def __init__(self, embedding_dim, vocab_size, hidden_dim, feature_dim, max_seq_len, padding_idx,
                  gpu=False, dropout=0.2):
         super(GRUDiscriminator, self).__init__()
         self.hidden_dim = hidden_dim
@@ -76,7 +69,7 @@ class GRUDiscriminator(nn.Module):
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
         self.gru = nn.GRU(embedding_dim, hidden_dim, num_layers=2, bidirectional=True, dropout=dropout)
         self.gru2hidden = nn.Linear(2 * 2 * hidden_dim, feature_dim)
-        self.feature2out = nn.Linear(feature_dim, 1 + k_label)
+        self.feature2out = nn.Linear(feature_dim, 2)
         self.dropout = nn.Dropout(dropout)
 
         self.init_parameters()
@@ -89,31 +82,15 @@ class GRUDiscriminator(nn.Module):
         else:
             return h
 
-    def forward(self, input, hidden):
+    def forward(self, inp):
         """
         Get final feature of discriminator
-        :param input: batch_size * seq_len
-        :param hidden: batch_size * hidden_dim
-        :return out: batch_size * feature_dim
-        """
-        emb = self.embeddings(input)  # batch_size * seq_len * embedding_dim
-        emb = emb.permute(1, 0, 2)  # seq_len * batch_size * embedding_dim
-        _, hidden = self.gru(emb, hidden)  # 4 * batch_size * hidden_dim
-        hidden = hidden.permute(1, 0, 2).contiguous()  # batch_size * 4 * hidden_dim
-        out = self.gru2hidden(hidden.view(-1, 4 * self.hidden_dim))  # batch_size * 4 * hidden_dim
-        out = torch.tanh(out)  # batch_size * feature_dim
-        return out
-
-    def batchClassify(self, inp):
-        """
-        Classifies a batch of sequences.
-
         :param inp: batch_size * seq_len
-        :return pred: batch_size ([0,1] score)
+        :return pred: batch_size * seq_len * vocab_size
         """
-        h = self.init_hidden(inp.size()[0])
-        pred = self.forward(inp, h)
-        pred = self.feature2out(self.dropout(pred))  # batch_size * 1
+        feature = self.get_feature(inp)
+        pred = self.feature2out(self.dropout(feature))
+
         return pred
 
     def get_feature(self, inp):
@@ -122,8 +99,16 @@ class GRUDiscriminator(nn.Module):
         :param inp: batch_size * max_seq_len
         :return: batch_size * feature_dim
         """
-        h = self.init_hidden(inp.size()[0])
-        return self.forward(inp, h)
+        hidden = self.init_hidden(inp.size(0))
+
+        emb = self.embeddings(input)  # batch_size * seq_len * embedding_dim
+        emb = emb.permute(1, 0, 2)  # seq_len * batch_size * embedding_dim
+        _, hidden = self.gru(emb, hidden)  # 4 * batch_size * hidden_dim
+        hidden = hidden.permute(1, 0, 2).contiguous()  # batch_size * 4 * hidden_dim
+        out = self.gru2hidden(hidden.view(-1, 4 * self.hidden_dim))  # batch_size * 4 * hidden_dim
+        feature = torch.tanh(out)  # batch_size * feature_dim
+
+        return feature
 
     def init_parameters(self):
         for param in self.parameters():

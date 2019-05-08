@@ -25,40 +25,40 @@ class LSTMGenerator(nn.Module):
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
         self.lstm2out = nn.Linear(hidden_dim, vocab_size)
+        self.softmax = nn.LogSoftmax(dim=-1)
 
         self.init_params()
 
-    def forward(self, inp, hidden):
+    def forward(self, inp, hidden, need_hidden=False):
         """
         Embeds input and applies LSTM
         :param inp: batch_size * seq_len
         :param hidden: (h, c)
-        :param no_log: if log after Softmax
+        :param need_hidden: if return hidden, use for sampling
         """
         emb = self.embeddings(inp)  # batch_size * len * embedding_dim
         if len(inp.size()) == 1:
             emb = emb.unsqueeze(1)  # batch_size * 1 * embedding_dim
 
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
-        if len(inp.size()) == 1:
-            out = out.view(-1, self.hidden_dim) # out: batch_size * hidden_dim
+        out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
         out = self.lstm2out(out)  # batch_size * seq_len * vocab_size
-
         out = self.temperature * out  # temperature
-        out = F.log_softmax(out, dim=-1)
+        pred = self.softmax(out)
 
-        return out, hidden
+        if need_hidden:
+            return pred, hidden
+        else:
+            return pred
 
     def sample(self, num_samples, batch_size, start_letter=cfg.start_letter):
         """
         Samples the network and returns num_samples samples of length max_seq_len.
         :return samples: num_samples * max_seq_length (a sampled sequence in each row)
         """
-        num_batch = num_samples // batch_size + 1
-
+        num_batch = num_samples // batch_size + 1 if num_samples != batch_size else 1
         samples = torch.zeros(num_batch * batch_size, self.max_seq_len).long()
-
-        h = self.init_hidden(batch_size)
+        hidden = self.init_hidden(batch_size)
 
         # 用LSTM随机生成batch_size个句子，生成下一个词的时候是按多项式分布来选择的，而不是概率最大那个
         for b in range(num_batch):
@@ -67,9 +67,9 @@ class LSTMGenerator(nn.Module):
                 inp = inp.cuda()
 
             for i in range(self.max_seq_len):
-                out, h = self.forward(inp, h)  # out: num_samples * vocab_size
+                out, hidden = self.forward(inp, hidden, need_hidden=True)  # out: num_samples * vocab_size
                 out = torch.multinomial(torch.exp(out), 1)  # num_samples * 1 (sampling from each row)
-                samples[b * batch_size:(b + 1) * batch_size, i] = out.view(-1).data
+                samples[b * batch_size:(b + 1) * batch_size, i] = out.view(-1)
 
                 inp = out.view(-1)
 
@@ -86,14 +86,10 @@ class LSTMGenerator(nn.Module):
         :return loss: NLL loss
         """
         loss_fn = nn.NLLLoss()
-        batch_size, seq_len = inp.size()
-        h = self.init_hidden(batch_size)
+        hidden = self.init_hidden(inp.size(0))
 
-        target = target.permute(1, 0)
-        loss = 0
-        for i in range(seq_len):
-            out, h = self.forward(inp[:, i], h)
-            loss += loss_fn(out, target[i])
+        pred = self.forward(inp, hidden)[0].view(-1, self.vocab_size)  # (batch_size * seq_len) * vocab_size
+        loss = loss_fn(pred, target.view(-1))
 
         return loss
 
@@ -105,7 +101,7 @@ class LSTMGenerator(nn.Module):
         for param in self.parameters():
             param.data.normal_(0, 1)
 
-    def init_hidden(self, batch_size=1):
+    def init_hidden(self, batch_size=cfg.batch_size):
         # h = autograd.Variable(torch.zeros(1, batch_size, self.hidden_dim))
         h = torch.zeros(1, batch_size, self.hidden_dim)
         c = torch.zeros(1, batch_size, self.hidden_dim)

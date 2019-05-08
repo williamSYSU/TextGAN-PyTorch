@@ -11,7 +11,5 @@ from models.discriminator import CNNDiscriminator
 
 
 class SeqGAN_D(CNNDiscriminator):
-    def __init__(self, embedding_dim, vocab_size, filter_sizes, num_filters, k_label, padding_idx, gpu=False,
-                 dropout=0.2):
-        super(SeqGAN_D, self).__init__(embedding_dim, vocab_size, filter_sizes, num_filters, k_label, padding_idx,
-                                       gpu, dropout)
+    def __init__(self, embed_dim, vocab_size, filter_sizes, num_filters, padding_idx, gpu=False, dropout=0.2):
+        super(SeqGAN_D, self).__init__(embed_dim, vocab_size, filter_sizes, num_filters, padding_idx, gpu, dropout)

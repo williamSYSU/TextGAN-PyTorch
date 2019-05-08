@@ -339,18 +339,14 @@ class RelationalMemory(nn.Module):
         logits = []
         # shape[1] is seq_lenth T
         for idx_step in range(inputs.shape[1]):
-            logit, memory = self.forward_step(inputs[:, idx_step], memory, treat_input_as_matrix)
+            logit, memory = self.forward_step(inputs[:, idx_step], memory)
             logits.append(logit.unsqueeze(1))
-            # if idx_step == 0:
-            #     logits = logit.unsqueeze(1)
-            # else:
-            #     logits = torch.cat((logits, logit.unsqueeze(1)), dim=1)
-        logits = torch.cat(logits,dim=1)
+        logits = torch.cat(logits, dim=1)
 
         if self.return_all_outputs:
             return logits, memory
         else:
-            return logit, memory
+            return logit.unsqueeze(1), memory
 
 # ########## DEBUG: unit test code ##########
 # input_size = 32

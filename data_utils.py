@@ -8,37 +8,127 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
+from torch.utils.data import Dataset, DataLoader
+import torch.nn.functional as F
+
 from models.Oracle import Oracle
 import config as cfg
 import helpers
 import os
 import json
 
-K_LABEL = 1
 save_path = './save'
 
 
-def create_senti_oracle():
-    for _ in range(1, K_LABEL + 1):
-        oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
-                                         cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        oracle = oracle.cuda()
+class GANDataset(Dataset):
+    def __init__(self, data):
+        self.data = data
 
-        if cfg.gen_pretrain:
-            oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
-        else:
-            torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
+    def __getitem__(self, index):
+        return self.data[index]
 
-        samples = oracle.sample(5000)
-        torch.save(samples, cfg.oracle_samples_path.format(5000))
+    def __len__(self):
+        return len(self.data)
 
-        large_samples = oracle.sample(10000)
-        torch.save(large_samples, cfg.oracle_samples_path.format(10000))
 
-        # count ground truth
-        dis = None
-        ground_nll_loss = helpers.batchwise_oracle_nll(oracle, dis, oracle, 10000, 64, 20, gpu=cfg.CUDA)
-        print('ground nll loss: ', ground_nll_loss)
+class GenDataIter:
+    def __init__(self, samples):
+        self.batch_size = cfg.batch_size
+        self.max_seq_len = cfg.max_seq_len
+        self.start_letter = cfg.start_letter
+
+        self.loader = DataLoader(
+            dataset=GANDataset(self.__read_data__(samples)),
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=True)
+
+    def __read_data__(self, samples):
+        """
+        input: same as target, but start with start_letter.
+        """
+        inp, target = self.prepare(samples)
+        all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
+        return all_data
+
+    def reset(self, samples):
+        self.loader.dataset = GANDataset(self.__read_data__(samples))
+        return self.loader
+
+    def randam_batch(self):
+        return next(iter(self.loader))
+
+    def prepare(self, samples, gpu=False):
+        """Add start_letter to samples as inp, target same as samples"""
+        inp = torch.zeros(samples.size())
+        target = samples
+        inp[:, 0] = self.start_letter
+        inp[:, 1:] = target[:, :self.max_seq_len - 1]
+
+        inp, target = inp.long(), target.long()
+        if gpu:
+            return inp.cuda(), target.cuda()
+        return inp, target
+
+
+class DisDataIter:
+    def __init__(self, pos_samples, neg_samples):
+        self.batch_size = cfg.batch_size
+        self.max_seq_len = cfg.max_seq_len
+        self.start_letter = cfg.start_letter
+
+        self.loader = DataLoader(
+            dataset=GANDataset(self.__read_data__(pos_samples, neg_samples)),
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=True)
+
+    def __read_data__(self, pos_samples, neg_samples):
+        """
+        input: same as target, but start with start_letter.
+        """
+        inp, target = self.prepare(pos_samples, neg_samples)
+        all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
+        return all_data
+
+    def reset(self, pos_samples, neg_samples):
+        self.loader.dataset = GANDataset(self.__read_data__(pos_samples, neg_samples))
+        return self.loader
+
+    def randam_batch(self):
+        return next(iter(self.loader))
+
+    def prepare(self, pos_samples, neg_samples, gpu=False):
+        """Build inp and target"""
+        inp = torch.cat((pos_samples, neg_samples), dim=0).long()
+        target = torch.ones(pos_samples.size(0) + neg_samples.size(0)).long()
+        target[pos_samples.size(0):] = 0
+
+        # shuffle
+        perm = torch.randperm(target.size(0))
+        target = target[perm]
+        inp = inp[perm]
+
+        if gpu:
+            return inp.cuda(), target.cuda()
+        return inp, target
+
+
+def create_oracle():
+    oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
+                    cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
+    oracle = oracle.cuda()
+
+    torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
+
+    large_samples = oracle.sample(cfg.samples_num, cfg.batch_size)
+    torch.save(large_samples, cfg.oracle_samples_path.format(cfg.samples_num))
+
+    # count ground truth
+    dis = None
+    ground_nll_loss = helpers.batchwise_oracle_nll(oracle, dis, oracle, cfg.samples_num, cfg.batch_size,
+                                                   cfg.max_seq_len, gpu=cfg.CUDA)
+    print('ground nll loss: ', ground_nll_loss)
 
 
 def clean_amazon_long_sentence():
@@ -66,5 +156,5 @@ def clean_amazon_long_sentence():
 
 
 if __name__ == '__main__':
-    create_senti_oracle()
+    create_oracle()
     # clean_amazon_long_sentence()

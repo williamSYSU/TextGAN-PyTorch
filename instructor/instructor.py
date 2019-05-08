@@ -10,6 +10,7 @@
 import sys
 import torch
 import torch.optim as optim
+from data_utils import GenDataIter, DisDataIter
 
 import helpers
 from helpers import Signal
@@ -22,23 +23,25 @@ from models.Oracle import Oracle
 
 class BasicInstructor:
     def __init__(self, opt):
-        self.log = open(cfg.log_filename + '.txt', 'w')
+        self.log = open(cfg.log_filename + '.txt', 'w') if not cfg.if_test else None
         self.sig = Signal(cfg.signal_file)
         self.opt = opt
 
         # oracle, generator, discriminator
         self.oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                              cfg.padding_idx, gpu=cfg.CUDA)
-        self.gen = LSTMGenerator(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                                 cfg.padding_idx, gpu=cfg.CUDA)
-        self.dis = CNNDiscriminator(cfg.dis_embed_dim, cfg.vocab_size, cfg.dis_filter_sizes, cfg.dis_num_filters,
-                                    cfg.k_label, cfg.padding_idx, gpu=cfg.CUDA)
-        self.init_model()
 
         self.show_config()
 
+        # DataLoader
+        self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
+        self.oracle_data = GenDataIter(self.oracle_samples)
+
     def _run(self):
         print('Nothing to run in Basic Instructor!')
+        pass
+
+    def _test(self):
         pass
 
     def init_model(self):
@@ -47,8 +50,8 @@ class BasicInstructor:
 
         if cfg.dis_pretrain:
             self._print(
-                'Load pretrain_generator discriminator: {}\n'.format(cfg.pretrained_dis_path.format(cfg.k_label)))
-            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path.format(cfg.k_label)))
+                'Load pretrain_generator discriminator: {}\n'.format(cfg.pretrained_dis_path))
+            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path))
         if cfg.gen_pretrain:
             self._print('Load MLE pretrain_generator gen: {}\n'.format(cfg.pretrained_gen_path))
             self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path))
@@ -58,60 +61,110 @@ class BasicInstructor:
             self.gen = self.gen.cuda()
             self.dis = self.dis.cuda()
 
-    def eval_gen(self):
-        self.gen.eval()
-        self.dis.eval()
+    def train_gen_epoch(self, model, data_loader, criterion, optimizer):
+        # model.train()
+        total_loss = 0
+        for i, data in enumerate(data_loader):
+            inp, target = data['input'], data['target']
+            if cfg.CUDA:
+                inp, target = inp.cuda(), target.cuda()
+
+            hidden = model.init_hidden(data_loader.batch_size)
+            pred = model.forward(inp, hidden)
+            loss = criterion(pred, target.view(-1))
+            self.optimize(optimizer, loss)
+            total_loss += loss.item()
+        return total_loss / len(data_loader)
+
+    def train_dis_epoch(self, model, data_loader, criterion, optimizer):
+        # model.train()
+        total_loss = 0
+        total_acc = 0
+        for i, data in enumerate(data_loader):
+            inp, target = data['input'], data['target']
+            if cfg.CUDA:
+                inp, target = inp.cuda(), target.cuda()
+
+            pred = model.forward(inp)
+            loss = criterion(pred, target)
+            self.optimize(optimizer, loss)
+
+            total_loss += loss.item()
+            total_acc += torch.sum((pred.argmax(dim=-1) == target)).item()
+
+        total_loss /= len(data_loader)
+        total_acc /= len(data_loader)
+        return total_loss, total_acc
+
+    @staticmethod
+    def eval_gen(model, data_loader, criterion):
+        # model.eval()
+        total_loss = 0
         with torch.no_grad():
-            # sample from gen and compute oracle NLL
-            oracle_nll = self.get_nll(self.gen.sample(cfg.samples_num, cfg.batch_size), self.oracle)
-
-            gen_nll = self.get_nll(self.oracle.sample(cfg.samples_num, cfg.batch_size), self.gen)
-            # gen_nll = 0
-
-        return oracle_nll, gen_nll
-
-    def eval_dis(self, val_inp, val_target):
-        self.dis.eval()
-        with torch.no_grad():
-            val_size = 2 * cfg.samples_num
-            val_acc = 0
-            for i in range(0, val_size, 8 * cfg.batch_size):  # 8 * batch_size for faster
-                inp, target = val_inp[i:i + 8 * cfg.batch_size], val_target[i:i + 8 * cfg.batch_size]
-
+            for i, data in enumerate(data_loader):
+                inp, target = data['input'], data['target']
                 if cfg.CUDA:
-                    inp = inp.cuda()
-                    target = target.cuda()
+                    inp, target = inp.cuda(), target.cuda()
 
-                val_pred = self.dis.batchClassify(inp)
-                val_acc += torch.sum((val_pred.argmax(dim=-1) == target)).item() / val_size
+                hidden = model.init_hidden(data_loader.batch_size)
+                pred = model.forward(inp, hidden)
+                loss = criterion(pred, target.view(-1))
+                total_loss += loss.item()
+        return total_loss / len(data_loader)
 
-        return val_acc
+    @staticmethod
+    def eval_dis(model, data_loader, criterion):
+        # model.eval()
+        total_loss = 0
+        total_acc = 0
+        with torch.no_grad():
+            for i, data in enumerate(data_loader):
+                inp, target = data['input'], data['target']
+                if cfg.CUDA:
+                    inp, target = inp.cuda(), target.cuda()
 
-    def optimize_multi(self, opts, losses):
+                pred = model.forward(inp)
+                loss = criterion(pred, target)
+
+                total_loss += loss.item()
+                total_acc += torch.sum((pred.argmax(dim=-1) == target)).item()
+
+            total_loss /= len(data_loader)
+            total_acc /= len(data_loader)
+        return total_loss, total_acc
+
+    @staticmethod
+    def optimize_multi(opts, losses):
         for i, (opt, loss) in enumerate(zip(opts, losses)):
             opt.zero_grad()
             loss.backward(retain_graph=True if i < len(opts) - 1 else False)
             opt.step()
 
-    def optimize(self, opt, loss):
+    @staticmethod
+    def optimize(opt, loss, retain_graph=False):
         opt.zero_grad()
-        loss.backward()
+        loss.backward(retain_graph=retain_graph)
         opt.step()
 
-    def get_nll(self, samples, gen):
-        nll_loss = 0
-        for i in range(0, len(samples), cfg.batch_size):
-            inp, target = helpers.prepare_generator_batch(samples[i:i + cfg.batch_size], cfg.start_letter,
-                                                          cfg.CUDA)
-            oracle_loss = gen.batchNLLLoss(inp, target) / cfg.max_seq_len
-            nll_loss += oracle_loss.data.item()
+    # TODO: remove
+    @staticmethod
+    def get_nll(data_loader, evaluator):
+        with torch.no_grad():
+            nll_loss = 0
+            for data in data_loader:
+                inp, target = data['input'], data['target']
+                if cfg.CUDA:
+                    inp, target = inp.cuda(), target.cuda()
 
-        return nll_loss / (len(samples) // cfg.batch_size)
+                nll_loss += evaluator.batchNLLLoss(inp, target).item()
+
+        return nll_loss / len(data_loader)
 
     def _print(self, content):
         print(content, end='')
         sys.stdout.flush()
-        self.log.write(content)
+        if not cfg.if_test:
+            self.log.write(content)
 
     def show_config(self):
         self._print(100 * '=' + '\n')

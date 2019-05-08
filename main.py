@@ -19,6 +19,7 @@ def program_config(parser):
     parser.add_argument('--adv_d_step', default=cfg.ADV_d_step, type=int)
     parser.add_argument('--adv_d_epoch', default=cfg.ADV_d_epoch, type=int)
     parser.add_argument('--gen_lr', default=cfg.gen_lr, type=float)
+    parser.add_argument('--gen_adv_lr', default=cfg.gen_adv_lr, type=float)
     parser.add_argument('--dis_lr', default=cfg.dis_lr, type=float)
 
     parser.add_argument('--cuda', default=cfg.CUDA, type=int)
@@ -48,7 +49,10 @@ if __name__ == '__main__':
     }
 
     inst = instruction_dict[cfg.run_model](opt)
-    inst._run()
+    if not cfg.if_test:
+        inst._run()
+    else:
+        inst._test()
 
     try:
         inst.log.close()

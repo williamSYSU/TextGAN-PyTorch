@@ -361,7 +361,7 @@ class LeakGAN_G(nn.Module):
 
     def init_params(self):
         for param in self.parameters():
-            # param.data.uniform_(-0.05, 0.05)
+            # param.loader.uniform_(-0.05, 0.05)
             param.data.normal_(0, 0.1)
 
     def split_params(self):

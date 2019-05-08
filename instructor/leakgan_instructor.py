@@ -30,7 +30,7 @@ class LeakGANInstructor(BasicInstructor):
         self.gen = LeakGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                              cfg.padding_idx, cfg.goal_size, cfg.goal_out_size, cfg.step_size, cfg.CUDA)
         self.dis = LeakGAN_D(cfg.dis_embed_dim, cfg.vocab_size, cfg.dis_filter_sizes, cfg.dis_num_filters,
-                             cfg.k_label, cfg.padding_idx, gpu=cfg.CUDA)
+                             cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
 
         # optimizer
@@ -53,9 +53,8 @@ class LeakGANInstructor(BasicInstructor):
                     self.train_discriminator(cfg.d_step, cfg.d_epoch)
 
                     if cfg.if_save:
-                        torch.save(self.dis.state_dict(), cfg.pretrained_dis_path.format(cfg.k_label))
-                        print('Save pretrain_generator discriminator: {}\n'.format(
-                            cfg.pretrained_dis_path.format(cfg.k_label)))
+                        torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
+                        print('Save pretrain_generator discriminator: {}\n'.format(cfg.pretrained_dis_path))
 
                 # ==========GENERATOR MLE TRAINING==========
                 self._print('\nStarting Generator MLE Training...\n')
@@ -187,7 +186,7 @@ class LeakGANInstructor(BasicInstructor):
         Training the discriminator on real_data_samples (positive) and generated samples from gen (negative).
         Samples are drawn d_steps times, and the discriminator is trained for epochs epochs.
         """
-        # prepare data for validate
+        # prepare loader for validate
         with torch.no_grad():
             pos_val = self.oracle.sample(cfg.samples_num, cfg.batch_size)
             neg_val = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
@@ -197,7 +196,7 @@ class LeakGANInstructor(BasicInstructor):
         # loss_fn = nn.BCELoss()
         loss_fn = nn.CrossEntropyLoss()
         for d_step in range(d_steps):
-            # prepare data for training
+            # prepare loader for training
             with torch.no_grad():
                 oracle_samples = self.oracle.sample(cfg.samples_num, cfg.batch_size)
                 gen_samples = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
@@ -221,7 +220,7 @@ class LeakGANInstructor(BasicInstructor):
                         inp = inp.cuda()
                         target = target.cuda()
 
-                    out = self.dis.batchClassify(inp)
+                    out = self.dis(inp)
                     loss = loss_fn(out, target)
 
                     self.optimize(self.dis_opt, loss)
