@@ -7,18 +7,16 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-from math import ceil
 import time
 import torch
 import torch.optim as optim
 import torch.nn as nn
 
-import helpers
-import rollout
+from utils import rollout
 import config as cfg
-from data_utils import GenDataIter, DisDataIter
+from utils.data_utils import GenDataIter, DisDataIter
 
-from instructor.instructor import BasicInstructor
+from instructor.oracle_data.instructor import BasicInstructor
 from models.SeqGAN_D import SeqGAN_D
 from models.SeqGAN_G import SeqGAN_G
 
@@ -53,18 +51,20 @@ class SeqGANInstructor(BasicInstructor):
             self.pretrain_generator(cfg.MLE_train_epoch)
             if cfg.if_save:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
+                print('Save MLE pretrain_generator gen: {}\n'.format(cfg.pretrained_gen_path))
 
         # TRAIN DISCRIMINATOR
         self._print('\nStarting Discriminator Training...\n')
         if not cfg.dis_pretrain:
-            self.train_discriminator(cfg.d_step, cfg.d_epoch, 'MLE')
+            self.train_discriminator(cfg.d_step, cfg.d_epoch)
             if cfg.if_save:
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
+                print('Save pretrain_generator discriminator: {}\n'.format(cfg.pretrained_dis_path))
 
         # ==========ADVERSARIAL TRAINING==========
         self._print('\nStarting Adversarial Training...\n')
 
-        oracle_nll, gen_nll = self.cal_nll()
+        oracle_nll, gen_nll = self.cal_metrics()
         self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f\n' % (oracle_nll, gen_nll))
 
         for epoch in range(cfg.ADV_train_epoch):
@@ -80,16 +80,6 @@ class SeqGANInstructor(BasicInstructor):
                 self._print('\n>>> Stop by adv_signal! Finishing adversarial training...\n')
                 break
 
-    # MLE with temperature
-    # def _run(self):
-    #     oracle_samples = self.oracle.sample(cfg.samples_num, cfg.batch_size)
-    #
-    #     # TRAIN GENERATOR
-    #     self._print('\nStarting Generator MLE Training...\n')
-    #
-    #     self._print('Generator MLE training...\n')
-    #     self.pretrain_generator(oracle_samples, cfg.MLE_train_epoch)
-
     def _test(self):
         print('>>> Begin test...')
 
@@ -102,7 +92,7 @@ class SeqGANInstructor(BasicInstructor):
         # loss, acc = self.eval_dis(self.dis, dis_train_data.loader, self.dis_criterion)
         # print(loss, acc)
         # self.adv_train_generator(1)
-        self.pretrain_generator(cfg.MLE_train_epoch)
+        # self.pretrain_generator(cfg.MLE_train_epoch)
         pass
 
     def pretrain_generator(self, epochs):
@@ -117,7 +107,7 @@ class SeqGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
-                    oracle_nll, gen_nll = self.cal_nll()
+                    oracle_nll, gen_nll = self.cal_metrics()
 
                     t1 = time.time()
                     self._print(
@@ -140,16 +130,13 @@ class SeqGANInstructor(BasicInstructor):
                 inp, target = self.gen_data.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
             # =====Train=====
-            self.gen.train()
-            self.dis.eval()
-
             rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
             adv_loss = self.gen.batchPGLoss(inp, target, rewards)
             self.optimize(self.gen_opt, adv_loss)
             total_g_loss += adv_loss.item()
 
             # =====Test=====
-            oracle_nll, gen_nll = self.cal_nll()
+            oracle_nll, gen_nll = self.cal_metrics()
 
             self._print('[ADV-GEN]: g_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
                 total_g_loss, oracle_nll, gen_nll))
@@ -174,9 +161,6 @@ class SeqGANInstructor(BasicInstructor):
 
             for epoch in range(d_epoch):
                 # =====Train=====
-                self.gen.eval()
-                self.dis.train()
-
                 d_loss, train_acc = self.train_dis_epoch(self.dis, dis_train_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
@@ -185,12 +169,3 @@ class SeqGANInstructor(BasicInstructor):
 
                 self._print('[%s-DIS] d_step %d, d_epoch %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,\n' % (
                     phrase, step, epoch, d_loss, train_acc, eval_acc))
-
-    def cal_nll(self):
-        oracle_nll = self.eval_gen(self.oracle,
-                                   self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size)),
-                                   self.mle_criterion)
-        gen_nll = self.eval_gen(self.gen,
-                                self.oracle_data.loader,
-                                self.mle_criterion)
-        return oracle_nll, gen_nll

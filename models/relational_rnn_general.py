@@ -347,6 +347,7 @@ class RelationalMemory(nn.Module):
             return logits, memory
         else:
             return logit.unsqueeze(1), memory
+            # return logit, memory
 
 # ########## DEBUG: unit test code ##########
 # input_size = 32

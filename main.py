@@ -1,13 +1,11 @@
 from __future__ import print_function
 import argparse
 import config as cfg
-from instructor.leakgan_instructor import LeakGANInstructor
-from instructor.seqgan_instructor import SeqGANInstructor
-from instructor.relgan_instructor import RelGANInstructor
 
 
 def program_config(parser):
     parser.add_argument('--run_model', default=cfg.run_model, type=str)
+    parser.add_argument('--model_type', default=cfg.model_type, type=str)
     parser.add_argument('--mle_epoch', default=cfg.MLE_train_epoch, type=int)
     parser.add_argument('--adv_epoch', default=cfg.ADV_train_epoch, type=int)
     parser.add_argument('--inter_epoch', default=cfg.inter_epoch, type=int)
@@ -21,13 +19,17 @@ def program_config(parser):
     parser.add_argument('--gen_lr', default=cfg.gen_lr, type=float)
     parser.add_argument('--gen_adv_lr', default=cfg.gen_adv_lr, type=float)
     parser.add_argument('--dis_lr', default=cfg.dis_lr, type=float)
+    parser.add_argument('--temp_adpt', default=cfg.temp_adpt, type=str)
+    parser.add_argument('--temperature', default=cfg.temperature, type=int)
 
     parser.add_argument('--cuda', default=cfg.CUDA, type=int)
     parser.add_argument('--device', default=cfg.device, type=int)
+    parser.add_argument('--shuffle', default=cfg.data_shuffle, type=int)
     parser.add_argument('--ora_pretrain', default=cfg.oracle_pretrain, type=int)
     parser.add_argument('--gen_pretrain', default=cfg.gen_pretrain, type=int)
     parser.add_argument('--dis_pretrain', default=cfg.dis_pretrain, type=int)
     parser.add_argument('--log_file', default=cfg.log_filename, type=str)
+    parser.add_argument('--save_root', default=cfg.save_root, type=str)
     parser.add_argument('--tips', default=cfg.tips, type=str)
 
     return parser
@@ -42,6 +44,14 @@ if __name__ == '__main__':
     cfg.init_param(opt)
 
     # ==========Dict==========
+    if cfg.if_real_data:
+        from instructor.real_data.leakgan_instructor import LeakGANInstructor
+        from instructor.real_data.seqgan_instructor import SeqGANInstructor
+        from instructor.real_data.relgan_instructor import RelGANInstructor
+    else:
+        from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
+        from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
+        from instructor.oracle_data.relgan_instructor import RelGANInstructor
     instruction_dict = {
         'leakgan': LeakGANInstructor,
         'seqgan': SeqGANInstructor,
@@ -53,7 +63,6 @@ if __name__ == '__main__':
         inst._run()
     else:
         inst._test()
-
     try:
         inst.log.close()
     except:

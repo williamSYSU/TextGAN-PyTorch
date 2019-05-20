@@ -9,21 +9,19 @@
 
 import sys
 import torch
-import torch.optim as optim
-from data_utils import GenDataIter, DisDataIter
+from utils.data_utils import GenDataIter
 
-import helpers
-from helpers import Signal
+from utils.helpers import Signal
 import config as cfg
 
-from models.discriminator import CNNDiscriminator
-from models.generator import LSTMGenerator
 from models.Oracle import Oracle
+from utils.text_process import write_tensor
 
 
 class BasicInstructor:
     def __init__(self, opt):
         self.log = open(cfg.log_filename + '.txt', 'w') if not cfg.if_test else None
+        self.model_log = open(cfg.save_root + 'log.txt', 'w') if not cfg.if_test else None
         self.sig = Signal(cfg.signal_file)
         self.opt = opt
 
@@ -62,7 +60,6 @@ class BasicInstructor:
             self.dis = self.dis.cuda()
 
     def train_gen_epoch(self, model, data_loader, criterion, optimizer):
-        # model.train()
         total_loss = 0
         for i, data in enumerate(data_loader):
             inp, target = data['input'], data['target']
@@ -72,12 +69,11 @@ class BasicInstructor:
             hidden = model.init_hidden(data_loader.batch_size)
             pred = model.forward(inp, hidden)
             loss = criterion(pred, target.view(-1))
-            self.optimize(optimizer, loss)
+            self.optimize(optimizer, loss, model)
             total_loss += loss.item()
         return total_loss / len(data_loader)
 
     def train_dis_epoch(self, model, data_loader, criterion, optimizer):
-        # model.train()
         total_loss = 0
         total_acc = 0
         for i, data in enumerate(data_loader):
@@ -98,7 +94,6 @@ class BasicInstructor:
 
     @staticmethod
     def eval_gen(model, data_loader, criterion):
-        # model.eval()
         total_loss = 0
         with torch.no_grad():
             for i, data in enumerate(data_loader):
@@ -114,7 +109,6 @@ class BasicInstructor:
 
     @staticmethod
     def eval_dis(model, data_loader, criterion):
-        # model.eval()
         total_loss = 0
         total_acc = 0
         with torch.no_grad():
@@ -141,30 +135,19 @@ class BasicInstructor:
             opt.step()
 
     @staticmethod
-    def optimize(opt, loss, retain_graph=False):
+    def optimize(opt, loss, model=None, retain_graph=False):
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
+        if model is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
         opt.step()
-
-    # TODO: remove
-    @staticmethod
-    def get_nll(data_loader, evaluator):
-        with torch.no_grad():
-            nll_loss = 0
-            for data in data_loader:
-                inp, target = data['input'], data['target']
-                if cfg.CUDA:
-                    inp, target = inp.cuda(), target.cuda()
-
-                nll_loss += evaluator.batchNLLLoss(inp, target).item()
-
-        return nll_loss / len(data_loader)
 
     def _print(self, content):
         print(content, end='')
         sys.stdout.flush()
         if not cfg.if_test:
             self.log.write(content)
+            self.model_log.write(content)
 
     def show_config(self):
         self._print(100 * '=' + '\n')
@@ -172,3 +155,18 @@ class BasicInstructor:
         for arg in vars(self.opt):
             self._print('>>> {0}: {1}\n'.format(arg, getattr(self.opt, arg)))
         self._print(100 * '=' + '\n')
+
+    def cal_metrics(self):
+        oracle_nll = self.eval_gen(self.oracle,
+                                   self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size)),
+                                   self.mle_criterion)
+        gen_nll = self.eval_gen(self.gen,
+                                self.oracle_data.loader,
+                                self.mle_criterion)
+        return oracle_nll, gen_nll
+
+    def _save(self, phrase, epoch):
+        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
+        save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
+        samples = self.gen.sample(cfg.batch_size, cfg.batch_size)
+        write_tensor(save_sample_path, samples)

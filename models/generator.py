@@ -20,7 +20,7 @@ class LSTMGenerator(nn.Module):
         self.padding_idx = padding_idx
         self.gpu = gpu
 
-        self.temperature = 1
+        # self.temperature = 1
 
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
@@ -43,7 +43,7 @@ class LSTMGenerator(nn.Module):
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
         out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
         out = self.lstm2out(out)  # batch_size * seq_len * vocab_size
-        out = self.temperature * out  # temperature
+        # out = self.temperature * out  # temperature
         pred = self.softmax(out)
 
         if need_hidden:
@@ -58,21 +58,20 @@ class LSTMGenerator(nn.Module):
         """
         num_batch = num_samples // batch_size + 1 if num_samples != batch_size else 1
         samples = torch.zeros(num_batch * batch_size, self.max_seq_len).long()
-        hidden = self.init_hidden(batch_size)
 
         # 用LSTM随机生成batch_size个句子，生成下一个词的时候是按多项式分布来选择的，而不是概率最大那个
         for b in range(num_batch):
+            hidden = self.init_hidden(batch_size)
             inp = torch.LongTensor([start_letter] * batch_size)
             if self.gpu:
                 inp = inp.cuda()
 
             for i in range(self.max_seq_len):
                 out, hidden = self.forward(inp, hidden, need_hidden=True)  # out: num_samples * vocab_size
-                out = torch.multinomial(torch.exp(out), 1)  # num_samples * 1 (sampling from each row)
-                samples[b * batch_size:(b + 1) * batch_size, i] = out.view(-1)
+                next_token = torch.multinomial(torch.exp(out), 1)  # num_samples * 1 (sampling from each row)
+                samples[b * batch_size:(b + 1) * batch_size, i] = next_token.view(-1)
 
-                inp = out.view(-1)
-
+                inp = next_token.view(-1)
         samples = samples[:num_samples]
 
         return samples

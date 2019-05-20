@@ -13,6 +13,7 @@ import torch.nn.functional as F
 import time
 
 import config as cfg
+from models.generator import LSTMGenerator
 
 
 class LeakGAN_G(nn.Module):
@@ -44,6 +45,7 @@ class LeakGAN_G(nn.Module):
 
         self.init_params()
 
+    # def forward(self, idx, inp, work_hidden, mana_hidden, feature, real_goal, no_log=False, train=False):
     def forward(self, idx, inp, work_hidden, mana_hidden, feature, real_goal, no_log=False, train=False):
         """
         Embeds input and sample on token at a time (seq_len = 1)
@@ -332,12 +334,12 @@ class LeakGAN_G(nn.Module):
         return samples, feature_array, goal_array, leak_out_array
 
     def batchNLLLoss(self, target, dis, start_letter=cfg.start_letter):
-        loss_fn = nn.NLLLoss()
-        batch_size, seq_len = target.size()
+        # loss_fn = nn.NLLLoss()
+        # batch_size, seq_len = target.size()
         _, _, _, leak_out_array = self.forward_leakgan(target, dis, if_sample=False, no_log=False,
                                                        start_letter=start_letter)
 
-        nll_loss = torch.sum(self.worker_nll_loss(target, leak_out_array)) / batch_size
+        nll_loss = torch.mean(self.worker_nll_loss(target, leak_out_array))
 
         return nll_loss
 

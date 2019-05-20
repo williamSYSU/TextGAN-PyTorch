@@ -26,7 +26,8 @@ import matplotlib.pyplot as plt
 #               5: 'dis_val_acc'}
 title_dict = {0: 'gen_pre_loss',
               1: 'oracle_NLL',
-              2: 'gen_NLL'}
+              2: 'gen_NLL',
+              3: 'BLEU-3'}
 
 color_list = ['green', 'red', 'skyblue', 'blue', 'violet', 'sienna', 'blueviolet']
 
@@ -95,8 +96,9 @@ def get_log_data_rel(filename):
         gen_pre_loss = []
         oracle_nll = []
         gen_nll = []
+        bleu3 = []
 
-        data_dict = {'pre_loss': gen_pre_loss, 'oracle_NLL': oracle_nll, 'gen_NLL': gen_nll}
+        data_dict = {'pre_loss': gen_pre_loss, 'oracle_NLL': oracle_nll, 'gen_NLL': gen_nll, 'BLEU-3': bleu3}
 
         for line in all_lines:
             items = line.split()
@@ -109,7 +111,7 @@ def get_log_data_rel(filename):
                 break
 
     # print(gen_work_loss)
-    return gen_pre_loss, oracle_nll, gen_nll
+    return gen_pre_loss, oracle_nll, gen_nll, bleu3
 
 
 def get_log_data(model, filename):
@@ -174,7 +176,11 @@ if __name__ == '__main__':
     # log_file_list = ['log_0506_1103', 'log_0506_1159']
     # log_file_list = ['log_0506_1726','log_0507_1037']
     # log_file_list = ['log_0508_1209', 'log_0508_1744', 'log_0508_1729']
-    log_file_list = ['log_0508_1744', 'log_0508_2005', 'log_0508_2008']
+    # log_file_list = ['log_0508_1744', 'log_0508_2005', 'log_0508_2008']
+    # log_file_list = ['log_0508_2157','log_0509_1228']
+    # log_file_list = ['log_0509_1509', 'log_0509_1604','log_0513_1156','log_0513_1534']
+    # log_file_list = ['log_0513_1746','log_0513_1546']
+    log_file_list = ['log_0516_2336', 'log_0517_0156_2', 'log_0517_0030']
 
     color_id = 0
     index = 1

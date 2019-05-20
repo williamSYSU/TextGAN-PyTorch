@@ -17,33 +17,46 @@ if_reward = True  # for SentiGAN
 CUDA = True
 multi_gpu = False
 if_save = True
+data_shuffle = True
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 
-seq_update = True  # True，是否是更新整个序列
+seq_update = False  # True，是否是更新整个序列
 no_log = False  # False，是否取消log操作。False: 有log，在算NLL loss时使用；True: 无log，采样时使用, for SentiGAN
 
-run_model = 'seqgan'  # ['seqgan', 'leakgan', 'relgan']
-model_type = 'vanilla'  # vanilla, withRMC, noRMC
+run_model = 'relgan'  # ['seqgan', 'leakgan', 'relgan']
+
+# =====Oracle or Real=====
+if_real_data = False  # if use real data
+dataset = 'oracle'  # oracle, image_coco, emnlp_news
+model_type = 'vanilla'  # vanilla, noRMC, withRMC
+vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
+
+temp_adpt = 'no'  # no, lin, exp, log, sigmoid, quad, sqrt
+temperature = 1
 
 # =====Basic Train=====
 samples_num = 10000  # 10000
-MLE_train_epoch = 80  # SeqGAN,LeakGAN-80, RelGAN-150
-ADV_train_epoch = 1  # SeqGAN, LeakGAN-200, RelGAN-3000
+MLE_train_epoch = 150  # SeqGAN,LeakGAN-80, RelGAN-150
+ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 1  # LeakGAN-10
 k_label = 1  # num of labels, SentiGAN-1
 batch_size = 64  # 64
 max_seq_len = 20  # 20
 start_letter = 1
 padding_idx = 0
-vocab_size = 5000  # 5000
+start_token = 'BOS'
+padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
 gen_adv_lr = 1e-4  # RelGAN-1e-4
-dis_lr = 1e-2  # 1e-4
+dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
 
 pre_log_step = 10
 adv_log_step = 20
+
+train_data = 'dataset/' + dataset + '.txt'
+test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1
@@ -58,7 +71,7 @@ num_heads = 2
 head_size = 256
 
 # =====Discriminator=====
-d_step = 50  # SeqGAN-50, LeakGAN-5
+d_step = 1  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
 ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
@@ -73,16 +86,25 @@ num_rep = 64  # RelGAN
 goal_out_size = sum(dis_num_filters)
 
 # =====Save Model and samples=====
+save_root = './save/{}_{}_{}_lr{}_temp{}_T{}/'.format(run_model, model_type, dataset, gen_lr, temperature,
+                                                      datetime.now().strftime('%m%d-%H%M'))
+save_samples_root = save_root + 'samples/'
+save_model_root = save_root + 'models/'
 oracle_samples_path = './save/oracle_samples_NUM{}_lstm.pkl'
 oracle_state_dict_path = './save/oracle_EMB32_HID32_VOC5000_SEQ20_lstm.pkl'
 
-pretrain_root = './pretrain/NUM{}/'.format(samples_num)
+pretrain_root = './pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
 pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pkl'.format(run_model, model_type)
 pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pkl'.format(run_model, model_type)
 signal_file = 'run_signal.txt'
 
 tips = ''
 
+save_list = [save_root, save_samples_root, save_model_root]
+if not if_test:
+    for d in save_list:
+        if not os.path.exists(d):
+            os.mkdir(d)
 # =====log=====
 log_filename = './log/log_{}'.format(datetime.now().strftime('%m%d_%H%M'))
 if os.path.exists(log_filename + '.txt'):
@@ -95,7 +117,7 @@ if os.path.exists(log_filename + '.txt'):
 
 '''Create dir for model'''
 dir_list = ['save', 'savefig', 'log', 'pretrain', 'log/tensor_log', 'save/log', 'dataset',
-            'pretrain/NUM{}'.format(samples_num)]
+            'pretrain/oracle_data', 'pretrain/real_data']
 for d in dir_list:
     if not os.path.exists(d):
         os.mkdir(d)
@@ -117,7 +139,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device=2
+# device=1
 torch.cuda.set_device(device)
 print('device: ', device)
 
@@ -127,7 +149,8 @@ def init_param(opt):
         rollout_num, d_step, d_epoch, ADV_d_step, ADV_d_epoch, vocab_size, max_seq_len, \
         start_letter, gen_embed_dim, gen_hidden_dim, dis_embed_dim, dis_hidden_dim, \
         CUDA, if_save, if_reward, gen_pretrain, dis_pretrain, log_filename, tips, \
-        device, seq_update, no_log, oracle_pretrain, gen_lr, gen_adv_lr, dis_lr, inter_epoch, run_model
+        device, seq_update, no_log, oracle_pretrain, gen_lr, gen_adv_lr, dis_lr, inter_epoch, \
+        run_model, save_root, temperature, temp_adpt
 
     run_model = opt.run_model
     MLE_train_epoch = opt.mle_epoch
@@ -143,6 +166,8 @@ def init_param(opt):
     gen_lr = opt.gen_lr
     gen_adv_lr = opt.gen_adv_lr
     dis_lr = opt.dis_lr
+    temperature = opt.temperature
+    temp_adpt = opt.temp_adpt
 
     device = opt.device
     CUDA = True if opt.cuda == 1 else False
@@ -150,14 +175,5 @@ def init_param(opt):
     gen_pretrain = True if opt.gen_pretrain == 1 else False
     dis_pretrain = True if opt.dis_pretrain == 1 else False
     log_filename = opt.log_file
+    save_root = opt.save_root
     tips = opt.tips
-
-
-''' hvd command
-mpirun -np 3 \
-    -H localhost:4 \
-    -bind-to none -map-by slot \
-    -x NCCL_DEBUG=INFO -x LD_LIBRARY_PATH -x PATH \
-    -mca pml ob1 -mca btl ^openib \
-    python train.py
-'''
