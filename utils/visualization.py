@@ -180,23 +180,31 @@ if __name__ == '__main__':
     # log_file_list = ['log_0508_2157','log_0509_1228']
     # log_file_list = ['log_0509_1509', 'log_0509_1604','log_0513_1156','log_0513_1534']
     # log_file_list = ['log_0513_1746','log_0513_1546']
-    log_file_list = ['log_0516_2336', 'log_0517_0156_2', 'log_0517_0030']
+    # log_file_list = ['log_0516_2336', 'log_0517_0156_2', 'log_0517_0030']
+
+    # log_file_list = ['log_0523_1207', 'log_0523_0901', 'log_0523_0856']
+    # plot_title = ['temp = 1', 'temp = 2', 'temp = 5']
+
+    log_file_list = ['log_0523_0859', 'log_0523_0859_2', 'log_0523_0906']
 
     color_id = 0
-    index = 1
+    index = 3
     if_save = False
     model = 'relgan'
+    # plot_title = ['RMC, temp=100', 'RMC, temp=1000', 'LSTM-512, temp=100']
+    plot_title = log_file_list
 
     plt.clf()
     plt.title(title_dict[index])
     all_data_list = []
-    for item in log_file_list:
+    for idx, item in enumerate(log_file_list):
         log_file = log_file_root + item + '.txt'
 
         # save log file
         shutil.copyfile(log_file, 'save/' + log_file)
         all_data = get_log_data(model, log_file)
-        show_data(all_data, item, index=index, if_save=if_save)
+        # show_data(all_data, filename=item, index=index, if_save=if_save)
+        show_data(all_data, filename=plot_title[idx], index=index, if_save=if_save)
         color_id += 1
 
     plt.legend()

@@ -13,35 +13,35 @@ from datetime import datetime
 
 # =====Program=====
 if_test = False
-if_reward = True  # for SentiGAN
+# if_reward = True  # for SentiGAN
 CUDA = True
-multi_gpu = False
+# multi_gpu = False
 if_save = True
 data_shuffle = True
 oracle_pretrain = True  # True
 gen_pretrain = True
 dis_pretrain = False
 
-seq_update = False  # True，是否是更新整个序列
-no_log = False  # False，是否取消log操作。False: 有log，在算NLL loss时使用；True: 无log，采样时使用, for SentiGAN
+# seq_update = False  # True，是否是更新整个序列
+# no_log = False  # False，是否取消log操作。False: 有log，在算NLL loss时使用；True: 无log，采样时使用, for SentiGAN
 
 run_model = 'relgan'  # ['seqgan', 'leakgan', 'relgan']
 
-# =====Oracle or Real=====
+# =====Oracle  or Real=====
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news
 model_type = 'vanilla'  # vanilla, noRMC, withRMC
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
 
-temp_adpt = 'no'  # no, lin, exp, log, sigmoid, quad, sqrt
-temperature = 1
+temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt
+temperature = 2
 
 # =====Basic Train=====
 samples_num = 10000  # 10000
 MLE_train_epoch = 150  # SeqGAN,LeakGAN-80, RelGAN-150
 ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
-inter_epoch = 1  # LeakGAN-10
-k_label = 1  # num of labels, SentiGAN-1
+# inter_epoch = 1  # LeakGAN-10
+# k_label = 1  # num of labels, SentiGAN-1
 batch_size = 64  # 64
 max_seq_len = 20  # 20
 start_letter = 1
@@ -51,6 +51,7 @@ padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
 gen_adv_lr = 1e-4  # RelGAN-1e-4
 dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
+clip_norm = 5.0
 
 pre_log_step = 10
 adv_log_step = 20
@@ -60,21 +61,21 @@ test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1
-rollout_num = 4  # 4
+# rollout_num = 4  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
-goal_size = 16
-step_size = 4
+# goal_size = 16
+# step_size = 4
 
 mem_slots = 1
 num_heads = 2
 head_size = 256
 
 # =====Discriminator=====
-d_step = 1  # SeqGAN-50, LeakGAN-5
-d_epoch = 3  # SeqGAN,LeakGAN-3
+# d_step = 1  # SeqGAN-50, LeakGAN-5
+# d_epoch = 3  # SeqGAN,LeakGAN-3
 ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
-ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
+# ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
 
 # dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]    # SeqGAN, LeakGAN
 dis_filter_sizes = [2, 3, 4, 5]  # RelGAN
@@ -83,15 +84,15 @@ dis_num_filters = [300, 300, 300, 300]  # RelGAN
 dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64  # RelGAN
-goal_out_size = sum(dis_num_filters)
+# goal_out_size = sum(dis_num_filters)
 
 # =====Save Model and samples=====
 save_root = './save/{}_{}_{}_lr{}_temp{}_T{}/'.format(run_model, model_type, dataset, gen_lr, temperature,
                                                       datetime.now().strftime('%m%d-%H%M'))
 save_samples_root = save_root + 'samples/'
 save_model_root = save_root + 'models/'
-oracle_samples_path = './save/oracle_samples_NUM{}_lstm.pkl'
-oracle_state_dict_path = './save/oracle_EMB32_HID32_VOC5000_SEQ20_lstm.pkl'
+oracle_samples_path = './pretrain/oracle_data/oracle_samples_NUM10000_lstm.pkl'
+oracle_state_dict_path = './pretrain/oracle_data/oracle_EMB32_HID32_VOC5000_SEQ20_lstm.pkl'
 
 pretrain_root = './pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
 pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pkl'.format(run_model, model_type)
@@ -150,24 +151,25 @@ def init_param(opt):
         start_letter, gen_embed_dim, gen_hidden_dim, dis_embed_dim, dis_hidden_dim, \
         CUDA, if_save, if_reward, gen_pretrain, dis_pretrain, log_filename, tips, \
         device, seq_update, no_log, oracle_pretrain, gen_lr, gen_adv_lr, dis_lr, inter_epoch, \
-        run_model, save_root, temperature, temp_adpt
+        run_model, save_root, temperature, temp_adpt, clip_norm
 
     run_model = opt.run_model
     MLE_train_epoch = opt.mle_epoch
     ADV_train_epoch = opt.adv_epoch
-    inter_epoch = opt.inter_epoch
+    # inter_epoch = opt.inter_epoch
     batch_size = opt.batch_size
     ADV_g_step = opt.adv_g_step
-    rollout_num = opt.rollout_num
-    d_step = opt.d_step
-    d_epoch = opt.d_epoch
+    # rollout_num = opt.rollout_num
+    # d_step = opt.d_step
+    # d_epoch = opt.d_epoch
     ADV_d_step = opt.adv_d_step
-    ADV_d_epoch = opt.adv_d_epoch
+    # ADV_d_epoch = opt.adv_d_epoch
     gen_lr = opt.gen_lr
     gen_adv_lr = opt.gen_adv_lr
     dis_lr = opt.dis_lr
     temperature = opt.temperature
     temp_adpt = opt.temp_adpt
+    clip_norm = opt.clip_norm
 
     device = opt.device
     CUDA = True if opt.cuda == 1 else False

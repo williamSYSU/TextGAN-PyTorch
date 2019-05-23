@@ -70,7 +70,6 @@ class LSTMGenerator(nn.Module):
                 out, hidden = self.forward(inp, hidden, need_hidden=True)  # out: num_samples * vocab_size
                 next_token = torch.multinomial(torch.exp(out), 1)  # num_samples * 1 (sampling from each row)
                 samples[b * batch_size:(b + 1) * batch_size, i] = next_token.view(-1)
-
                 inp = next_token.view(-1)
         samples = samples[:num_samples]
 
@@ -101,7 +100,6 @@ class LSTMGenerator(nn.Module):
             param.data.normal_(0, 1)
 
     def init_hidden(self, batch_size=cfg.batch_size):
-        # h = autograd.Variable(torch.zeros(1, batch_size, self.hidden_dim))
         h = torch.zeros(1, batch_size, self.hidden_dim)
         c = torch.zeros(1, batch_size, self.hidden_dim)
 

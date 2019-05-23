@@ -128,7 +128,7 @@ class BasicInstructor:
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
         if model is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
         opt.step()
 
     def _print(self, content):

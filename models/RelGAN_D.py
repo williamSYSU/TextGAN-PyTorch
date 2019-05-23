@@ -16,7 +16,7 @@ from models.discriminator import CNNDiscriminator
 class RelGAN_D(CNNDiscriminator):
     def __init__(self, embed_dim, max_seq_len, num_rep, vocab_size, filter_sizes, num_filters, padding_idx,
                  gpu=False,
-                 dropout=0.2):
+                 dropout=0.25):
         super(RelGAN_D, self).__init__(embed_dim, vocab_size, filter_sizes, num_filters, padding_idx,
                                        gpu, dropout)
 

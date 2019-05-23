@@ -6,6 +6,7 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
+import os
 
 from torch.utils.data import Dataset, DataLoader
 
@@ -141,7 +142,7 @@ def create_oracle():
     torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
 
     large_samples = oracle.sample(cfg.samples_num, cfg.batch_size)
-    torch.save(large_samples, cfg.oracle_samples_path.format(cfg.samples_num))
+    torch.save(large_samples, cfg.oracle_samples_path)
 
     # count ground truth
     # dis = None

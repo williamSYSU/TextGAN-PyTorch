@@ -327,7 +327,6 @@ class RelationalMemory(nn.Module):
     def forward(self, inputs, memory, treat_input_as_matrix=False):
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        memory = self.repackage_hidden(memory)
 
         # for loop implementation of (entire) recurrent forward pass of the model
         # inputs is batch first [batch, seq], and output logit per step is [batch, vocab]
@@ -335,6 +334,7 @@ class RelationalMemory(nn.Module):
 
         # targets are flattened [seq, batch] => [seq * batch], so the dimension is correct
 
+        memory = self.repackage_hidden(memory)
         logit = 0
         logits = []
         # shape[1] is seq_lenth T

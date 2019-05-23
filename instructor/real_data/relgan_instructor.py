@@ -31,7 +31,7 @@ class RelGANInstructor(BasicInstructor):
 
         # generator, discriminator
         self.gen = RelGAN_G(cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim, cfg.gen_hidden_dim,
-                            cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, cfg.temperature, gpu=cfg.CUDA)
+                            cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
         self.dis = RelGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.dis_filter_sizes,
                             cfg.dis_num_filters, cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
@@ -63,7 +63,7 @@ class RelGANInstructor(BasicInstructor):
             self.pretrain_generator(cfg.MLE_train_epoch)
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
-                print('Save pretrain_generator discriminator: {}\n'.format(cfg.pretrained_dis_path))
+                print('Save pretrain_generator: {}\n'.format(cfg.pretrained_gen_path))
 
         bleu3_score, gen_nll = self.cal_metrics()
         self._print('Initial generator: BLEU-3 = %.4f, gen_NLL = %.4f\n' % (bleu3_score, gen_nll))
@@ -78,7 +78,8 @@ class RelGANInstructor(BasicInstructor):
                 d_loss = self.adv_train_discriminator(cfg.ADV_d_step)  # Discriminator
                 self.update_temperature(adv_epoch, cfg.ADV_train_epoch)  # update temperature
 
-                progress.set_description('g_loss: %.4f, d_loss: %.4f,' % (g_loss, d_loss))
+                progress.set_description(
+                    'g_loss: %.4f, d_loss: %.4f, temperature: %.4f' % (g_loss, d_loss, self.gen.temperature))
 
                 # TEST
                 if adv_epoch % cfg.adv_log_step == 0:
@@ -97,73 +98,7 @@ class RelGANInstructor(BasicInstructor):
     def _test(self):
         print('>>> Begin test...')
 
-        # oracle_data = GenDataIter(cfg.train_data)
-        # # # a = oracle_data.randam_batch()
-        # # for data in oracle_data.token:
-        # #     target = [text[0] for text in data['target']]
-        # #     print(target)
-        # all_data = torch.cat([data['target'] for data in list(iter(oracle_data.loader))], 0)
-        # input = oracle_data.input
-        # target = oracle_data.target
-        # print(input.size(), target.size())
-        # print(input[:10])
-        # print(target[:10])
-
-        # test_text = GenDataIter(cfg.train_data)
-        # real_text = GenDataIter(cfg.test_text)
-        #
-        # t0 = time.time()
-        # # bleu = Bleu(cfg.train_data, cfg.test_text, gram=3)
-        # bleu = BLEU(test_text.loader, real_text.loader, gram=3)
-        # score = bleu.get_score()
-        # t1 = time.time()
-        # print('time: ', t1 - t0)
-        # print(score)
-        # self._run()
-        # from utils.text_process import init_dict, load_dict, tensor_to_tokens, tokens_to_tensor
-        # init_dict()
-        # wi_dict, iw_dict = load_dict('emnlp_news')
-        # all_token = tensor_to_tokens(all_data, iw_dict)
-        # all_data = tokens_to_tensor(all_token, wi_dict)
-
-        # self._run()
-        # self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size))
-        # self.bleu3.test_text = tensor_to_tokens(self.gen_data.target, self.index_word_dict)
-        # bleu3_score, gen_nll = self.cal_metrics()
-        # print(bleu3_score, gen_nll)
-
-        # oracle_data = GenDataIter(cfg.train_data)
-        # test_data = torch.load('save/relgan_vanilla_image_coco_lr0.01_T05151753/samples/samples_ADV_01700.pt')
-        # self.bleu3.test_text = tensor_to_tokens(test_data, self.index_word_dict)
-        # print(self.bleu3.get_score())
-
-        # self.gen.load_state_dict(torch.load('save/relgan_vanilla_image_coco_lr0.01_T05151753/models/gen_ADV_01820.pt'))
-        # s = self.gen.sample(cfg.batch_size, cfg.batch_size)
-        # print(tensor_to_tokens(s, self.index_word_dict))
-
-        # o_t = torch.zeros(16, 512).cuda()
-        # gumbel_t = self.gen.add_gumbel(o_t)
-        # print(gumbel_t)
-        # from utils.text_process import init_dict
-        # init_dict()
-
-        # oracle_data = GenDataIter(cfg.train_data)
-        # self.bleu3 = BLEU(test_text=tensor_to_tokens(oracle_data.target, self.index_word_dict),
-        #                   real_text=tensor_to_tokens(oracle_data.target, self.index_word_dict),
-        #                   gram=3)
-        # print(self.bleu3.get_score())
-
-        # self._run()
-        # self.pretrain_generator(1)
-        # s = self.gen.sample(cfg.samples_num,cfg.batch_size)
-
-        self.gen.load_state_dict(
-            torch.load('save/relgan_vanilla_image_coco_lr0.01_temp100_T0517-0030/models/gen_ADV_01760.pt'))
-
-        s1 = self.gen.sample(cfg.batch_size, cfg.batch_size)
-        s2 = self.gen.sample(cfg.batch_size, 1)
-        bleu3_score, gen_nll = self.cal_metrics()
-        print(bleu3_score, gen_nll)
+        self._run()
         pass
 
     def pretrain_generator(self, epochs):

@@ -32,8 +32,8 @@ class BasicInstructor:
         self.show_config()
 
         # DataLoader
-        self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
-        self.oracle_data = GenDataIter(self.oracle_samples)
+        # self.oracle_samples = torch.load(cfg.oracle_samples_path)
+        # self.oracle_data = GenDataIter(self.oracle_samples)
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -48,10 +48,10 @@ class BasicInstructor:
 
         if cfg.dis_pretrain:
             self._print(
-                'Load pretrain_generator discriminator: {}\n'.format(cfg.pretrained_dis_path))
+                'Load pretrained discriminator: {}\n'.format(cfg.pretrained_dis_path))
             self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path))
         if cfg.gen_pretrain:
-            self._print('Load MLE pretrain_generator gen: {}\n'.format(cfg.pretrained_gen_path))
+            self._print('Load MLE pretrained generator gen: {}\n'.format(cfg.pretrained_gen_path))
             self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path))
 
         if cfg.CUDA:
@@ -139,7 +139,7 @@ class BasicInstructor:
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
         if model is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
         opt.step()
 
     def _print(self, content):

@@ -18,16 +18,22 @@ import config as cfg
 
 class RelGAN_G(LSTMGenerator):
     def __init__(self, mem_slots, num_heads, head_size, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx,
-                 temperature, gpu=False):
+                 gpu=False):
         super(RelGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
         self.name = 'relgan'
 
-        self.temperature = temperature
+        self.temperature = 1.0  # init value is 1.0
         # RMC
+        self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
         self.hidden_dim = mem_slots * num_heads * head_size
         self.lstm = RelationalMemory(mem_slots=mem_slots, head_size=head_size, input_size=embedding_dim,
                                      num_heads=num_heads, return_all_outputs=True)
         self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
+
+        # LSTM
+        # self.hidden_dim = 512
+        # self.lstm = nn.LSTM(embedding_dim, self.hidden_dim, batch_first=True)
+        # self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
 
         self.init_params()
 
@@ -69,8 +75,9 @@ class RelGAN_G(LSTMGenerator):
         samples = torch.zeros(num_batch * batch_size, self.max_seq_len).long()
         if one_hot:
             all_preds = torch.zeros(batch_size, self.max_seq_len, self.vocab_size)
+            if self.gpu:
+                all_preds = all_preds.cuda()
 
-        # 用LSTM随机生成batch_size个句子，生成下一个词的时候是按多项式分布来选择的，而不是概率最大那个
         for b in range(num_batch):
             hidden = self.init_hidden(batch_size)
             inp = torch.LongTensor([start_letter] * batch_size)
@@ -92,6 +99,7 @@ class RelGAN_G(LSTMGenerator):
     def init_hidden(self, batch_size=cfg.batch_size):
         """init RMC memory"""
         memory = self.lstm.initial_state(batch_size)
+        # memory = self.lstm.repackage_hidden(memory)  # detch memory at first
         return memory.cuda() if self.gpu else memory
 
     @staticmethod
@@ -101,5 +109,5 @@ class RelGAN_G(LSTMGenerator):
         if gpu:
             u = u.cuda()
         g_t = -torch.log(-torch.log(u + eps) + eps)
-        gumbel_t = torch.add(o_t, g_t)
+        gumbel_t = o_t + g_t
         return gumbel_t

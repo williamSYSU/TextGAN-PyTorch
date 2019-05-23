@@ -30,7 +30,7 @@ class RelGANInstructor(BasicInstructor):
 
         # generator, discriminator
         self.gen = RelGAN_G(cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim, cfg.gen_hidden_dim,
-                            cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, cfg.temperature, gpu=cfg.CUDA)
+                            cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
         self.dis = RelGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.dis_filter_sizes,
                             cfg.dis_num_filters, cfg.padding_idx, gpu=cfg.CUDA)
 
@@ -47,6 +47,9 @@ class RelGANInstructor(BasicInstructor):
         self.dis_criterion = nn.CrossEntropyLoss()  # For SeqGAN CNN Discriminator
 
         # DataLoader
+        self.oracle_samples = torch.load(cfg.oracle_samples_path)
+        self.oracle_data = GenDataIter(self.oracle_samples)
+
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def _run(self):
@@ -56,7 +59,7 @@ class RelGANInstructor(BasicInstructor):
             self.pretrain_generator(cfg.MLE_train_epoch)
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
-                print('Save pretrain_generator discriminator: {}\n'.format(cfg.pretrained_dis_path))
+                print('Save pretrain_generator: {}\n'.format(cfg.pretrained_gen_path))
 
         oracle_nll, gen_nll = self.cal_metrics()
         self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f\n' % (oracle_nll, gen_nll))
@@ -71,7 +74,8 @@ class RelGANInstructor(BasicInstructor):
                 d_loss = self.adv_train_discriminator(cfg.ADV_d_step)  # Discriminator
                 self.update_temperature(adv_epoch, cfg.ADV_train_epoch)  # update temperature
 
-                progress.set_description('g_loss: %.4f, d_loss: %.4f,' % (g_loss, d_loss))
+                progress.set_description(
+                    'g_loss: %.4f, d_loss: %.4f, temperature: %.4f' % (g_loss, d_loss, self.gen.temperature))
 
                 # TEST
                 if adv_epoch % cfg.adv_log_step == 0:
@@ -90,73 +94,7 @@ class RelGANInstructor(BasicInstructor):
     def _test(self):
         print('>>> Begin test...')
 
-        # t0 = time.time()
-        # gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True).cuda()
-        # t1 = time.time()
-        # print('sample time: ', t1 - t0)
-        #
-        # t0 = time.time()
-        # d_out_fake = self.dis(gen_samples)
-        # t1 = time.time()
-        # print('dis time: ', t1 - t0)
-        #
-        # t0 = time.time()
-        # self.adv_train_generator(1)
-        # t1 = time.time()
-        # print('adv gen time: ', t1 - t0)
-        #
-        # t0 = time.time()
-        # self.adv_train_discriminator(5)
-        # t1 = time.time()
-        # print('adv dis time: ', t1 - t0)
-        # self._run()
-
-        # oracle_nll, gen_nll = self.cal_metrics()
-        # print(oracle_nll,gen_nll)
-        # self.adv_train_discriminator(1)
-
-        # self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path))
-        #
-        # oracle_nll, gen_nll = self.cal_metrics()
-        # self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f\n' % (oracle_nll, gen_nll))
-        #
-        # real_samples = self.oracle_data.randam_batch()['target']
-        # gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size)
-        #
-        # print(real_samples)
-        # print(gen_samples)
-
-        t0 = time.time()
-        # for _ in range(10):
-        #     self.gen.sample(cfg.batch_size, cfg.batch_size)
-        # self.adv_train_generator(10)
-        # self.adv_train_discriminator(10)
-        # for _ in range(10):
-        while True:
-            t0 = time.time()
-
-            # real_samples = self.oracle_data.randam_batch()['target']
-            gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
-            # if cfg.CUDA:
-            #     real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
-            # real_samples = F.one_hot(real_samples, cfg.vocab_size).float()
-            #
-            # # =====Train=====
-            # d_out_real = self.dis(real_samples)
-            # d_out_fake = self.dis(gen_samples)
-            # # loss = torch.sum(d_out_fake-d_out_real)
-            # loss = torch.sum(d_out_fake)
-            #
-            # t0 = time.time()
-            # self.optimize(self.gen_opt, loss)
-            # t1 = time.time()
-            # print('opt time: ', t1 - t0)
-            t1 = time.time()
-            print('time: ', t1 - t0)
-        t1 = time.time()
-        # print((t1 - t0) / 10)
-
-        # self._run()
+        self._run()
         pass
 
     def pretrain_generator(self, epochs):
