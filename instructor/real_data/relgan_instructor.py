@@ -8,21 +8,21 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import time
-from tqdm import tqdm
 
 import torch
-import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
+from tqdm import tqdm
 
 import config as cfg
-from utils.helpers import get_fixed_temperature
-from utils.data_utils import GenDataIter
-from utils.text_process import tensor_to_tokens
 from instructor.real_data.instructor import BasicInstructor
-from models.RelGAN_G import RelGAN_G
 from models.RelGAN_D import RelGAN_D
+from models.RelGAN_G import RelGAN_G
+from utils.data_utils import GenDataIter
+from utils.helpers import get_fixed_temperature
 from utils.metrics import BLEU
+from utils.text_process import tensor_to_tokens
 
 
 class RelGANInstructor(BasicInstructor):
@@ -130,7 +130,7 @@ class RelGANInstructor(BasicInstructor):
     def adv_train_generator(self, g_step):
         total_loss = 0
         for step in range(g_step):
-            real_samples = self.oracle_data.randam_batch()['target']
+            real_samples = self.oracle_data.random_batch()['target']
             gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
@@ -149,7 +149,7 @@ class RelGANInstructor(BasicInstructor):
     def adv_train_discriminator(self, d_step):
         total_loss = 0
         for step in range(d_step):
-            real_samples = self.oracle_data.randam_batch()['target']
+            real_samples = self.oracle_data.random_batch()['target']
             gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()

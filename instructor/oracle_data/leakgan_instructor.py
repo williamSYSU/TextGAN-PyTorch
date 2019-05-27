@@ -9,16 +9,15 @@
 import time
 
 import torch
-import torch.optim as optim
 import torch.nn as nn
+import torch.optim as optim
 
-from utils import rollout
 import config as cfg
-from utils.data_utils import GenDataIter, DisDataIter
-
 from instructor.oracle_data.instructor import BasicInstructor
 from models.LeakGAN_D import LeakGAN_D
 from models.LeakGAN_G import LeakGAN_G
+from utils import rollout
+from utils.data_utils import GenDataIter, DisDataIter
 
 
 class LeakGANInstructor(BasicInstructor):
@@ -174,7 +173,7 @@ class LeakGANInstructor(BasicInstructor):
         """
         # prepare loader for validate
         with torch.no_grad():
-            pos_val = self.oracle.sample(cfg.samples_num, cfg.batch_size)
+            pos_val = self.oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
             neg_val = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
             dis_val_data = DisDataIter(pos_val, neg_val)
 

@@ -6,17 +6,17 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from models.discriminator import CNNDiscriminator
 
 
 class RelGAN_D(CNNDiscriminator):
     def __init__(self, embed_dim, max_seq_len, num_rep, vocab_size, filter_sizes, num_filters, padding_idx,
-                 gpu=False,
-                 dropout=0.25):
+                 gpu=False, dropout=0.25):
         super(RelGAN_D, self).__init__(embed_dim, vocab_size, filter_sizes, num_filters, padding_idx,
                                        gpu, dropout)
 
@@ -63,3 +63,9 @@ class RelGAN_D(CNNDiscriminator):
         logits = self.out2logits(pred).squeeze(1)  # [batch_size * num_rep]
 
         return logits
+
+    def init_params(self):
+        for param in self.parameters():
+            if param.requires_grad and len(param.shape) > 0:
+                stddev = 1 / math.sqrt(param.shape[0])
+                torch.nn.init.normal_(param, std=stddev)

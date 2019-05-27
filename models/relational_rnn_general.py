@@ -1,7 +1,6 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
-import numpy as np
+from torch import nn
 
 
 # this class largely follows the official sonnet implementation
@@ -334,7 +333,7 @@ class RelationalMemory(nn.Module):
 
         # targets are flattened [seq, batch] => [seq * batch], so the dimension is correct
 
-        memory = self.repackage_hidden(memory)
+        # memory = self.repackage_hidden(memory)
         logit = 0
         logits = []
         # shape[1] is seq_lenth T

@@ -22,8 +22,6 @@ class Signal:
 # A function to set up different temperature control policies
 def get_fixed_temperature(temper, i, N, adapt):
     N = 5000
-    # N = total_step
-    # assert total_step <= N
 
     if adapt == 'no':
         temper_var_np = temper  # no increase

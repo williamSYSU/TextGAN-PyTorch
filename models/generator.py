@@ -1,8 +1,5 @@
 import torch
-import torch.autograd as autograd
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 
 import config as cfg
 
@@ -93,6 +90,9 @@ class LSTMGenerator(nn.Module):
 
     def init_params(self):
         for param in self.parameters():
+            # if param.requires_grad and len(param.shape) > 0:
+            #     stddev = 1 / math.sqrt(param.shape[0])
+            #     torch.nn.init.normal_(param, std=stddev)
             param.data.uniform_(-0.05, 0.05)
 
     def init_oracle(self):

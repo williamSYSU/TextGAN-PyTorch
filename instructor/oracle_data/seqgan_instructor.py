@@ -8,17 +8,17 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import time
+
 import torch
-import torch.optim as optim
 import torch.nn as nn
+import torch.optim as optim
 
-from utils import rollout
 import config as cfg
-from utils.data_utils import GenDataIter, DisDataIter
-
 from instructor.oracle_data.instructor import BasicInstructor
 from models.SeqGAN_D import SeqGAN_D
 from models.SeqGAN_G import SeqGAN_G
+from utils import rollout
+from utils.data_utils import GenDataIter, DisDataIter
 
 
 class SeqGANInstructor(BasicInstructor):
@@ -148,15 +148,15 @@ class SeqGANInstructor(BasicInstructor):
         """
         # prepare loader for validate
         with torch.no_grad():
-            pos_val = self.oracle.sample(cfg.samples_num, cfg.batch_size)
-            neg_val = self.gen.sample(cfg.samples_num, cfg.batch_size)
+            pos_val = self.oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
+            neg_val = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
             dis_val_data = DisDataIter(pos_val, neg_val)
 
         for step in range(d_step):
             # prepare loader for training
             with torch.no_grad():
                 pos_samples = self.oracle_samples
-                neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size)
+                neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
                 dis_train_data = DisDataIter(pos_samples, neg_samples)
 
             for epoch in range(d_epoch):

@@ -1,5 +1,7 @@
 from __future__ import print_function
+
 import argparse
+
 import config as cfg
 
 
@@ -24,6 +26,7 @@ def program_config(parser):
     parser.add_argument('--clip_norm', default=cfg.clip_norm, type=int)
 
     parser.add_argument('--cuda', default=cfg.CUDA, type=int)
+    parser.add_argument('--multi_gpu', default=cfg.multi_gpu, type=int)
     parser.add_argument('--device', default=cfg.device, type=int)
     parser.add_argument('--shuffle', default=cfg.data_shuffle, type=int)
     parser.add_argument('--ora_pretrain', default=cfg.oracle_pretrain, type=int)

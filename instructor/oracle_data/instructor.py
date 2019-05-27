@@ -8,13 +8,12 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import sys
+
 import torch
-from utils.data_utils import GenDataIter
 
-from utils.helpers import Signal
 import config as cfg
-
 from models.Oracle import Oracle
+from utils.helpers import Signal
 from utils.text_process import write_tensor
 
 
@@ -157,13 +156,17 @@ class BasicInstructor:
         self._print(100 * '=' + '\n')
 
     def cal_metrics(self):
+        self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
         oracle_nll = self.eval_gen(self.oracle,
-                                   self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size)),
+                                   self.gen_data.loader,
                                    self.mle_criterion)
         gen_nll = self.eval_gen(self.gen,
                                 self.oracle_data.loader,
                                 self.mle_criterion)
-        return oracle_nll, gen_nll
+        self_nll = self.eval_gen(self.gen,
+                                 self.gen_data.loader,
+                                 self.mle_criterion)
+        return oracle_nll, gen_nll, self_nll
 
     def _save(self, phrase, epoch):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))

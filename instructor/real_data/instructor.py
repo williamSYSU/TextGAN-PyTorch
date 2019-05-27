@@ -8,11 +8,11 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import sys
-import torch
-from utils.data_utils import GenDataIter
 
-from utils.helpers import Signal
+import torch
+
 import config as cfg
+from utils.helpers import Signal
 from utils.text_process import load_dict, write_tokens, tensor_to_tokens
 
 
@@ -147,7 +147,7 @@ class BasicInstructor:
 
     def cal_metrics(self):
         with torch.no_grad():
-            self.bleu3.test_text = tensor_to_tokens(self.gen.sample(cfg.samples_num, cfg.batch_size),
+            self.bleu3.test_text = tensor_to_tokens(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size),
                                                     self.index_word_dict)
         bleu3_score = self.bleu3.get_score()
         # bleu3_score = 0

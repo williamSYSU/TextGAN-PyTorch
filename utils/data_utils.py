@@ -7,7 +7,7 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 import os
-
+import random
 from torch.utils.data import Dataset, DataLoader
 
 from models.Oracle import Oracle
@@ -66,8 +66,10 @@ class GenDataIter:
         self.target = self._all_data_('target')
         return self.loader
 
-    def randam_batch(self):
-        return next(iter(self.loader))
+    def random_batch(self):
+        """Randomly choose a batch from loader, please note that the data should not be shuffled."""
+        idx = random.randint(0, len(self.loader) - 1)
+        return list(self.loader)[idx]
 
     def _all_data_(self, col):
         return torch.cat([data[col].unsqueeze(0) for data in self.loader.dataset.data], 0)
@@ -113,9 +115,10 @@ class DisDataIter:
 
     def reset(self, pos_samples, neg_samples):
         self.loader.dataset = GANDataset(self.__read_data__(pos_samples, neg_samples))
+
         return self.loader
 
-    def randam_batch(self):
+    def random_batch(self):
         return next(iter(self.loader))
 
     def prepare(self, pos_samples, neg_samples, gpu=False):
@@ -141,7 +144,7 @@ def create_oracle():
 
     torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
 
-    large_samples = oracle.sample(cfg.samples_num, cfg.batch_size)
+    large_samples = oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
     torch.save(large_samples, cfg.oracle_samples_path)
 
     # count ground truth

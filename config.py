@@ -7,30 +7,32 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import torch
-import os
 from datetime import datetime
+
+import os
+import torch
 
 # =====Program=====
 if_test = False
 # if_reward = True  # for SentiGAN
 CUDA = True
-# multi_gpu = False
+multi_gpu = False
 if_save = True
-data_shuffle = True
+data_shuffle = False  # RelGAN: False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 
 # seq_update = False  # True，是否是更新整个序列
 # no_log = False  # False，是否取消log操作。False: 有log，在算NLL loss时使用；True: 无log，采样时使用, for SentiGAN
 
-run_model = 'relgan'  # ['seqgan', 'leakgan', 'relgan']
+run_model = 'relgan'  # seqgan, leakgan, relgan
 
 # =====Oracle  or Real=====
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news
-model_type = 'vanilla'  # vanilla, noRMC, withRMC
+model_type = 'vanilla'  # vanilla, noRMC, noGumbel
+loss_type = 'RSGAN'  # standard, JS, KL, hinge, tv, LS, RSGAN
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt
@@ -60,7 +62,7 @@ train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
 # =====Generator=====
-ADV_g_step = 1  # 1
+ADV_g_step = 2  # 1
 # rollout_num = 4  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
@@ -86,26 +88,6 @@ dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 # goal_out_size = sum(dis_num_filters)
 
-# =====Save Model and samples=====
-save_root = './save/{}_{}_{}_lr{}_temp{}_T{}/'.format(run_model, model_type, dataset, gen_lr, temperature,
-                                                      datetime.now().strftime('%m%d-%H%M'))
-save_samples_root = save_root + 'samples/'
-save_model_root = save_root + 'models/'
-oracle_samples_path = './pretrain/oracle_data/oracle_samples_NUM10000_lstm.pkl'
-oracle_state_dict_path = './pretrain/oracle_data/oracle_EMB32_HID32_VOC5000_SEQ20_lstm.pkl'
-
-pretrain_root = './pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
-pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pkl'.format(run_model, model_type)
-pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pkl'.format(run_model, model_type)
-signal_file = 'run_signal.txt'
-
-tips = ''
-
-save_list = [save_root, save_samples_root, save_model_root]
-if not if_test:
-    for d in save_list:
-        if not os.path.exists(d):
-            os.mkdir(d)
 # =====log=====
 log_filename = './log/log_{}'.format(datetime.now().strftime('%m%d_%H%M'))
 if os.path.exists(log_filename + '.txt'):
@@ -151,7 +133,7 @@ def init_param(opt):
         start_letter, gen_embed_dim, gen_hidden_dim, dis_embed_dim, dis_hidden_dim, \
         CUDA, if_save, if_reward, gen_pretrain, dis_pretrain, log_filename, tips, \
         device, seq_update, no_log, oracle_pretrain, gen_lr, gen_adv_lr, dis_lr, inter_epoch, \
-        run_model, save_root, temperature, temp_adpt, clip_norm
+        run_model, save_root, temperature, temp_adpt, clip_norm, multi_gpu
 
     run_model = opt.run_model
     MLE_train_epoch = opt.mle_epoch
@@ -172,6 +154,7 @@ def init_param(opt):
     clip_norm = opt.clip_norm
 
     device = opt.device
+    multi_gpu = opt.multi_gpu
     CUDA = True if opt.cuda == 1 else False
     oracle_pretrain = True if opt.ora_pretrain == 1 else False
     gen_pretrain = True if opt.gen_pretrain == 1 else False
@@ -179,3 +162,25 @@ def init_param(opt):
     log_filename = opt.log_file
     save_root = opt.save_root
     tips = opt.tips
+
+
+# =====Save Model and samples=====
+save_root = './save/{}_{}_{}_{}_lr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
+                                                         temperature, datetime.now().strftime('%m%d-%H%M'))
+save_samples_root = save_root + 'samples/'
+save_model_root = save_root + 'models/'
+oracle_samples_path = './pretrain/oracle_data/oracle_samples_NUM10000_lstm.pkl'
+oracle_state_dict_path = './pretrain/oracle_data/oracle_EMB32_HID32_VOC5000_SEQ20_lstm.pkl'
+
+pretrain_root = './pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
+pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pkl'.format(run_model, model_type)
+pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pkl'.format(run_model, model_type)
+signal_file = 'run_signal.txt'
+
+tips = ''
+
+save_list = [save_root, save_samples_root, save_model_root]
+if not if_test:
+    for d in save_list:
+        if not os.path.exists(d):
+            os.mkdir(d)
