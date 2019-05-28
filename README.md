@@ -4,8 +4,6 @@ TextGAN is a PyTorch framework for Generative Adversarial Networks (GANs) based 
 
 For now, only few GANs-based models are implemented, including [SeqGAN (Yu et. al, 2017)](https://arxiv.org/abs/1609.05473), [LeakGAN (Guo et. al, 2018)](https://arxiv.org/abs/1709.08624) and [RelGAN (Nie et. al, 2018)](https://openreview.net/forum?id=rJedV3R5tm). If you find any mistake in my implementation, please let me know! Also, please feel free to contribute to this repository if you want to add other models.
 
-
-
 ## Requirement
 
 - PyTorch >= 1.0.0
@@ -14,15 +12,11 @@ For now, only few GANs-based models are implemented, including [SeqGAN (Yu et. a
 - CUDA 7.5+ (For GPU)
 - nltk 3.4
 
-
-
 ## Implemented Models and Original Papers
 
 - **SeqGAN** - [SeqGAN: Sequence Generative Adversarial Nets with Policy Gradient](https://arxiv.org/abs/1609.05473)
 - **LeakGAN** - [Long Text Generation via Adversarial Training with Leaked Information](https://arxiv.org/abs/1709.08624)
 - **RelGAN** - [RelGAN: Relational Generative Adversarial Networks for Text Generation](https://openreview.net/forum?id=rJedV3R5tm)
-
-
 
 ## Get Started
 
@@ -37,24 +31,22 @@ cd TextGAN-PyTorch
 
 ```bash
 cd run
-python3 run_seqgan.py
+python3 run_seqgan.py 0 0	# The first 0 is job_id, the second 0 is gpu_id
 ```
 
 - Run with <code>LeakGAN</code>
 
 ```bash
 cd run
-python3 run_leakgan.py
+python3 run_leakgan.py 0 0
 ```
 
 - Run with <code>RelGAN</code>
 
 ```bash
 cd run
-python3 run_relgan.py
+python3 run_relgan.py 0 0
 ```
-
-
 
 ## TODO
 
