@@ -1,0 +1,130 @@
+# -*- coding: utf-8 -*-
+# @Author       : William
+# @Project      : TextGAN-william
+# @FileName     : run_leakgan.py
+# @Time         : Created at 2019-05-27
+# @Blog         : http://zhiweil.ml/
+# @Description  : 
+# Copyrights (C) 2018. All Rights Reserved.
+
+import sys
+from subprocess import call
+
+import os
+
+# Job id and gpu_id
+if len(sys.argv) > 2:
+    job_id = int(sys.argv[1])
+    gpu_id = str(sys.argv[2])
+    print('job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
+elif len(sys.argv) > 1:
+    job_id = int(sys.argv[1])
+    gpu_id = '0'
+    print('job_id: {}, missing gpu_id (use default {})'.format(job_id, gpu_id))
+else:
+    print('Missing argument: job_id and gpu_id.')
+    quit()
+
+# Executables
+executable = '/home/sysu2018/.virtualenvs/lzw-pytorch/bin/python'
+
+# =====Program=====
+if_test = int(False)
+run_model = 'leakgan'
+CUDA = int(True)
+if_real_data = int(False)
+data_shuffle = int(False)
+oracle_pretrain = int(True)
+gen_pretrain = int(False)
+dis_pretrain = int(False)
+
+# =====Oracle  or Real=====
+dataset = 'oracle'
+model_type = 'vanilla'
+loss_type = 'JS'
+vocab_size = 5000
+temperature = 1
+
+# =====Basic Train=====
+samples_num = 10000
+MLE_train_epoch = 80
+ADV_train_epoch = 200
+inter_epoch = 10
+batch_size = 64
+max_seq_len = 20
+gen_lr = 0.01
+dis_lr = 0.01
+pre_log_step = 5
+adv_log_step = 5
+
+# =====Generator=====
+ADV_g_step = 1
+rollout_num = 4
+gen_embed_dim = 32
+gen_hidden_dim = 32
+goal_size = 16
+step_size = 4
+
+# =====Discriminator=====
+d_step = 5
+d_epoch = 3
+ADV_d_step = 5
+ADV_d_epoch = 3
+dis_embed_dim = 64
+dis_hidden_dim = 64
+
+# =====Run=====
+rootdir = '../'
+scriptname = 'main.py'
+cwd = os.path.dirname(os.path.abspath(__file__))
+
+args = [
+    # Program
+    '--if_test', if_test,
+    '--run_model', run_model,
+    '--if_real_data', if_real_data,
+    '--model_type', model_type,
+    '--loss_type', loss_type,
+    '--cuda', CUDA,
+    '--device', gpu_id,
+    '--shuffle', data_shuffle,
+
+    # Basic Train
+    '--samples_num', samples_num,
+    '--mle_epoch', MLE_train_epoch,
+    '--adv_epoch', ADV_train_epoch,
+    '--inter_epoch', inter_epoch,
+    '--batch_size', batch_size,
+    '--max_seq_len', max_seq_len,
+    '--gen_lr', gen_lr,
+    '--dis_lr', dis_lr,
+    '--pre_log_step', pre_log_step,
+    '--adv_log_step', adv_log_step,
+    '--temperature', temperature,
+    '--ora_pretrain', oracle_pretrain,
+    '--gen_pretrain', gen_pretrain,
+    '--dis_pretrain', dis_pretrain,
+
+    # Generator
+    '--adv_g_step', ADV_g_step,
+    '--rollout_num', rollout_num,
+    '--gen_embed_dim', gen_embed_dim,
+    '--gen_hidden_dim', gen_hidden_dim,
+    '--goal_size', goal_size,
+    '--step_size', step_size,
+
+    # Discriminator
+    '--d_step', d_step,
+    '--d_epoch', d_epoch,
+    '--adv_d_step', ADV_d_step,
+    '--adv_d_epoch', ADV_d_epoch,
+    '--dis_embed_dim', dis_embed_dim,
+    '--dis_hidden_dim', dis_hidden_dim,
+
+    # Log
+    '--tips', 'vanilla LeakGAN',
+]
+
+args = list(map(str, args))
+my_env = os.environ.copy()
+call([executable, scriptname] + args, env=my_env, cwd=rootdir)

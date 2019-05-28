@@ -13,16 +13,18 @@ import torch.nn.functional as F
 
 from models.discriminator import CNNDiscriminator
 
+dis_filter_sizes = [2, 3, 4, 5]
+dis_num_filters = [300, 300, 300, 300]
+
 
 class RelGAN_D(CNNDiscriminator):
-    def __init__(self, embed_dim, max_seq_len, num_rep, vocab_size, filter_sizes, num_filters, padding_idx,
-                 gpu=False, dropout=0.25):
-        super(RelGAN_D, self).__init__(embed_dim, vocab_size, filter_sizes, num_filters, padding_idx,
+    def __init__(self, embed_dim, max_seq_len, num_rep, vocab_size, padding_idx, gpu=False, dropout=0.25):
+        super(RelGAN_D, self).__init__(embed_dim, vocab_size, dis_filter_sizes, dis_num_filters, padding_idx,
                                        gpu, dropout)
 
         self.embed_dim = embed_dim
         self.max_seq_len = max_seq_len
-        self.feature_dim = sum(num_filters)
+        self.feature_dim = sum(dis_num_filters)
         self.emb_dim_single = int(embed_dim / num_rep)
 
         # self.embeddings = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
@@ -30,7 +32,7 @@ class RelGAN_D(CNNDiscriminator):
 
         self.convs = nn.ModuleList([
             nn.Conv2d(1, n, (f, self.emb_dim_single), stride=(1, self.emb_dim_single)) for (n, f) in
-            zip(num_filters, filter_sizes)
+            zip(dis_num_filters, dis_filter_sizes)
         ])
         self.highway = nn.Linear(self.feature_dim, self.feature_dim)
         self.feature2out = nn.Linear(self.feature_dim, 100)

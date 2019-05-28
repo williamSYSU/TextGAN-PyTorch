@@ -2,6 +2,7 @@ import numpy as np
 
 
 class Signal:
+    """Running signal to control training process"""
     def __init__(self, signal_file):
         self.signal_file = signal_file
         self.pre_sig = True

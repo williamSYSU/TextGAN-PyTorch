@@ -17,7 +17,7 @@ class LSTMGenerator(nn.Module):
         self.padding_idx = padding_idx
         self.gpu = gpu
 
-        # self.temperature = 1
+        self.temperature = 1.0
 
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
@@ -40,7 +40,7 @@ class LSTMGenerator(nn.Module):
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
         out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
         out = self.lstm2out(out)  # batch_size * seq_len * vocab_size
-        # out = self.temperature * out  # temperature
+        out = self.temperature * out  # temperature
         pred = self.softmax(out)
 
         if need_hidden:
@@ -90,9 +90,6 @@ class LSTMGenerator(nn.Module):
 
     def init_params(self):
         for param in self.parameters():
-            # if param.requires_grad and len(param.shape) > 0:
-            #     stddev = 1 / math.sqrt(param.shape[0])
-            #     torch.nn.init.normal_(param, std=stddev)
             param.data.uniform_(-0.05, 0.05)
 
     def init_oracle(self):

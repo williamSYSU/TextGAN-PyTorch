@@ -7,13 +7,13 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
+import time
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import time
 
 import config as cfg
-from models.generator import LSTMGenerator
 
 
 class LeakGAN_G(nn.Module):
@@ -41,11 +41,10 @@ class LeakGAN_G(nn.Module):
         self.mana2goal = nn.Linear(hidden_dim, goal_out_size)
         self.goal2goal = nn.Linear(goal_out_size, goal_size, bias=False)
 
-        self.goal_init = nn.Parameter(torch.rand((cfg.batch_size, goal_out_size)))
+        self.goal_init = nn.Parameter(torch.rand((4 * cfg.batch_size, goal_out_size)))
 
         self.init_params()
 
-    # def forward(self, idx, inp, work_hidden, mana_hidden, feature, real_goal, no_log=False, train=False):
     def forward(self, idx, inp, work_hidden, mana_hidden, feature, real_goal, no_log=False, train=False):
         """
         Embeds input and sample on token at a time (seq_len = 1)
@@ -103,10 +102,10 @@ class LeakGAN_G(nn.Module):
         Samples the network and returns num_samples samples of length max_seq_len.
         :return: samples: batch_size * max_seq_len
         """
-        num_batch = num_samples // batch_size + 1
-
+        num_batch = num_samples // batch_size + 1 if num_samples != batch_size else 1
         samples = torch.zeros(num_batch * batch_size, self.max_seq_len).long()  # larger than num_samples
         fake_sentences = torch.zeros((batch_size, self.max_seq_len))
+
         for b in range(num_batch):
             leak_sample, _, _, _ = self.forward_leakgan(fake_sentences, dis, if_sample=True, no_log=False
                                                         , start_letter=start_letter, train=False)

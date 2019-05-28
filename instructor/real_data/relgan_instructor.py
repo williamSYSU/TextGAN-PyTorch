@@ -32,8 +32,8 @@ class RelGANInstructor(BasicInstructor):
         # generator, discriminator
         self.gen = RelGAN_G(cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim, cfg.gen_hidden_dim,
                             cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        self.dis = RelGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.dis_filter_sizes,
-                            cfg.dis_num_filters, cfg.padding_idx, gpu=cfg.CUDA)
+        self.dis = RelGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.padding_idx,
+                            gpu=cfg.CUDA)
         self.init_model()
 
         # Optimizer

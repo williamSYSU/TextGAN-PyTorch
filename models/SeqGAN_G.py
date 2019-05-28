@@ -7,33 +7,15 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.autograd as autograd
-
 import config as cfg
 from models.generator import LSTMGenerator
-from models.relational_rnn_general import RelationalMemory
-
 
 class SeqGAN_G(LSTMGenerator):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, temperature, gpu=False):
         super(SeqGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
         self.name = 'seqgan'
 
-        self.temperature = 1
-
-        # RMC
-        # mem_slots = 1
-        # num_heads = 2
-        # head_size = 256
-        # self.hidden_dim = mem_slots * num_heads * head_size
-        # self.lstm = RelationalMemory(mem_slots=mem_slots, head_size=head_size, input_size=embedding_dim,
-        #                              num_heads=num_heads, return_all_outputs=True)
-        # self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
-        #
-        # self.init_params()
+        self.temperature = temperature
 
     def batchPGLoss(self, inp, target, reward):
         """
@@ -60,11 +42,5 @@ class SeqGAN_G(LSTMGenerator):
                     loss += -out[j][target.data[i][j]] * reward[j]  # origin: log(P(y_t|Y_1:Y_{t-1})) * Q
                 else:
                     loss += out[j][target.data[i][j]] * (1 - reward[j])  # P(y_t|Y_1:Y_{t-1}) * (1 - Q)
-                # print('reward: ', reward[j].item(), 1 - reward[j].item())
 
         return loss / (seq_len * batch_size)
-
-    # def init_hidden(self, batch_size=cfg.batch_size):
-    #     """init RMC memory"""
-    #     memory = self.lstm.initial_state(batch_size)
-    #     return memory.cuda() if self.gpu else memory

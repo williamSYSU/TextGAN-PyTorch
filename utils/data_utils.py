@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
-# @Project      : SentiGAN-william
+# @Project      : TextGAN-william
 # @FileName     : data_utils.py
 # @Time         : Created at 2019-03-16
 # @Blog         : http://zhiweil.ml/
@@ -12,8 +12,6 @@ from torch.utils.data import Dataset, DataLoader
 
 from models.Oracle import Oracle
 from utils.text_process import *
-
-save_path = './save'
 
 
 class GANDataset(Dataset):
@@ -98,11 +96,12 @@ class DisDataIter:
         self.batch_size = cfg.batch_size
         self.max_seq_len = cfg.max_seq_len
         self.start_letter = cfg.start_letter
+        self.shuffle = cfg.data_shuffle
 
         self.loader = DataLoader(
             dataset=GANDataset(self.__read_data__(pos_samples, neg_samples)),
             batch_size=self.batch_size,
-            shuffle=True,
+            shuffle=self.shuffle,
             drop_last=True)
 
     def __read_data__(self, pos_samples, neg_samples):
@@ -119,7 +118,9 @@ class DisDataIter:
         return self.loader
 
     def random_batch(self):
-        return next(iter(self.loader))
+        idx = random.randint(0, len(self.loader) - 1)
+        return list(self.loader)[idx]
+        # return next(iter(self.loader))
 
     def prepare(self, pos_samples, neg_samples, gpu=False):
         """Build inp and target"""
@@ -146,12 +147,6 @@ def create_oracle():
 
     large_samples = oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
     torch.save(large_samples, cfg.oracle_samples_path)
-
-    # count ground truth
-    # dis = None
-    # ground_nll_loss = helpers.batchwise_oracle_nll(oracle, dis, oracle, cfg.samples_num, cfg.batch_size,
-    #                                                cfg.max_seq_len, gpu=cfg.CUDA)
-    # print('ground nll loss: ', ground_nll_loss)
 
 
 def _save(data, filename):

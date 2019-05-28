@@ -9,10 +9,12 @@
 
 import sys
 
+import os
 import torch
 
 import config as cfg
 from models.Oracle import Oracle
+from utils.data_utils import GenDataIter, create_oracle
 from utils.helpers import Signal
 from utils.text_process import write_tensor
 
@@ -31,8 +33,8 @@ class BasicInstructor:
         self.show_config()
 
         # DataLoader
-        # self.oracle_samples = torch.load(cfg.oracle_samples_path)
-        # self.oracle_data = GenDataIter(self.oracle_samples)
+        self.oracle_samples = torch.load(cfg.oracle_samples_path)
+        self.oracle_data = GenDataIter(self.oracle_samples)
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -43,6 +45,8 @@ class BasicInstructor:
 
     def init_model(self):
         if cfg.oracle_pretrain:
+            if not os.path.exists(cfg.oracle_state_dict_path):
+                create_oracle()
             self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
 
         if cfg.dis_pretrain:
@@ -82,7 +86,7 @@ class BasicInstructor:
 
             pred = model.forward(inp)
             loss = criterion(pred, target)
-            self.optimize(optimizer, loss)
+            self.optimize(optimizer, loss, model)
 
             total_loss += loss.item()
             total_acc += torch.sum((pred.argmax(dim=-1) == target)).item()
@@ -118,10 +122,8 @@ class BasicInstructor:
 
                 pred = model.forward(inp)
                 loss = criterion(pred, target)
-
                 total_loss += loss.item()
                 total_acc += torch.sum((pred.argmax(dim=-1) == target)).item()
-
             total_loss /= len(data_loader)
             total_acc /= len(data_loader)
         return total_loss, total_acc
@@ -137,8 +139,6 @@ class BasicInstructor:
     def optimize(opt, loss, model=None, retain_graph=False):
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
-        if model is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
         opt.step()
 
     def _print(self, content):

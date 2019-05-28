@@ -9,7 +9,6 @@
 
 import time
 
-import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -31,8 +30,8 @@ class RelGANInstructor(BasicInstructor):
         # generator, discriminator
         self.gen = RelGAN_G(cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim, cfg.gen_hidden_dim,
                             cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        self.dis = RelGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.dis_filter_sizes,
-                            cfg.dis_num_filters, cfg.padding_idx, gpu=cfg.CUDA)
+        self.dis = RelGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.padding_idx,
+                            gpu=cfg.CUDA)
 
         self.init_model()
 
@@ -43,12 +42,8 @@ class RelGANInstructor(BasicInstructor):
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
-        # self.adv_criterion = nn.BCEWithLogitsLoss()
-        self.dis_criterion = nn.CrossEntropyLoss()  # For SeqGAN CNN Discriminator
 
         # DataLoader
-        self.oracle_samples = torch.load(cfg.oracle_samples_path)
-        self.oracle_data = GenDataIter(self.oracle_samples)
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def _run(self):
@@ -58,11 +53,11 @@ class RelGANInstructor(BasicInstructor):
             self.pretrain_generator(cfg.MLE_train_epoch)
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
-                print('Save pretrain_generator: {}\n'.format(cfg.pretrained_gen_path))
+                print('Save pre-trained generator: {}\n'.format(cfg.pretrained_gen_path))
 
         oracle_nll, gen_nll, self_nll = self.cal_metrics()
-        self._print(
-            'Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f\n' % (oracle_nll, gen_nll, self_nll))
+        self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
+            oracle_nll, gen_nll, self_nll))
 
         # # ==========ADVERSARIAL TRAINING==========
         self._print('\nStarting Adversarial Training...\n')
@@ -81,7 +76,7 @@ class RelGANInstructor(BasicInstructor):
                 if adv_epoch % cfg.adv_log_step == 0:
                     oracle_nll, gen_nll, self_nll = self.cal_metrics()
                     self._print(
-                        '[ADV] epoch %d: g_loss: %.4f, d_loss: %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f\n' % (
+                        '[ADV] epoch %d: g_loss: %.4f, d_loss: %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
                             adv_epoch, g_loss, d_loss, oracle_nll, gen_nll, self_nll))
 
                     if cfg.if_save and not cfg.if_test:
@@ -94,56 +89,7 @@ class RelGANInstructor(BasicInstructor):
     def _test(self):
         print('>>> Begin test...')
 
-        # self._run()
-
-        # self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path))
-
-        # samples = self.gen.sample(cfg.batch_size,cfg.batch_size)
-        # for sent in samples:
-        #     print(' '.join([str(i) for i in sent.tolist()]))
-
-        # oracle_nll, gen_nll, self_nll = self.cal_metrics()
-        # print(oracle_nll, gen_nll, self_nll)
-        # t0 = time.time()
-        # # oracle_nll = self.eval_gen(self.oracle,
-        # #                            self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size)),
-        # #                            self.mle_criterion)
-        # self.oracle.sample(cfg.samples_num, cfg.batch_size)
-        # t1 = time.time()
-        # # print('oracle_nll 1: ', oracle_nll)
-        # print('time: ', t1 - t0)
-        # t0 = time.time()
-        # # oracle_nll = self.eval_gen(self.oracle,
-        # #                            self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)),
-        # #                            self.mle_criterion)
-        # self.oracle.sample(cfg.samples_num, 4*cfg.batch_size)
-        # t1 = time.time()
-        # # print('oracle_nll 16: ', oracle_nll)
-        # print('time: ', t1 - t0)
-        # t0 = time.time()
-        # # oracle_nll = self.eval_gen(self.oracle,
-        # #                            self.gen_data.reset(self.gen.sample(cfg.samples_num, 32 * cfg.batch_size)),
-        # #                            self.mle_criterion)
-        # self.oracle.sample(cfg.samples_num, 8*cfg.batch_size)
-        # t1 = time.time()
-        # # print('oracle_nll 32: ', oracle_nll)
-        # print('time: ', t1 - t0)
-
-        # t0 = time.time()
-        # # pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
-        # # pre_loss = self.eval_gen(self.gen, self.oracle_data.loader, self.mle_criterion)
-        # # pre_loss = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion)
-        # samples = self.gen.sample(cfg.samples_num)
-        # t1 = time.time()
-        # print('pretrain time: ', t1 - t0)
-
-        # model_path = 'save/relgan_vanilla_oracle_RSGAN_lr0.01_temp1_T0524-1926/samples/samples_ADV_02300.txt'
-        t0 = time.time()
-        for _ in range(10):
-            idx = random.randint(0, len(self.oracle_data.loader) - 1)
-            s = list(self.oracle_data.loader)[idx]
-        t1 = time.time()
-        print('time: ', (t1 - t0) / 10)
+        self._run()
         pass
 
     def pretrain_generator(self, epochs):
@@ -162,7 +108,7 @@ class RelGANInstructor(BasicInstructor):
                     oracle_nll, gen_nll, self_nll = self.cal_metrics()
                     t1 = time.time()
                     self._print(
-                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f, time = %.4f\n' % (
+                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f, time = %.4f,\n' % (
                             epoch, pre_loss, oracle_nll, gen_nll, self_nll, t1 - t0))
                     t0 = time.time()
 
@@ -171,6 +117,8 @@ class RelGANInstructor(BasicInstructor):
             else:
                 self._print('\n>>> Stop by pre signal, skip to adversarial training...')
                 break
+        if cfg.if_save and not cfg.if_test:
+            self._save('MLE', epoch)
 
     def adv_train_generator(self, g_step):
         total_loss = 0
@@ -257,3 +205,11 @@ class RelGANInstructor(BasicInstructor):
 
     def update_temperature(self, i, N):
         self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
+
+    @staticmethod
+    def optimize(opt, loss, model=None, retain_graph=False):
+        opt.zero_grad()
+        loss.backward(retain_graph=retain_graph)
+        if model is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
+        opt.step()

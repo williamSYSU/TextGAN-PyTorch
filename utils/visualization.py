@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
-# @Project      : SentiGAN-william
+# @Project      : TextGAN-william
 # @FileName     : visualization.py
 # @Time         : Created at 2019-03-19
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import torch
-import os
-import shutil
 import matplotlib.pyplot as plt
+import shutil
 
 # title_dict = {0: 'gen{}_oracle_nll',
 #               1: 'gen{}_mle_nll',
@@ -185,10 +183,12 @@ if __name__ == '__main__':
     # log_file_list = ['log_0523_1207', 'log_0523_0901', 'log_0523_0856']
     # plot_title = ['temp = 1', 'temp = 2', 'temp = 5']
 
-    log_file_list = ['log_0523_0859', 'log_0523_0859_2', 'log_0523_0906']
+    # log_file_list = ['log_0523_0859', 'log_0523_0859_2', 'log_0523_0906']
+    # log_file_list = ['log_0527_1208', 'log_0527_1527', 'log_0527_1528', 'log_0527_1544', 'log_0527_1555']
+    log_file_list = ['log_0528_0853']
 
     color_id = 0
-    index = 3
+    index = 1
     if_save = False
     model = 'relgan'
     # plot_title = ['RMC, temp=100', 'RMC, temp=1000', 'LSTM-512, temp=100']

@@ -7,8 +7,6 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import time
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -27,9 +25,8 @@ class SeqGANInstructor(BasicInstructor):
 
         # generator, discriminator
         self.gen = SeqGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                            cfg.padding_idx, gpu=cfg.CUDA)
-        self.dis = SeqGAN_D(cfg.dis_embed_dim, cfg.vocab_size, cfg.dis_filter_sizes, cfg.dis_num_filters,
-                            cfg.padding_idx, gpu=cfg.CUDA)
+                            cfg.padding_idx, cfg.temperature, gpu=cfg.CUDA)
+        self.dis = SeqGAN_D(cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
 
         # Optimizer
@@ -49,9 +46,9 @@ class SeqGANInstructor(BasicInstructor):
         self._print('\nStarting Generator MLE Training...\n')
         if not cfg.gen_pretrain:
             self.pretrain_generator(cfg.MLE_train_epoch)
-            if cfg.if_save:
+            if cfg.if_save and not cfg.if_test:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
-                print('Save MLE pretrain_generator gen: {}\n'.format(cfg.pretrained_gen_path))
+                print('Save pre-trained generator: {}\n'.format(cfg.pretrained_gen_path))
 
         # TRAIN DISCRIMINATOR
         self._print('\nStarting Discriminator Training...\n')
@@ -64,18 +61,23 @@ class SeqGANInstructor(BasicInstructor):
         # ==========ADVERSARIAL TRAINING==========
         self._print('\nStarting Adversarial Training...\n')
 
-        oracle_nll, gen_nll = self.cal_metrics()
-        self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f\n' % (oracle_nll, gen_nll))
+        oracle_nll, gen_nll, self_nll = self.cal_metrics()
+        self._print(
+            'Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
+                oracle_nll, gen_nll, self_nll))
 
-        for epoch in range(cfg.ADV_train_epoch):
-            self._print('\n-----\nADV EPOCH %d\n-----\n' % epoch)
+        for adv_epoch in range(cfg.ADV_train_epoch):
+            self._print('\n-----\nADV EPOCH %d\n-----\n' % adv_epoch)
             self.sig.update()
             if self.sig.adv_sig:
                 # TRAIN GENERATOR
                 self.adv_train_generator(cfg.ADV_g_step)
-
                 # TRAIN DISCRIMINATOR
                 self.train_discriminator(cfg.ADV_d_step, cfg.ADV_d_epoch, 'ADV')
+
+                if adv_epoch % cfg.adv_log_step == 0:
+                    if cfg.if_save and not cfg.if_test:
+                        self._save('ADV', adv_epoch)
             else:
                 self._print('\n>>> Stop by adv_signal! Finishing adversarial training...\n')
                 break
@@ -83,23 +85,13 @@ class SeqGANInstructor(BasicInstructor):
     def _test(self):
         print('>>> Begin test...')
 
-        # pos_samples = self.oracle.sample(cfg.samples_num, cfg.batch_size)
-        # neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size)
-        # dis_train_data = DisDataIter(pos_samples, neg_samples)
-        # loss, acc = self.train_dis_epoch(self.dis, dis_train_data.loader, self.dis_criterion, self.dis_opt)
-        # print(loss, acc)
-        #
-        # loss, acc = self.eval_dis(self.dis, dis_train_data.loader, self.dis_criterion)
-        # print(loss, acc)
-        # self.adv_train_generator(1)
-        # self.pretrain_generator(cfg.MLE_train_epoch)
+        self._run()
         pass
 
     def pretrain_generator(self, epochs):
         """
         Max Likelihood Pre-training for the generator
         """
-        t0 = time.time()
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
@@ -107,16 +99,18 @@ class SeqGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
-                    oracle_nll, gen_nll = self.cal_metrics()
+                    oracle_nll, gen_nll, self_nll = self.cal_metrics()
 
-                    t1 = time.time()
                     self._print(
-                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, time = %.4f\n' % (
-                            epoch, pre_loss, oracle_nll, gen_nll, t1 - t0))
-                    t0 = time.time()
+                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
+                            epoch, pre_loss, oracle_nll, gen_nll, self_nll))
+                    if cfg.if_save and not cfg.if_test:
+                        self._save('MLE', epoch)
             else:
                 self._print('\n>>> Stop by pre signal, skip to adversarial training...')
                 break
+        if cfg.if_save and not cfg.if_test:
+            self._save('MLE', epoch)
 
     def adv_train_generator(self, g_step):
         """
@@ -136,10 +130,10 @@ class SeqGANInstructor(BasicInstructor):
             total_g_loss += adv_loss.item()
 
             # =====Test=====
-            oracle_nll, gen_nll = self.cal_metrics()
+            oracle_nll, gen_nll, self_nll = self.cal_metrics()
 
-            self._print('[ADV-GEN]: g_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
-                total_g_loss, oracle_nll, gen_nll))
+            self._print('[ADV-GEN]: g_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
+                total_g_loss, oracle_nll, gen_nll, self_nll))
 
     def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
         """

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
-# @Project      : SentiGAN-william
+# @Project      : TextGAN-william
 # @FileName     : rollout.py
 # @Time         : Created at 2019-03-15
 # @Blog         : http://zhiweil.ml/

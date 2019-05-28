@@ -100,7 +100,7 @@ class RelGAN_G(LSTMGenerator):
     def init_hidden(self, batch_size=cfg.batch_size):
         """init RMC memory"""
         memory = self.lstm.initial_state(batch_size)
-        # memory = self.lstm.repackage_hidden(memory)  # detch memory at first
+        memory = self.lstm.repackage_hidden(memory)  # detch memory at first
         return memory.cuda() if self.gpu else memory
 
     # @staticmethod
