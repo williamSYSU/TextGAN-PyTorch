@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 if_reward = True  # for SentiGAN
 CUDA = True
 if_save = True
