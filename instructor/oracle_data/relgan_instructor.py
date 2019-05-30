@@ -42,8 +42,6 @@ class RelGANInstructor(BasicInstructor):
         self.mle_criterion = nn.NLLLoss()
 
         # DataLoader
-        self.oracle_samples = torch.load(cfg.oracle_samples_path)
-        self.oracle_data = GenDataIter(self.oracle_samples)
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def _run(self):

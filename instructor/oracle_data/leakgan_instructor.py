@@ -43,8 +43,6 @@ class LeakGANInstructor(BasicInstructor):
         self.dis_criterion = nn.CrossEntropyLoss()
 
         # DataLoader
-        self.oracle_samples = torch.load(cfg.oracle_samples_path)
-        self.oracle_data = GenDataIter(self.oracle_samples)
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis))
 
     def _run(self):

@@ -14,7 +14,7 @@ import torch
 
 import config as cfg
 from models.Oracle import Oracle
-from utils.data_utils import create_oracle
+from utils.data_utils import GenDataIter, create_oracle
 from utils.helpers import Signal
 from utils.text_process import write_tensor
 
@@ -31,6 +31,12 @@ class BasicInstructor:
                              cfg.padding_idx, gpu=cfg.CUDA)
 
         self.show_config()
+
+        # DataLoader
+        if not os.path.exists(cfg.oracle_samples_path):
+            create_oracle()
+        self.oracle_samples = torch.load(cfg.oracle_samples_path)
+        self.oracle_data = GenDataIter(self.oracle_samples)
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
