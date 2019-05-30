@@ -26,7 +26,7 @@ class LeakGANInstructor(BasicInstructor):
 
         # generator, discriminator
         self.gen = LeakGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                             cfg.padding_idx, cfg.goal_size, cfg.goal_out_size, cfg.step_size, cfg.CUDA)
+                             cfg.padding_idx, cfg.goal_size, cfg.step_size, cfg.CUDA)
         self.dis = LeakGAN_D(cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
 
@@ -43,6 +43,8 @@ class LeakGANInstructor(BasicInstructor):
         self.dis_criterion = nn.CrossEntropyLoss()
 
         # DataLoader
+        self.oracle_samples = torch.load(cfg.oracle_samples_path)
+        self.oracle_data = GenDataIter(self.oracle_samples)
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis))
 
     def _run(self):
@@ -72,9 +74,9 @@ class LeakGANInstructor(BasicInstructor):
         # ==========ADVERSARIAL TRAINING==========
         self._print('\nStarting Adversarial Training...\n')
 
-        oracle_nll, gen_nll, self_nll = self.cal_metrics()
-        self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-            oracle_nll, gen_nll, self_nll))
+        oracle_nll, gen_nll = self.cal_metrics()
+        self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+            oracle_nll, gen_nll))
 
         for adv_epoch in range(cfg.ADV_train_epoch):
             self._print('\n-----\nADV EPOCH %d\n-----\n' % adv_epoch)
@@ -124,10 +126,10 @@ class LeakGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
-                    oracle_nll, gen_nll, self_nll = self.cal_metrics()
+                    oracle_nll, gen_nll = self.cal_metrics()
                     self._print('[MLE-GEN] epoch %d : pre_mana_loss = %.4f, pre_work_loss = %.4f, '
-                                'oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-                                    epoch, pre_mana_loss, pre_work_loss, oracle_nll, gen_nll, self_nll))
+                                'oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+                                    epoch, pre_mana_loss, pre_work_loss, oracle_nll, gen_nll))
 
                     if cfg.if_save and not cfg.if_test:
                         self._save('MLE', epoch)
@@ -160,11 +162,11 @@ class LeakGANInstructor(BasicInstructor):
             adv_mana_loss += mana_loss.data.item()
             adv_work_loss += work_loss.data.item()
         # =====Test=====
-        oracle_nll, gen_nll, self_nll = self.cal_metrics()
+        oracle_nll, gen_nll = self.cal_metrics()
 
         self._print(
-            '[ADV-GEN] adv_mana_loss = %.4f, adv_work_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-                adv_mana_loss / g_step, adv_work_loss / g_step, oracle_nll, gen_nll, self_nll))
+            '[ADV-GEN] adv_mana_loss = %.4f, adv_work_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+                adv_mana_loss / g_step, adv_work_loss / g_step, oracle_nll, gen_nll))
 
     def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
         """
@@ -209,16 +211,7 @@ class LeakGANInstructor(BasicInstructor):
             gen_nll += loss.item()
         gen_nll /= len(self.oracle_data.loader)
 
-        self_nll = 0
-        for data in self.gen_data.loader:
-            inp, target = data['input'], data['target']
-            if cfg.CUDA:
-                inp, target = inp.cuda(), target.cuda()
-            loss = self.gen.batchNLLLoss(target, self.dis)
-            self_nll += loss.item()
-        self_nll /= len(self.gen_data.loader)
-
-        return oracle_nll, gen_nll, self_nll
+        return oracle_nll, gen_nll
 
     def _save(self, phrase, epoch):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))

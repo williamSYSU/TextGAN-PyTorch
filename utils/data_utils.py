@@ -6,7 +6,6 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-import os
 import random
 from torch.utils.data import Dataset, DataLoader
 
@@ -59,7 +58,9 @@ class GenDataIter:
         return all_data
 
     def reset(self, samples):
-        self.loader.dataset = GANDataset(self.__read_data__(samples))
+        data = GANDataset(self.__read_data__(samples))
+        self.loader.dataset = data
+        self.loader.sampler.data_source.data = data
         self.input = self._all_data_('input')
         self.target = self._all_data_('target')
         return self.loader
@@ -74,12 +75,11 @@ class GenDataIter:
 
     def prepare(self, samples, gpu=False):
         """Add start_letter to samples as inp, target same as samples"""
-        inp = torch.zeros(samples.size())
+        inp = torch.zeros(samples.size()).long()
         target = samples
         inp[:, 0] = self.start_letter
         inp[:, 1:] = target[:, :self.max_seq_len - 1]
 
-        inp, target = inp.long(), target.long()
         if gpu:
             return inp.cuda(), target.cuda()
         return inp, target
@@ -113,8 +113,9 @@ class DisDataIter:
         return all_data
 
     def reset(self, pos_samples, neg_samples):
-        self.loader.dataset = GANDataset(self.__read_data__(pos_samples, neg_samples))
-
+        data = GANDataset(self.__read_data__(pos_samples, neg_samples))
+        self.loader.dataset = data
+        self.loader.sampler.data_source.data = data
         return self.loader
 
     def random_batch(self):
@@ -146,73 +147,9 @@ def create_oracle():
     torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
 
     large_samples = oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
-    torch.save(large_samples, cfg.oracle_samples_path)
-
-
-def _save(data, filename):
-    with open(filename, 'w') as fout:
-        for d in data:
-            fout.write(d['reviewText'] + '\n')
-            fout.write(str(d['overall']) + '\n')
-
-
-def _count(filename):
-    with open(filename, 'r') as fin:
-        data = fin.read().strip().split('\n')
-        return len(data) / 2
-
-
-def clean_amazon_long_sentence():
-    data_root = '/home/sysu2018/Documents/william/amazon_dataset/'
-    all_files = os.listdir(data_root)
-
-    print('|\ttype\t|\torigin\t|\tclean_40\t|\tclean_20\t|\tfinal_40\t|\tfinal_20\t|')
-    print('|----------|----------|----------|----------|----------|----------|')
-    for file in all_files:
-        filename = data_root + file
-        if os.path.isdir(filename):
-            continue
-
-        clean_save_40 = []
-        clean_save_20 = []
-        final_save_40 = []
-        final_save_20 = []
-        with open(filename, 'r') as fin:
-            raw_data = fin.read().strip().split('\n')
-            for line in raw_data:
-                review = eval(line)['reviewText']
-                if len(review.split()) <= 40:
-                    clean_save_40.append(eval(line))
-                    if len(review.split('.')) <= 2:  # one sentence
-                        final_save_40.append(eval(line))
-
-                if len(review.split()) <= 20:
-                    clean_save_20.append(eval(line))
-                    if len(review.split('.')) <= 2:  # one sentence
-                        final_save_20.append(eval(line))
-
-        save_filename = data_root + 'clean_40/' + file.lower().split('_5')[0] + '.txt'
-        _save(clean_save_40, save_filename)
-        # a = _count(save_filename)
-        save_filename = data_root + 'clean_20/' + file.lower().split('_5')[0] + '.txt'
-        _save(clean_save_20, save_filename)
-        # b = _count(save_filename)
-        save_filename = data_root + 'final_40/' + file.lower().split('_5')[0] + '.txt'
-        _save(final_save_40, save_filename)
-        # c = _count(save_filename)
-        save_filename = data_root + 'final_20/' + file.lower().split('_5')[0] + '.txt'
-        _save(final_save_20, save_filename)
-        # d = _count(save_filename)
-
-        print('|\t%s\t|\t%d\t|\t%d\t|\t%d\t|\t%d\t|\t%d\t|' % (
-            file.lower().split('_5')[0], len(raw_data),
-            len(clean_save_40), len(clean_save_20),
-            len(final_save_40), len(final_save_20)))
-        # print('|\t%s\t|\t%d\t|\t%d\t|\t%d\t|\t%d\t|\t%d\t|' % (
-        #     file.lower().split('_5')[0], len(raw_data), a, b, c, d))
+    torch.save(large_samples, cfg.oracle_samples_path.format(cfg.samples_num))
 
 
 if __name__ == '__main__':
-    # create_oracle()
-    # clean_amazon_long_sentence()
+    create_oracle()
     pass

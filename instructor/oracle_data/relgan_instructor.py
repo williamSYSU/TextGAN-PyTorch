@@ -7,8 +7,6 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import time
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,7 +18,7 @@ from instructor.oracle_data.instructor import BasicInstructor
 from models.RelGAN_D import RelGAN_D
 from models.RelGAN_G import RelGAN_G
 from utils.data_utils import GenDataIter
-from utils.helpers import get_fixed_temperature
+from utils.helpers import get_fixed_temperature, get_losses
 
 
 class RelGANInstructor(BasicInstructor):
@@ -44,6 +42,8 @@ class RelGANInstructor(BasicInstructor):
         self.mle_criterion = nn.NLLLoss()
 
         # DataLoader
+        self.oracle_samples = torch.load(cfg.oracle_samples_path)
+        self.oracle_data = GenDataIter(self.oracle_samples)
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def _run(self):
@@ -55,9 +55,9 @@ class RelGANInstructor(BasicInstructor):
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
                 print('Save pre-trained generator: {}\n'.format(cfg.pretrained_gen_path))
 
-        oracle_nll, gen_nll, self_nll = self.cal_metrics()
-        self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-            oracle_nll, gen_nll, self_nll))
+        oracle_nll, gen_nll = self.cal_metrics()
+        self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+            oracle_nll, gen_nll))
 
         # # ==========ADVERSARIAL TRAINING==========
         self._print('\nStarting Adversarial Training...\n')
@@ -74,10 +74,10 @@ class RelGANInstructor(BasicInstructor):
 
                 # TEST
                 if adv_epoch % cfg.adv_log_step == 0:
-                    oracle_nll, gen_nll, self_nll = self.cal_metrics()
+                    oracle_nll, gen_nll = self.cal_metrics()
                     self._print(
-                        '[ADV] epoch %d: g_loss: %.4f, d_loss: %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-                            adv_epoch, g_loss, d_loss, oracle_nll, gen_nll, self_nll))
+                        '[ADV] epoch %d: g_loss: %.4f, d_loss: %.4f, oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+                            adv_epoch, g_loss, d_loss, oracle_nll, gen_nll))
 
                     if cfg.if_save and not cfg.if_test:
                         self._save('ADV', adv_epoch)
@@ -96,7 +96,6 @@ class RelGANInstructor(BasicInstructor):
         """
         Max Likelihood Pre-training for the generator
         """
-        t0 = time.time()
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
@@ -105,12 +104,10 @@ class RelGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
-                    oracle_nll, gen_nll, self_nll = self.cal_metrics()
-                    t1 = time.time()
+                    oracle_nll, gen_nll = self.cal_metrics()
                     self._print(
-                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f, time = %.4f,\n' % (
-                            epoch, pre_loss, oracle_nll, gen_nll, self_nll, t1 - t0))
-                    t0 = time.time()
+                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+                            epoch, pre_loss, oracle_nll, gen_nll))
 
                     if cfg.if_save and not cfg.if_test:
                         self._save('MLE', epoch)
@@ -132,7 +129,7 @@ class RelGANInstructor(BasicInstructor):
             # =====Train=====
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
-            g_loss, _ = self.get_losses(d_out_real, d_out_fake)
+            g_loss, _ = get_losses(d_out_real, d_out_fake, cfg.loss_type)
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss += g_loss.item()
@@ -151,57 +148,12 @@ class RelGANInstructor(BasicInstructor):
             # =====Train=====
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
-            _, d_loss = self.get_losses(d_out_real, d_out_fake)
+            _, d_loss = get_losses(d_out_real, d_out_fake, cfg.loss_type)
 
             self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss += d_loss.item()
 
         return total_loss / d_step if d_step != 0 else 0
-
-    def get_losses(self, d_out_real, d_out_fake):
-        loss_type = cfg.loss_type
-        bce_loss = nn.BCEWithLogitsLoss()
-
-        if loss_type == 'standard':  # the non-satuating GAN loss
-            d_loss_real = bce_loss(d_out_real, torch.ones_like(d_out_real))
-            d_loss_fake = bce_loss(d_out_fake, torch.zeros_like(d_out_fake))
-            d_loss = d_loss_real + d_loss_fake
-
-            g_loss = bce_loss(d_out_fake, torch.ones_like(d_out_fake))
-
-        elif loss_type == 'JS':  # the vanilla GAN loss
-            d_loss_real = bce_loss(d_out_real, torch.ones_like(d_out_real))
-            d_loss_fake = bce_loss(d_out_fake, torch.zeros_like(d_out_fake))
-            d_loss = d_loss_real + d_loss_fake
-
-            g_loss = -d_loss_fake
-
-        elif loss_type == 'KL':  # the GAN loss implicitly minimizing KL-divergence
-            d_loss_real = bce_loss(d_out_real, torch.ones_like(d_out_real))
-            d_loss_fake = bce_loss(d_out_fake, torch.zeros_like(d_out_fake))
-            d_loss = d_loss_real + d_loss_fake
-
-            g_loss = torch.mean(-d_out_fake)
-
-        elif loss_type == 'hinge':  # the hinge loss
-            d_loss_real = torch.mean(nn.ReLU(1.0 - d_out_real))
-            d_loss_fake = torch.mean(nn.ReLU(1.0 + d_out_fake))
-            d_loss = d_loss_real + d_loss_fake
-
-            g_loss = -torch.mean(d_out_fake)
-
-        elif loss_type == 'tv':  # the total variation distance
-            d_loss = torch.mean(nn.Tanh(d_out_fake) - nn.Tanh(d_out_real))
-            g_loss = torch.mean(-nn.Tanh(d_out_fake))
-
-        elif loss_type == 'RSGAN':  # relativistic standard GAN
-            d_loss = bce_loss(d_out_real - d_out_fake, torch.ones_like(d_out_real))
-            g_loss = bce_loss(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
-
-        else:
-            raise NotImplementedError("Divergence '%s' is not implemented" % loss_type)
-
-        return g_loss, d_loss
 
     def update_temperature(self, i, N):
         self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)

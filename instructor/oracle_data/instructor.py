@@ -14,7 +14,7 @@ import torch
 
 import config as cfg
 from models.Oracle import Oracle
-from utils.data_utils import GenDataIter, create_oracle
+from utils.data_utils import create_oracle
 from utils.helpers import Signal
 from utils.text_process import write_tensor
 
@@ -31,10 +31,6 @@ class BasicInstructor:
                              cfg.padding_idx, gpu=cfg.CUDA)
 
         self.show_config()
-
-        # DataLoader
-        self.oracle_samples = torch.load(cfg.oracle_samples_path)
-        self.oracle_data = GenDataIter(self.oracle_samples)
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -163,10 +159,7 @@ class BasicInstructor:
         gen_nll = self.eval_gen(self.gen,
                                 self.oracle_data.loader,
                                 self.mle_criterion)
-        self_nll = self.eval_gen(self.gen,
-                                 self.gen_data.loader,
-                                 self.mle_criterion)
-        return oracle_nll, gen_nll, self_nll
+        return oracle_nll, gen_nll
 
     def _save(self, phrase, epoch):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))

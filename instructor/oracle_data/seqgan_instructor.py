@@ -38,6 +38,8 @@ class SeqGANInstructor(BasicInstructor):
         self.dis_criterion = nn.CrossEntropyLoss()
 
         # DataLoader
+        self.oracle_samples = torch.load(cfg.oracle_samples_path)
+        self.oracle_data = GenDataIter(self.oracle_samples)
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def _run(self):
@@ -61,10 +63,10 @@ class SeqGANInstructor(BasicInstructor):
         # ==========ADVERSARIAL TRAINING==========
         self._print('\nStarting Adversarial Training...\n')
 
-        oracle_nll, gen_nll, self_nll = self.cal_metrics()
+        oracle_nll, gen_nll = self.cal_metrics()
         self._print(
-            'Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-                oracle_nll, gen_nll, self_nll))
+            'Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+                oracle_nll, gen_nll))
 
         for adv_epoch in range(cfg.ADV_train_epoch):
             self._print('\n-----\nADV EPOCH %d\n-----\n' % adv_epoch)
@@ -99,11 +101,11 @@ class SeqGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
-                    oracle_nll, gen_nll, self_nll = self.cal_metrics()
+                    oracle_nll, gen_nll = self.cal_metrics()
 
                     self._print(
-                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-                            epoch, pre_loss, oracle_nll, gen_nll, self_nll))
+                        '[MLE-GEN] epoch %d : pre_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+                            epoch, pre_loss, oracle_nll, gen_nll))
                     if cfg.if_save and not cfg.if_test:
                         self._save('MLE', epoch)
             else:
@@ -130,10 +132,10 @@ class SeqGANInstructor(BasicInstructor):
             total_g_loss += adv_loss.item()
 
             # =====Test=====
-            oracle_nll, gen_nll, self_nll = self.cal_metrics()
+            oracle_nll, gen_nll = self.cal_metrics()
 
-            self._print('[ADV-GEN]: g_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-                total_g_loss, oracle_nll, gen_nll, self_nll))
+            self._print('[ADV-GEN]: g_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f,\n' % (
+                total_g_loss, oracle_nll, gen_nll))
 
     def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
         """

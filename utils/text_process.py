@@ -6,9 +6,10 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-
-import torch
 import nltk
+import os
+import torch
+
 import config as cfg
 
 
@@ -100,6 +101,9 @@ def init_dict():
 def load_dict(dataset):
     iw_path = 'dataset/{}_iw_dict.txt'.format(dataset)
     wi_path = 'dataset/{}_wi_dict.txt'.format(dataset)
+
+    if not os.path.exists(iw_path) or not os.path.exists(iw_path):
+        init_dict()
 
     with open(iw_path, 'r') as dictin:
         index_word_dict = eval(dictin.read().strip())

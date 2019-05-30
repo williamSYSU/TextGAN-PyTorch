@@ -15,6 +15,7 @@ def program_config(parser):
     parser.add_argument('--cuda', default=cfg.CUDA, type=int)
     parser.add_argument('--device', default=cfg.device, type=int)
     parser.add_argument('--shuffle', default=cfg.data_shuffle, type=int)
+    parser.add_argument('--use_truncated_normal', default=cfg.use_truncated_normal, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
@@ -80,6 +81,9 @@ if __name__ == '__main__':
     # ==========Dict==========
     if cfg.if_real_data:
         from instructor.real_data.relgan_instructor import RelGANInstructor
+
+        LeakGANInstructor = None
+        SeqGANInstructor = None
     else:
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor

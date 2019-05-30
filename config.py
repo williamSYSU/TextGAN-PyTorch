@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 if_reward = True  # for SentiGAN
 CUDA = True
 if_save = True
@@ -22,11 +22,10 @@ oracle_pretrain = True  # True
 gen_pretrain = False
 dis_pretrain = False
 
-# no_log = False  # False，是否取消log操作。False: 有log，在算NLL loss时使用；True: 无log，采样时使用, for SentiGAN
-
 run_model = 'relgan'  # seqgan, leakgan, relgan
+use_truncated_normal = True
 
-# =====Oracle  or Real=====
+# =====Oracle or Real, type=====
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
@@ -40,8 +39,7 @@ temperature = 2
 samples_num = 10000  # 10000
 MLE_train_epoch = 150  # SeqGAN,LeakGAN-80, RelGAN-150
 ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
-inter_epoch = 1  # LeakGAN-10
-# k_label = 1  # num of labels, SentiGAN-1
+inter_epoch = 10  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
 start_letter = 1
@@ -58,6 +56,7 @@ adv_log_step = 20
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
+no_log = False  # False，是否取消log操作。False: 有log，在算NLL loss时使用；True: 无log，采样时使用, for SentiGAN
 
 # =====Generator=====
 ADV_g_step = 1  # 1
@@ -84,7 +83,6 @@ dis_num_filters = [300, 300, 300, 300]  # RelGAN
 dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64  # RelGAN
-goal_out_size = sum(dis_num_filters)  # LeakGAN
 
 # =====log=====
 log_filename = './log/log_{}'.format(datetime.now().strftime('%m%d_%H%M'))
@@ -106,23 +104,27 @@ device_dict = {
 }
 
 if torch.cuda.is_available():
-    os.system('nvidia-smi -q -d Utilization | grep Gpu > log/gpu')
-    util_gpu = [int(line.strip().split()[2]) for line in open('log/gpu', 'r')]
+    os.system('nvidia-smi -q -d Utilization | grep Gpu > gpu')
+    util_gpu = [int(line.strip().split()[2]) for line in open('gpu', 'r')]
+    os.remove('gpu')
     gpu_count = torch.cuda.device_count()
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
 # device=1
-# print('device: ', device)
+print('device: ', device)
 torch.cuda.set_device(device)
 
 # =====Save Model and samples=====
-save_root = 'save/{}_{}_{}_{}_gprelr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
-                                                           temperature, datetime.now().strftime('%m%d-%H%M'))
+save_root = 'save/{}_{}_{}_{}_glr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
+                                                        temperature, datetime.now().strftime('%m%d-%H%M'))
 save_samples_root = save_root + 'samples/'
 save_model_root = save_root + 'models/'
-oracle_samples_path = 'pretrain/oracle_data/oracle_samples_NUM10000_lstm.pt'
-oracle_state_dict_path = 'pretrain/oracle_data/oracle_EMB32_HID32_VOC5000_SEQ20_lstm.pt'
+oracle_state_dict_path = 'pretrain/oracle_data/oracle_lstm.pt'
+oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}.pt'.format(samples_num)
+
+multi_oracle_state_dict_path = 'pretrain/oracle_data/oracle{}_lstm.pt'
+multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
 
 pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
 pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
@@ -141,7 +143,7 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test
+        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -151,6 +153,7 @@ def init_param(opt):
     CUDA = True if opt.cuda == 1 else False
     device = opt.device
     data_shuffle = opt.shuffle
+    use_truncated_normal = True if opt.use_truncated_normal == 1 else False
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size
@@ -201,8 +204,8 @@ def init_param(opt):
     torch.cuda.set_device(device)
 
     # Save path
-    save_root = 'save/{}_{}_{}_{}_gprelr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
-                                                               temperature, datetime.now().strftime('%m%d-%H%M'))
+    save_root = 'save/{}_{}_{}_{}_glr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
+                                                            temperature, datetime.now().strftime('%m%d-%H%M'))
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'
 

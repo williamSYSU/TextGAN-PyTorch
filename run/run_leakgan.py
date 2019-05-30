@@ -26,14 +26,14 @@ else:
     quit()
 
 # Executables
-executable = '/home/sysu2018/.virtualenvs/lzw-pytorch/bin/python'
+executable = 'python'
 
 # =====Program=====
 if_test = int(False)
 run_model = 'leakgan'
 CUDA = int(True)
 if_real_data = int(False)
-data_shuffle = int(False)
+data_shuffle = int(True)
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
