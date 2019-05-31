@@ -7,17 +7,16 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-from datetime import datetime
+from time import strftime, localtime
 
 import os
 import torch
 
 # =====Program=====
 if_test = False
-if_reward = True  # for SentiGAN
 CUDA = True
 if_save = True
-data_shuffle = False  # RelGAN: False
+data_shuffle = True  # False
 oracle_pretrain = True  # True
 gen_pretrain = False
 dis_pretrain = False
@@ -37,9 +36,9 @@ temperature = 2
 
 # =====Basic Train=====
 samples_num = 10000  # 10000
-MLE_train_epoch = 150  # SeqGAN,LeakGAN-80, RelGAN-150
+MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
-inter_epoch = 10  # LeakGAN-10
+inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
 start_letter = 1
@@ -56,7 +55,6 @@ adv_log_step = 20
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
-no_log = False  # False，是否取消log操作。False: 有log，在算NLL loss时使用；True: 无log，采样时使用, for SentiGAN
 
 # =====Generator=====
 ADV_g_step = 1  # 1
@@ -76,16 +74,12 @@ d_epoch = 3  # SeqGAN,LeakGAN-3
 ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
 
-# dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]  # SeqGAN, LeakGAN
-dis_filter_sizes = [2, 3, 4, 5]  # RelGAN
-# dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]  # SeqGAN, LeakGAN
-dis_num_filters = [300, 300, 300, 300]  # RelGAN
 dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 
 # =====log=====
-log_filename = './log/log_{}'.format(datetime.now().strftime('%m%d_%H%M'))
+log_filename = strftime("log/log_%m%d_%H%M", localtime())
 if os.path.exists(log_filename + '.txt'):
     i = 2
     while True:
@@ -93,16 +87,9 @@ if os.path.exists(log_filename + '.txt'):
             log_filename = log_filename + '_%d' % i
             break
         i += 1
+log_filename = log_filename + '.txt'
 
 # Automatically choose GPU or CPU
-device_dict = {
-    -1: 'cpu',
-    0: 'cuda:0',
-    1: 'cuda:1',
-    2: 'cuda:2',
-    3: 'cuda:3',
-}
-
 if torch.cuda.is_available():
     os.system('nvidia-smi -q -d Utilization | grep Gpu > gpu')
     util_gpu = [int(line.strip().split()[2]) for line in open('gpu', 'r')]
@@ -112,19 +99,17 @@ if torch.cuda.is_available():
 else:
     device = -1
 # device=1
-print('device: ', device)
+# print('device: ', device)
 torch.cuda.set_device(device)
 
 # =====Save Model and samples=====
 save_root = 'save/{}_{}_{}_{}_glr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
-                                                        temperature, datetime.now().strftime('%m%d-%H%M'))
+                                                        temperature, strftime("%m%d-%H%M", localtime()))
 save_samples_root = save_root + 'samples/'
 save_model_root = save_root + 'models/'
-oracle_state_dict_path = 'pretrain/oracle_data/oracle_lstm.pt'
-oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}.pt'.format(samples_num)
 
-multi_oracle_state_dict_path = 'pretrain/oracle_data/oracle{}_lstm.pt'
-multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
+oracle_state_dict_path = 'pretrain/oracle_data/oracle_lstm.pt'
+oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}.pt'
 
 pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
 pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
@@ -205,7 +190,7 @@ def init_param(opt):
 
     # Save path
     save_root = 'save/{}_{}_{}_{}_glr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
-                                                            temperature, datetime.now().strftime('%m%d-%H%M'))
+                                                            temperature, strftime("%m%d-%H%M", localtime()))
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'
 

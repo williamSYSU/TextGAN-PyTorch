@@ -24,6 +24,7 @@ class RelGAN_G(LSTMGenerator):
         self.name = 'relgan'
 
         self.temperature = 1.0  # init value is 1.0
+
         # RMC
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
         self.hidden_dim = mem_slots * num_heads * head_size

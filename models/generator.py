@@ -74,11 +74,13 @@ class LSTMGenerator(nn.Module):
 
     def init_params(self):
         for param in self.parameters():
-            param.data.uniform_(-0.05, 0.05)
+            if param.requires_grad:
+                torch.nn.init.normal_(param, std=0.1)
 
     def init_oracle(self):
         for param in self.parameters():
-            param.data.normal_(0, 1)
+            if param.requires_grad:
+                torch.nn.init.normal_(param, mean=0, std=1)
 
     def init_hidden(self, batch_size=cfg.batch_size):
         h = torch.zeros(1, batch_size, self.hidden_dim)

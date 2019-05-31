@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
 # @Project      : TextGAN-william
-# @FileName     : data_utils.py
-# @Time         : Created at 2019-03-16
+# @FileName     : data_loader.py
+# @Time         : Created at 2019-05-31
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
+
 import random
 from torch.utils.data import Dataset, DataLoader
 
-from models.Oracle import Oracle
 from utils.text_process import *
 
 
@@ -121,7 +121,6 @@ class DisDataIter:
     def random_batch(self):
         idx = random.randint(0, len(self.loader) - 1)
         return list(self.loader)[idx]
-        # return next(iter(self.loader))
 
     def prepare(self, pos_samples, neg_samples, gpu=False):
         """Build inp and target"""
@@ -137,19 +136,3 @@ class DisDataIter:
         if gpu:
             return inp.cuda(), target.cuda()
         return inp, target
-
-
-def create_oracle():
-    oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
-                    cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-    oracle = oracle.cuda()
-
-    torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
-
-    large_samples = oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
-    torch.save(large_samples, cfg.oracle_samples_path.format(cfg.samples_num))
-
-
-if __name__ == '__main__':
-    create_oracle()
-    pass

@@ -1,6 +1,13 @@
+import logging
+import sys
+from time import strftime, gmtime
+
 import numpy as np
 import torch
 import torch.nn as nn
+
+import config as cfg
+from models.Oracle import Oracle
 
 
 class Signal:
@@ -21,6 +28,50 @@ class Signal:
     def read_signal(self):
         with open(self.signal_file, 'r') as fin:
             return eval(fin.read())
+
+
+def create_logger(name, silent=False, to_disk=False, log_file=None):
+    """Logger wrapper
+    """
+    # setup logger
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG)
+    log.propagate = False
+    formatter = logging.Formatter(fmt='%(message)s', datefmt='%Y/%m/%d %I:%M:%S')
+    if not silent:
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(formatter)
+        log.addHandler(ch)
+    if to_disk:
+        log_file = log_file if log_file is not None else strftime("log/log_%m%d_%H%M.txt", gmtime())
+        if type(log_file) == list:
+            for filename in log_file:
+                fh = logging.FileHandler(filename, mode='w')
+                fh.setLevel(logging.INFO)
+                fh.setFormatter(formatter)
+                log.addHandler(fh)
+        if type(log_file) == str:
+            fh = logging.FileHandler(log_file, mode='w')
+            fh.setLevel(logging.INFO)
+            fh.setFormatter(formatter)
+            log.addHandler(fh)
+    return log
+
+
+def create_oracle():
+    oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
+                    cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
+    oracle = oracle.cuda()
+
+    torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
+
+    # large
+    torch.save(oracle.sample(cfg.samples_num, 4 * cfg.batch_size),
+               cfg.oracle_samples_path.format(cfg.samples_num))
+    # small
+    torch.save(oracle.sample(cfg.samples_num // 2, 4 * cfg.batch_size),
+               cfg.oracle_samples_path.format(cfg.samples_num // 2))
 
 
 # A function to set up different temperature control policies

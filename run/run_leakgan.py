@@ -26,14 +26,14 @@ else:
     quit()
 
 # Executables
-executable = 'python'
+executable = '/home/sysu2018/.virtualenvs/lzw-pytorch/bin/python'
 
 # =====Program=====
 if_test = int(False)
 run_model = 'leakgan'
 CUDA = int(True)
 if_real_data = int(False)
-data_shuffle = int(True)
+data_shuffle = int(False)
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
@@ -47,13 +47,13 @@ temperature = 1
 
 # =====Basic Train=====
 samples_num = 10000
-MLE_train_epoch = 80
+MLE_train_epoch = 8
 ADV_train_epoch = 200
 inter_epoch = 10
 batch_size = 64
 max_seq_len = 20
-gen_lr = 0.01
-dis_lr = 0.01
+gen_lr = 0.0015
+dis_lr = 5e-5
 pre_log_step = 5
 adv_log_step = 5
 
@@ -91,6 +91,7 @@ args = [
 
     # Basic Train
     '--samples_num', samples_num,
+    '--vocab_size', vocab_size,
     '--mle_epoch', MLE_train_epoch,
     '--adv_epoch', ADV_train_epoch,
     '--inter_epoch', inter_epoch,

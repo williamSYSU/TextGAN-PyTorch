@@ -78,7 +78,7 @@ if __name__ == '__main__':
     opt = parser.parse_args()
     cfg.init_param(opt)
 
-    # ==========Dict==========
+    # =====Dict=====
     if cfg.if_real_data:
         from instructor.real_data.relgan_instructor import RelGANInstructor
 

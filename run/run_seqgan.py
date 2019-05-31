@@ -33,7 +33,7 @@ if_test = int(False)
 run_model = 'seqgan'
 CUDA = int(True)
 if_real_data = int(False)
-data_shuffle = int(True)
+data_shuffle = int(False)
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
@@ -52,7 +52,7 @@ ADV_train_epoch = 200
 batch_size = 64
 max_seq_len = 20
 gen_lr = 0.01
-dis_lr = 0.01
+dis_lr = 1e-4
 pre_log_step = 5
 adv_log_step = 5
 
@@ -88,6 +88,7 @@ args = [
 
     # Basic Train
     '--samples_num', samples_num,
+    '--vocab_size', vocab_size,
     '--mle_epoch', MLE_train_epoch,
     '--adv_epoch', ADV_train_epoch,
     '--batch_size', batch_size,

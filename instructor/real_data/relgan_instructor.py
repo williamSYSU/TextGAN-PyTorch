@@ -15,11 +15,11 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
+from metrics.bleu import BLEU
 from models.RelGAN_D import RelGAN_D
 from models.RelGAN_G import RelGAN_G
-from utils.data_utils import GenDataIter
+from utils.data_loader import GenDataIter
 from utils.helpers import get_fixed_temperature, get_losses
-from utils.metrics import BLEU
 from utils.text_process import tensor_to_tokens
 
 
@@ -55,20 +55,18 @@ class RelGANInstructor(BasicInstructor):
                           gram=3)
 
     def _run(self):
-        # ==========PRE-TRAINING (GENERATOR)==========
+        # =====PRE-TRAINING (GENERATOR)=====
         if not cfg.gen_pretrain:
-            self._print('\nStarting Generator MLE Training...\n')
+            self.log.info('Starting Generator MLE Training...')
             self.pretrain_generator(cfg.MLE_train_epoch)
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
-                print('Save pretrain_generator: {}\n'.format(cfg.pretrained_gen_path))
+                print('Save pretrain_generator: {}'.format(cfg.pretrained_gen_path))
 
-        bleu3_score, gen_nll = self.cal_metrics()
-        self._print('Initial generator: BLEU-3 = %.4f, gen_NLL = %.4f,\n' % (
-            bleu3_score, gen_nll))
+        self.log.info('Initial generator: %s' % (self.cal_metrics(fmt_str=True)))
 
-        # # ==========ADVERSARIAL TRAINING==========
-        self._print('\nStarting Adversarial Training...\n')
+        # # =====ADVERSARIAL TRAINING=====
+        self.log.info('Starting Adversarial Training...')
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
             self.sig.update()
@@ -82,15 +80,13 @@ class RelGANInstructor(BasicInstructor):
 
                 # TEST
                 if adv_epoch % cfg.adv_log_step == 0:
-                    bleu3_score, gen_nll = self.cal_metrics()
-                    self._print(
-                        '[ADV] epoch %d: g_loss: %.4f, d_loss: %.4f, BLEU-3 = %.4f, gen_NLL = %.4f,\n' % (
-                            adv_epoch, g_loss, d_loss, bleu3_score, gen_nll))
+                    self.log.info('[ADV] epoch %d: g_loss: %.4f, d_loss: %.4f, %s' % (
+                        adv_epoch, g_loss, d_loss, self.cal_metrics(fmt_str=True)))
 
                     if cfg.if_save and not cfg.if_test:
                         self._save('ADV', adv_epoch)
             else:
-                self._print('\n>>> Stop by adv_signal! Finishing adversarial training...\n')
+                self.log.info('>>> Stop by adv_signal! Finishing adversarial training...')
                 progress.close()
                 break
 
@@ -112,15 +108,13 @@ class RelGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
-                    bleu3_score, gen_nll = self.cal_metrics()
-                    self._print(
-                        '[MLE-GEN] epoch %d : pre_loss = %.4f, BLEU-3 = %.4f, gen_NLL = %.4f,\n' % (
-                            epoch, pre_loss, bleu3_score, gen_nll))
+                    self.log.info('[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (
+                        epoch, pre_loss, self.cal_metrics(fmt_str=True)))
 
                     if cfg.if_save and not cfg.if_test:
                         self._save('MLE', epoch)
             else:
-                self._print('\n>>> Stop by pre signal, skip to adversarial training...')
+                self.log.info('>>> Stop by pre signal, skip to adversarial training...')
                 break
         if cfg.if_save and not cfg.if_test:
             self._save('MLE', epoch)

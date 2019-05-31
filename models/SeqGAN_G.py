@@ -7,8 +7,8 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import config as cfg
 from models.generator import LSTMGenerator
+
 
 class SeqGAN_G(LSTMGenerator):
     def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, temperature, gpu=False):
@@ -38,9 +38,6 @@ class SeqGAN_G(LSTMGenerator):
 
             # TODO: should hidden be detached from graph (.detach())?
             for j in range(batch_size):
-                if cfg.if_reward:
-                    loss += -out[j][target.data[i][j]] * reward[j]  # origin: log(P(y_t|Y_1:Y_{t-1})) * Q
-                else:
-                    loss += out[j][target.data[i][j]] * (1 - reward[j])  # P(y_t|Y_1:Y_{t-1}) * (1 - Q)
+                loss += -out[j][target.data[i][j]] * reward[j]  # origin: log(P(y_t|Y_1:Y_{t-1})) * Q
 
         return loss / (seq_len * batch_size)
