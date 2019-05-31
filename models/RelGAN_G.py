@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import config as cfg
 from models.generator import LSTMGenerator
 from models.relational_rnn_general import RelationalMemory
+from utils.helpers import truncated_normal_
 
 
 class RelGAN_G(LSTMGenerator):
@@ -23,6 +24,7 @@ class RelGAN_G(LSTMGenerator):
         self.name = 'relgan'
 
         self.temperature = 1.0  # init value is 1.0
+
         # RMC
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
         self.hidden_dim = mem_slots * num_heads * head_size
@@ -42,7 +44,6 @@ class RelGAN_G(LSTMGenerator):
         RelGAN step forward
         :param inp: [batch_size]
         :param hidden: memory size
-        :param temperature: temperature control
         :return: pred, hidden, next_token, next_token_onehot, next_o
             - pred: batch_size * vocab_size, use for adversarial training backward
             - hidden: next hidden
@@ -54,7 +55,6 @@ class RelGAN_G(LSTMGenerator):
         out, hidden = self.lstm(emb, hidden)
         gumbel_t = self.add_gumbel(self.lstm2out(out.squeeze(1)))
         next_token = torch.argmax(gumbel_t, dim=1).detach()
-        # next_token = torch.multinomial(torch.exp(gumbel_t), 1).squeeze(1).detach()
         # next_token_onehot = F.one_hot(next_token, cfg.vocab_size).float()  # not used yet
         next_token_onehot = None
 
@@ -103,8 +103,8 @@ class RelGAN_G(LSTMGenerator):
         memory = self.lstm.repackage_hidden(memory)  # detch memory at first
         return memory.cuda() if self.gpu else memory
 
-    # @staticmethod
-    def add_gumbel(self, o_t, eps=1e-10, gpu=cfg.CUDA):
+    @staticmethod
+    def add_gumbel(o_t, eps=1e-10, gpu=cfg.CUDA):
         """Add o_t by a vector sampled from Gumbel(0,1)"""
         u = torch.rand(o_t.size())
         if gpu:
@@ -117,4 +117,7 @@ class RelGAN_G(LSTMGenerator):
         for param in self.parameters():
             if param.requires_grad and len(param.shape) > 0:
                 stddev = 1 / math.sqrt(param.shape[0])
-                torch.nn.init.normal_(param, std=stddev)
+                if cfg.use_truncated_normal:
+                    truncated_normal_(param, std=stddev)
+                else:
+                    torch.nn.init.normal_(param, std=stddev)

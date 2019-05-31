@@ -34,6 +34,7 @@ run_model = 'relgan'
 CUDA = int(True)
 if_real_data = int(False)
 data_shuffle = int(False)
+use_truncated_normal = int(True)
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
@@ -43,6 +44,7 @@ dataset = 'oracle'
 model_type = 'vanilla'
 loss_type = 'RSGAN'
 vocab_size = 5000
+temp_adpt = 'exp'
 temperature = 2
 
 # =====Basic Train=====
@@ -86,9 +88,11 @@ args = [
     '--cuda', CUDA,
     '--device', gpu_id,
     '--shuffle', data_shuffle,
+    '--use_truncated_normal', use_truncated_normal,
 
     # Basic Train
     '--samples_num', samples_num,
+    '--vocab_size', vocab_size,
     '--mle_epoch', MLE_train_epoch,
     '--adv_epoch', ADV_train_epoch,
     '--batch_size', batch_size,
@@ -98,6 +102,7 @@ args = [
     '--dis_lr', dis_lr,
     '--pre_log_step', pre_log_step,
     '--adv_log_step', adv_log_step,
+    '--temp_adpt', temp_adpt,
     '--temperature', temperature,
     '--ora_pretrain', oracle_pretrain,
     '--gen_pretrain', gen_pretrain,
@@ -118,7 +123,7 @@ args = [
     '--num_rep', num_rep,
 
     # Log
-    '--tips', 'vanilla LeakGAN',
+    '--tips', 'vanilla RelGAN',
 ]
 
 args = list(map(str, args))

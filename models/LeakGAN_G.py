@@ -15,9 +15,12 @@ import torch.nn.functional as F
 
 import config as cfg
 
+dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
+goal_out_size = sum(dis_num_filters)
+
 
 class LeakGAN_G(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, goal_size, goal_out_size,
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, goal_size,
                  step_size, gpu=False):
         super(LeakGAN_G, self).__init__()
         self.name = 'leakgan'
@@ -172,7 +175,7 @@ class LeakGAN_G(nn.Module):
 
         :return cos_loss: batch_size * (seq_len / step_size)
         """
-        # ==========My implements==========
+        # =====My implements=====
         # offset_feature = feature_array[:, 4:, :]
         # # 不记录最后四个feature的变化
         # all_feature = feature_array[:, :-4, :]
@@ -187,7 +190,7 @@ class LeakGAN_G(nn.Module):
         #
         # return cos_loss
 
-        # ==========LeakGAN origin==========
+        # =====LeakGAN origin=====
         # get sub_feature and real_goal
         # batch_size, seq_len = sentences.size()
         sub_feature = torch.zeros(batch_size, self.max_seq_len // self.step_size, self.goal_out_size)
@@ -304,7 +307,7 @@ class LeakGAN_G(nn.Module):
                                                                    real_goal, no_log=no_log, train=train)
             leak_out_array[:, i, :] = out
 
-            # ==========My implement according to paper==========
+            # =====My implement according to paper=====
             # Update real_goal and save goal
             # if 0 < i < 4:  # not update when i=0
             #     real_goal = torch.sum(goal_array, dim=1)  # num_samples * goal_out_size
@@ -312,7 +315,7 @@ class LeakGAN_G(nn.Module):
             #     real_goal = torch.sum(goal_array[:, i - 4:i, :], dim=1)
             # if i > 0:
             #     goal_array[:, i, :] = cur_goal.squeeze(1)  # !!!note: save goal after update last_goal
-            # ==========LeakGAN origin==========
+            # =====LeakGAN origin=====
             # Save goal and update real_goal
             goal_array[:, i, :] = cur_goal.squeeze(1)
             if i > 0 and i % self.step_size == 0:
@@ -359,11 +362,6 @@ class LeakGAN_G(nn.Module):
             return goal.cuda()
         else:
             return goal
-
-    def init_params(self):
-        for param in self.parameters():
-            # param.loader.uniform_(-0.05, 0.05)
-            param.data.normal_(0, 0.1)
 
     def split_params(self):
         mana_params = list()

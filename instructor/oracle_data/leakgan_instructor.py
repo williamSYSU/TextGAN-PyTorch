@@ -16,7 +16,7 @@ from instructor.oracle_data.instructor import BasicInstructor
 from models.LeakGAN_D import LeakGAN_D
 from models.LeakGAN_G import LeakGAN_G
 from utils import rollout
-from utils.data_utils import GenDataIter, DisDataIter
+from utils.data_loader import GenDataIter, DisDataIter
 from utils.text_process import write_tensor
 
 
@@ -26,7 +26,7 @@ class LeakGANInstructor(BasicInstructor):
 
         # generator, discriminator
         self.gen = LeakGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                             cfg.padding_idx, cfg.goal_size, cfg.goal_out_size, cfg.step_size, cfg.CUDA)
+                             cfg.padding_idx, cfg.goal_size, cfg.step_size, cfg.CUDA)
         self.dis = LeakGAN_D(cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
 
@@ -47,37 +47,35 @@ class LeakGANInstructor(BasicInstructor):
 
     def _run(self):
         for inter_num in range(cfg.inter_epoch):
-            self._print('\n>>> Interleaved Round %d...\n' % inter_num)
+            self.log.info('>>> Interleaved Round %d...' % inter_num)
             self.sig.update()  # update signal
             if self.sig.pre_sig:
-                # ==========DISCRIMINATOR PRE-TRAINING==========
-                self._print('\nStarting Discriminator Training...\n')
+                # =====DISCRIMINATOR PRE-TRAINING=====
+                self.log.info('Starting Discriminator Training...')
                 if not cfg.dis_pretrain:
                     self.train_discriminator(cfg.d_step, cfg.d_epoch)
                     if cfg.if_save and not cfg.if_test:
                         torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
-                        print('Save pre-trained discriminator: {}\n'.format(cfg.pretrained_dis_path))
+                        print('Save pre-trained discriminator: {}'.format(cfg.pretrained_dis_path))
 
-                # ==========GENERATOR MLE TRAINING==========
-                self._print('\nStarting Generator MLE Training...\n')
+                # =====GENERATOR MLE TRAINING=====
+                self.log.info('Starting Generator MLE Training...')
                 if not cfg.gen_pretrain:
                     self.pretrain_generator(cfg.MLE_train_epoch)
                     if cfg.if_save and not cfg.if_test:
                         torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
-                        print('Save pre-trained generator: {}\n'.format(cfg.pretrained_gen_path))
+                        print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
             else:
-                self._print('\n>>> Stop by pre_signal! Skip to adversarial training...\n')
+                self.log.info('>>> Stop by pre_signal! Skip to adversarial training...')
                 break
 
-        # ==========ADVERSARIAL TRAINING==========
-        self._print('\nStarting Adversarial Training...\n')
+        # =====ADVERSARIAL TRAINING=====
+        self.log.info('Starting Adversarial Training...')
 
-        oracle_nll, gen_nll, self_nll = self.cal_metrics()
-        self._print('Initial generator: oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-            oracle_nll, gen_nll, self_nll))
+        self.log.info('Initial generator: %s' % (str(self.cal_metrics(fmt_str=True))))
 
         for adv_epoch in range(cfg.ADV_train_epoch):
-            self._print('\n-----\nADV EPOCH %d\n-----\n' % adv_epoch)
+            self.log.info('-----\nADV EPOCH %d\n-----' % adv_epoch)
             self.sig.update()
             if self.sig.adv_sig:
                 # TRAIN GENERATOR
@@ -89,7 +87,7 @@ class LeakGANInstructor(BasicInstructor):
                     if cfg.if_save and not cfg.if_test:
                         self._save('ADV', adv_epoch)
             else:
-                self._print('\n>>> Stop by adv_signal! Finishing adversarial training...\n')
+                self.log.info('>>> Stop by adv_signal! Finishing adversarial training...')
                 break
 
     def _test(self):
@@ -124,15 +122,13 @@ class LeakGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
-                    oracle_nll, gen_nll, self_nll = self.cal_metrics()
-                    self._print('[MLE-GEN] epoch %d : pre_mana_loss = %.4f, pre_work_loss = %.4f, '
-                                'oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-                                    epoch, pre_mana_loss, pre_work_loss, oracle_nll, gen_nll, self_nll))
+                    self.log.info('[MLE-GEN] epoch %d : pre_mana_loss = %.4f, pre_work_loss = %.4f, %s' % (
+                        epoch, pre_mana_loss, pre_work_loss, self.cal_metrics(fmt_str=True)))
 
                     if cfg.if_save and not cfg.if_test:
                         self._save('MLE', epoch)
             else:
-                self._print('\n>>> Stop by pre signal, skip to adversarial training...')
+                self.log.info('>>> Stop by pre signal, skip to adversarial training...')
                 break
 
     def adv_train_generator(self, g_step, current_k=0):
@@ -160,11 +156,8 @@ class LeakGANInstructor(BasicInstructor):
             adv_mana_loss += mana_loss.data.item()
             adv_work_loss += work_loss.data.item()
         # =====Test=====
-        oracle_nll, gen_nll, self_nll = self.cal_metrics()
-
-        self._print(
-            '[ADV-GEN] adv_mana_loss = %.4f, adv_work_loss = %.4f, oracle_NLL = %.4f, gen_NLL = %.4f, self_NLL = %.4f,\n' % (
-                adv_mana_loss / g_step, adv_work_loss / g_step, oracle_nll, gen_nll, self_nll))
+        self.log.info('[ADV-GEN] adv_mana_loss = %.4f, adv_work_loss = %.4f, %s' % (
+            adv_mana_loss / g_step, adv_work_loss / g_step, self.cal_metrics(fmt_str=True)))
 
     def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
         """
@@ -191,34 +184,28 @@ class LeakGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 _, eval_acc = self.eval_dis(self.dis, dis_val_data.loader, self.dis_criterion)
-                self._print('[%s-DIS] d_step %d, d_epoch %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,\n' % (
+                self.log.info('[%s-DIS] d_step %d, d_epoch %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
                     phrase, step, epoch, d_loss, train_acc, eval_acc))
 
-    def cal_metrics(self):
+    def cal_metrics(self, fmt_str=False):
         self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, self.dis))
         oracle_nll = self.eval_gen(self.oracle,
                                    self.gen_data.loader,
                                    self.mle_criterion)
 
-        gen_nll = 0
-        for data in self.oracle_data.loader:
-            inp, target = data['input'], data['target']
-            if cfg.CUDA:
-                inp, target = inp.cuda(), target.cuda()
-            loss = self.gen.batchNLLLoss(target, self.dis)
-            gen_nll += loss.item()
-        gen_nll /= len(self.oracle_data.loader)
+        with torch.no_grad():
+            gen_nll = 0
+            for data in self.oracle_data.loader:
+                inp, target = data['input'], data['target']
+                if cfg.CUDA:
+                    inp, target = inp.cuda(), target.cuda()
+                loss = self.gen.batchNLLLoss(target, self.dis)
+                gen_nll += loss.item()
+            gen_nll /= len(self.oracle_data.loader)
 
-        self_nll = 0
-        for data in self.gen_data.loader:
-            inp, target = data['input'], data['target']
-            if cfg.CUDA:
-                inp, target = inp.cuda(), target.cuda()
-            loss = self.gen.batchNLLLoss(target, self.dis)
-            self_nll += loss.item()
-        self_nll /= len(self.gen_data.loader)
-
-        return oracle_nll, gen_nll, self_nll
+        if fmt_str:
+            return 'oracle_NLL = %.4f, gen_NLL = %.4f,' % (oracle_nll, gen_nll)
+        return oracle_nll, gen_nll
 
     def _save(self, phrase, epoch):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))

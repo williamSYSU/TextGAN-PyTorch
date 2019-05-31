@@ -72,29 +72,15 @@ class LSTMGenerator(nn.Module):
 
         return samples
 
-    def batchNLLLoss(self, inp, target):
-        """
-        Returns the NLL Loss for predicting target sequence.
-
-        :param inp: batch_size * seq_len, inp should be target with <s> (start letter) prepended
-        :param target: batch_size * seq_len
-        :return loss: NLL loss
-        """
-        loss_fn = nn.NLLLoss()
-        hidden = self.init_hidden(inp.size(0))
-
-        pred = self.forward(inp, hidden)[0].view(-1, self.vocab_size)  # (batch_size * seq_len) * vocab_size
-        loss = loss_fn(pred, target.view(-1))
-
-        return loss
-
     def init_params(self):
         for param in self.parameters():
-            param.data.uniform_(-0.05, 0.05)
+            if param.requires_grad:
+                torch.nn.init.normal_(param, std=0.1)
 
     def init_oracle(self):
         for param in self.parameters():
-            param.data.normal_(0, 1)
+            if param.requires_grad:
+                torch.nn.init.normal_(param, mean=0, std=1)
 
     def init_hidden(self, batch_size=cfg.batch_size):
         h = torch.zeros(1, batch_size, self.hidden_dim)

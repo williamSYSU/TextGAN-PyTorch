@@ -36,11 +36,11 @@ class BasicInstructor:
 
     def init_model(self):
         if cfg.dis_pretrain:
-            self._print(
-                'Load pretrain_generator discriminator: {}\n'.format(cfg.pretrained_dis_path))
+            self.log.info(
+                'Load pretrain_generator discriminator: {}'.format(cfg.pretrained_dis_path))
             self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path))
         if cfg.gen_pretrain:
-            self._print('Load MLE pretrain_generator gen: {}\n'.format(cfg.pretrained_gen_path))
+            self.log.info('Load MLE pretrain_generator gen: {}'.format(cfg.pretrained_gen_path))
             self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path))
 
         if cfg.CUDA:
@@ -127,8 +127,6 @@ class BasicInstructor:
     def optimize(opt, loss, model=None, retain_graph=False):
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
-        if model is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
         opt.step()
 
     def _print(self, content):
@@ -139,22 +137,24 @@ class BasicInstructor:
             self.model_log.write(content)
 
     def show_config(self):
-        self._print(100 * '=' + '\n')
-        self._print('> training arguments:\n')
+        self.log.info(100 * '=')
+        self.log.info('> training arguments:')
         for arg in vars(self.opt):
-            self._print('>>> {0}: {1}\n'.format(arg, getattr(self.opt, arg)))
-        self._print(100 * '=' + '\n')
+            self.log.info('>>> {0}: {1}'.format(arg, getattr(self.opt, arg)))
+        self.log.info(100 * '=')
 
-    def cal_metrics(self):
-        with torch.no_grad():
-            self.bleu3.test_text = tensor_to_tokens(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size),
-                                                    self.index_word_dict)
-        bleu3_score = self.bleu3.get_score()
-        # bleu3_score = 0
+    def cal_metrics(self, fmt_str=False):
+        self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
+        self.bleu3.test_text = tensor_to_tokens(self.gen_data.target, self.index_word_dict)
+        bleu3_score = self.bleu3.get_score(ignore=True)
 
         gen_nll = self.eval_gen(self.gen,
                                 self.oracle_data.loader,
                                 self.mle_criterion)
+
+        if fmt_str:
+            return 'BLEU-3 = %.4f, gen_NLL = %.4f,' % (bleu3_score, gen_nll)
+
         return bleu3_score, gen_nll
 
     def _save(self, phrase, epoch):

@@ -1,8 +1,18 @@
+import logging
+import sys
+from time import strftime, gmtime
+
 import numpy as np
+import torch
+import torch.nn as nn
+
+import config as cfg
+from models.Oracle import Oracle
 
 
 class Signal:
     """Running signal to control training process"""
+
     def __init__(self, signal_file):
         self.signal_file = signal_file
         self.pre_sig = True
@@ -18,6 +28,50 @@ class Signal:
     def read_signal(self):
         with open(self.signal_file, 'r') as fin:
             return eval(fin.read())
+
+
+def create_logger(name, silent=False, to_disk=False, log_file=None):
+    """Logger wrapper
+    """
+    # setup logger
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG)
+    log.propagate = False
+    formatter = logging.Formatter(fmt='%(message)s', datefmt='%Y/%m/%d %I:%M:%S')
+    if not silent:
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(formatter)
+        log.addHandler(ch)
+    if to_disk:
+        log_file = log_file if log_file is not None else strftime("log/log_%m%d_%H%M.txt", gmtime())
+        if type(log_file) == list:
+            for filename in log_file:
+                fh = logging.FileHandler(filename, mode='w')
+                fh.setLevel(logging.INFO)
+                fh.setFormatter(formatter)
+                log.addHandler(fh)
+        if type(log_file) == str:
+            fh = logging.FileHandler(log_file, mode='w')
+            fh.setLevel(logging.INFO)
+            fh.setFormatter(formatter)
+            log.addHandler(fh)
+    return log
+
+
+def create_oracle():
+    oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
+                    cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
+    oracle = oracle.cuda()
+
+    torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
+
+    # large
+    torch.save(oracle.sample(cfg.samples_num, 4 * cfg.batch_size),
+               cfg.oracle_samples_path.format(cfg.samples_num))
+    # small
+    torch.save(oracle.sample(cfg.samples_num // 2, 4 * cfg.batch_size),
+               cfg.oracle_samples_path.format(cfg.samples_num // 2))
 
 
 # A function to set up different temperature control policies
@@ -42,3 +96,60 @@ def get_fixed_temperature(temper, i, N, adapt):
         raise Exception("Unknown adapt type!")
 
     return temper_var_np
+
+
+def get_losses(d_out_real, d_out_fake, loss_type='JS'):
+    bce_loss = nn.BCEWithLogitsLoss()
+
+    if loss_type == 'standard':  # the non-satuating GAN loss
+        d_loss_real = bce_loss(d_out_real, torch.ones_like(d_out_real))
+        d_loss_fake = bce_loss(d_out_fake, torch.zeros_like(d_out_fake))
+        d_loss = d_loss_real + d_loss_fake
+
+        g_loss = bce_loss(d_out_fake, torch.ones_like(d_out_fake))
+
+    elif loss_type == 'JS':  # the vanilla GAN loss
+        d_loss_real = bce_loss(d_out_real, torch.ones_like(d_out_real))
+        d_loss_fake = bce_loss(d_out_fake, torch.zeros_like(d_out_fake))
+        d_loss = d_loss_real + d_loss_fake
+
+        g_loss = -d_loss_fake
+
+    elif loss_type == 'KL':  # the GAN loss implicitly minimizing KL-divergence
+        d_loss_real = bce_loss(d_out_real, torch.ones_like(d_out_real))
+        d_loss_fake = bce_loss(d_out_fake, torch.zeros_like(d_out_fake))
+        d_loss = d_loss_real + d_loss_fake
+
+        g_loss = torch.mean(-d_out_fake)
+
+    elif loss_type == 'hinge':  # the hinge loss
+        d_loss_real = torch.mean(nn.ReLU(1.0 - d_out_real))
+        d_loss_fake = torch.mean(nn.ReLU(1.0 + d_out_fake))
+        d_loss = d_loss_real + d_loss_fake
+
+        g_loss = -torch.mean(d_out_fake)
+
+    elif loss_type == 'tv':  # the total variation distance
+        d_loss = torch.mean(nn.Tanh(d_out_fake) - nn.Tanh(d_out_real))
+        g_loss = torch.mean(-nn.Tanh(d_out_fake))
+
+    elif loss_type == 'RSGAN':  # relativistic standard GAN
+        d_loss = bce_loss(d_out_real - d_out_fake, torch.ones_like(d_out_real))
+        g_loss = bce_loss(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
+
+    else:
+        raise NotImplementedError("Divergence '%s' is not implemented" % loss_type)
+
+    return g_loss, d_loss
+
+
+# Implemented by @ruotianluo
+# See https://discuss.pytorch.org/t/implementing-truncated-normal-initializer/4778/15
+def truncated_normal_(tensor, mean=0, std=1):
+    size = tensor.shape
+    tmp = tensor.new_empty(size + (4,)).normal_()
+    valid = (tmp < 2) & (tmp > -2)
+    ind = valid.max(-1, keepdim=True)[1]
+    tensor.data.copy_(tmp.gather(-1, ind).squeeze(-1))
+    tensor.data.mul_(std).add_(mean)
+    return tensor

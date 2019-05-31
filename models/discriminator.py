@@ -50,9 +50,10 @@ class CNNDiscriminator(nn.Module):
 
         return pred
 
-    def init_parameters(self):
+    def init_params(self):
         for param in self.parameters():
-            param.data.uniform_(-0.05, 0.05)
+            if param.requires_grad:
+                torch.nn.init.normal_(param, std=0.1)
 
 
 class GRUDiscriminator(nn.Module):
@@ -112,4 +113,5 @@ class GRUDiscriminator(nn.Module):
 
     def init_params(self):
         for param in self.parameters():
-            param.data.uniform_(-0.05, 0.05)
+            if param.requires_grad:
+                torch.nn.init.normal_(param, std=0.1)
