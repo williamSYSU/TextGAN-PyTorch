@@ -26,7 +26,7 @@ else:
     quit()
 
 # Executables
-executable = '/home/sysu2018/.virtualenvs/lzw-pytorch/bin/python'
+executable = 'python'
 
 # =====Program=====
 if_test = int(False)
