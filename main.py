@@ -82,19 +82,17 @@ if __name__ == '__main__':
     if cfg.if_real_data:
         from instructor.real_data.relgan_instructor import RelGANInstructor
 
+        # TODO
         LeakGANInstructor = None
         SeqGANInstructor = None
-        CatGANInstructor = None
     else:
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
-        from instructor.oracle_data.catgan_instructor import CatGANInstructor
     instruction_dict = {
         'leakgan': LeakGANInstructor,
         'seqgan': SeqGANInstructor,
         'relgan': RelGANInstructor,
-        'catgan': CatGANInstructor,
     }
 
     inst = instruction_dict[cfg.run_model](opt)

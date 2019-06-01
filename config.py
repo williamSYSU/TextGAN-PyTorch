@@ -4,7 +4,7 @@
 # @FileName     : config.py
 # @Time         : Created at 2019-03-18
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 from time import strftime, localtime
@@ -21,8 +21,7 @@ oracle_pretrain = True  # True
 gen_pretrain = False
 dis_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan
-k_label = 2  # num of labels
+run_model = 'relgan'  # seqgan, leakgan, relgan
 use_truncated_normal = True
 
 # =====Oracle or Real, type=====
@@ -36,10 +35,10 @@ temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 2
 
 # =====Basic Train=====
-samples_num = 5000  # 10000
-MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
+samples_num = 10000  # 10000
+MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
-inter_epoch = 15  # LeakGAN-10
+inter_epoch = 10  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
 start_letter = 1
@@ -49,10 +48,9 @@ padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
 gen_adv_lr = 1e-4  # RelGAN-1e-4
 dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
-clas_lr = 1e-4
 clip_norm = 5.0
 
-pre_log_step = 20
+pre_log_step = 10
 adv_log_step = 20
 
 train_data = 'dataset/' + dataset + '.txt'
@@ -112,8 +110,6 @@ save_model_root = save_root + 'models/'
 
 oracle_state_dict_path = 'pretrain/oracle_data/oracle_lstm.pt'
 oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}.pt'
-multi_oracle_state_dict_path = 'pretrain/oracle_data/oracle{}_lstm.pt'
-multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
 
 pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
 pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
