@@ -63,6 +63,7 @@ def get_log_data(filename):
 
 if __name__ == '__main__':
     log_file_root = '../log/'
+    # Custom your log files in lists, no more than len(color_list)
     log_file_list = ['log_0531_1230']
 
     color_id = 0
