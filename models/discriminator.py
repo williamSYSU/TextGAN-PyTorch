@@ -22,7 +22,7 @@ class CNNDiscriminator(nn.Module):
         self.feature2out = nn.Linear(self.feature_dim, 2)
         self.dropout = nn.Dropout(dropout)
 
-        self.init_parameters()
+        self.init_params()
 
     def forward(self, inp):
         """
@@ -73,7 +73,7 @@ class GRUDiscriminator(nn.Module):
         self.feature2out = nn.Linear(feature_dim, 2)
         self.dropout = nn.Dropout(dropout)
 
-        self.init_parameters()
+        self.init_params()
 
     def init_hidden(self, batch_size):
         h = autograd.Variable(torch.zeros(2 * 2 * 1, batch_size, self.hidden_dim))
