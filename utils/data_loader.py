@@ -124,7 +124,7 @@ class DisDataIter:
 
     def prepare(self, pos_samples, neg_samples, gpu=False):
         """Build inp and target"""
-        inp = torch.cat((pos_samples, neg_samples), dim=0).long()
+        inp = torch.cat((pos_samples, neg_samples), dim=0).long().detach()  # !!!need .detach()
         target = torch.ones(pos_samples.size(0) + neg_samples.size(0)).long()
         target[pos_samples.size(0):] = 0
 

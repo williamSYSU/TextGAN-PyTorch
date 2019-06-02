@@ -377,3 +377,8 @@ class LeakGAN_G(nn.Module):
         work_params += list(self.goal2goal.parameters())
 
         return mana_params, work_params
+
+    def init_params(self):
+        for param in self.parameters():
+            if param.requires_grad:
+                torch.nn.init.normal_(param, std=0.1)
