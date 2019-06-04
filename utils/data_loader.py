@@ -125,11 +125,11 @@ class DisDataIter:
     def prepare(self, pos_samples, neg_samples, gpu=False):
         """Build inp and target"""
         inp = torch.cat((pos_samples, neg_samples), dim=0).long().detach()  # !!!need .detach()
-        target = torch.ones(pos_samples.size(0) + neg_samples.size(0)).long()
+        target = torch.ones(inp.size(0)).long()
         target[pos_samples.size(0):] = 0
 
         # shuffle
-        perm = torch.randperm(target.size(0))
+        perm = torch.randperm(inp.size(0))
         target = target[perm]
         inp = inp[perm]
 

@@ -39,6 +39,9 @@ class SeqGANInstructor(BasicInstructor):
 
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
+        self.dis_data = DisDataIter(self.gen_data.random_batch()['target'], self.oracle_data.random_batch()['target'])
+        self.dis_eval_data = DisDataIter(self.gen_data.random_batch()['target'],
+                                         self.oracle_data.random_batch()['target'])
 
     def _run(self):
         # =====PRE-TRAINING=====
@@ -54,7 +57,7 @@ class SeqGANInstructor(BasicInstructor):
         self.log.info('Starting Discriminator Training...')
         if not cfg.dis_pretrain:
             self.train_discriminator(cfg.d_step, cfg.d_epoch)
-            if cfg.if_save:
+            if cfg.if_save and not cfg.if_test:
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
                 print('Save pretrain_generator discriminator: {}'.format(cfg.pretrained_dis_path))
 
@@ -96,7 +99,6 @@ class SeqGANInstructor(BasicInstructor):
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
-
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
                     if cfg.if_save and not cfg.if_test:
@@ -115,8 +117,7 @@ class SeqGANInstructor(BasicInstructor):
         rollout_func = rollout.ROLLOUT(self.gen, cfg.CUDA)
         total_g_loss = 0
         for step in range(g_step):
-            with torch.no_grad():
-                inp, target = self.gen_data.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
+            inp, target = self.gen_data.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
             # =====Train=====
             rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
@@ -124,8 +125,8 @@ class SeqGANInstructor(BasicInstructor):
             self.optimize(self.gen_opt, adv_loss)
             total_g_loss += adv_loss.item()
 
-            # =====Test=====
-            self.log.info('[ADV-GEN]: g_loss = %.4f, %s' % (total_g_loss, self.cal_metrics(fmt_str=True)))
+        # =====Test=====
+        self.log.info('[ADV-GEN]: g_loss = %.4f, %s' % (total_g_loss, self.cal_metrics(fmt_str=True)))
 
     def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
         """
@@ -133,25 +134,23 @@ class SeqGANInstructor(BasicInstructor):
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
         """
         # prepare loader for validate
-        with torch.no_grad():
-            pos_val = self.oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
-            neg_val = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
-            dis_val_data = DisDataIter(pos_val, neg_val)
+        global d_loss, train_acc
+        pos_val = self.oracle_samples
+        neg_val = self.gen.sample(cfg.samples_num, cfg.batch_size)
+        self.dis_eval_data.reset(pos_val, neg_val)
 
         for step in range(d_step):
             # prepare loader for training
-            with torch.no_grad():
-                pos_samples = self.oracle_samples
-                neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
-                dis_train_data = DisDataIter(pos_samples, neg_samples)
+            pos_samples = self.oracle_samples
+            neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size)
+            self.dis_data.reset(pos_samples, neg_samples)
 
             for epoch in range(d_epoch):
                 # =====Train=====
-                d_loss, train_acc = self.train_dis_epoch(self.dis, dis_train_data.loader, self.dis_criterion,
+                d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
-                # =====Test=====
-                _, eval_acc = self.eval_dis(self.dis, dis_val_data.loader, self.dis_criterion)
-
-                self.log.info('[%s-DIS] d_step %d, d_epoch %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
-                    phrase, step, epoch, d_loss, train_acc, eval_acc))
+            # =====Test=====
+            _, eval_acc = self.eval_dis(self.dis, self.dis_eval_data.loader, self.dis_criterion)
+            self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
+                phrase, step, d_loss, train_acc, eval_acc))

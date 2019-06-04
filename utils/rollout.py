@@ -11,7 +11,7 @@ import torch
 import torch.nn.functional as F
 
 
-class ROLLOUT():
+class ROLLOUT:
     def __init__(self, gen, gpu=True):
         self.gen = gen
         self.max_seq_len = gen.max_seq_len
@@ -134,18 +134,19 @@ class ROLLOUT():
         """
         batch_size = sentences.size(0)
         rewards = torch.zeros([rollout_num * self.max_seq_len, batch_size]).float()
+        if self.gpu:
+            rewards = rewards.cuda()
         idx = 0
         for i in range(rollout_num):
             for given_num in range(1, self.max_seq_len + 1):
                 samples = self.rollout_mc_search(sentences, given_num)
-                out = dis(samples)
+                out = dis.forward(samples)
                 out = F.softmax(out, dim=-1)
                 reward = out[:, current_k + 1]
                 rewards[idx] = reward
                 idx += 1
 
-        rewards = torch.Tensor(rewards).cuda()
-        rewards = torch.sum(rewards, dim=0) / (rollout_num * self.max_seq_len)
+        rewards = torch.mean(rewards, dim=0)
         return rewards
 
     def get_reward_leakgan(self, sentences, rollout_num, dis, current_k):
@@ -160,6 +161,8 @@ class ROLLOUT():
         """
         batch_size = sentences.size(0)
         rewards = torch.zeros([rollout_num * (self.max_seq_len // self.step_size), batch_size]).float()
+        if self.gpu:
+            rewards = rewards.cuda()
         idx = 0
         for i in range(rollout_num):
             for t in range(self.max_seq_len // self.step_size):
@@ -171,10 +174,9 @@ class ROLLOUT():
                 rewards[idx] = reward
                 idx += 1
 
-        rewards = torch.Tensor(rewards).cuda()
-
         rewards = rewards.view(batch_size, self.max_seq_len // self.step_size, rollout_num)
-        rewards = torch.sum(rewards, dim=-1) / rollout_num
+        # rewards = torch.sum(rewards, dim=-1) / rollout_num
+        rewards = torch.mean(rewards, dim=-1)
         return rewards
 
     def get_token_reward(self, sentences, rollout_num, dis, current_k, given_num):

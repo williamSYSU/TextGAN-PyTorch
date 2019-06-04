@@ -83,7 +83,7 @@ args = [
     '--model_type', model_type,
     '--loss_type', loss_type,
     '--cuda', CUDA,
-    '--device', gpu_id,
+    # '--device', gpu_id,   # comment for auto GPU
     '--shuffle', data_shuffle,
 
     # Basic Train
