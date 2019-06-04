@@ -4,13 +4,16 @@ TextGAN is a PyTorch framework for Generative Adversarial Networks (GANs) based 
 
 For now, only few GANs-based models are implemented, including [SeqGAN (Yu et. al, 2017)](https://arxiv.org/abs/1609.05473), [LeakGAN (Guo et. al, 2018)](https://arxiv.org/abs/1709.08624) and [RelGAN (Nie et. al, 2018)](https://openreview.net/forum?id=rJedV3R5tm). If you find any mistake in my implementation, please let me know! Also, please feel free to contribute to this repository if you want to add other models.
 
-## Requirement
+## Requirements
 
 - PyTorch >= 1.0.0
 - Python 3.6
 - Numpy 1.14.5
 - CUDA 7.5+ (For GPU)
 - nltk 3.4
+- tqdm 4.32.1
+
+To install, run `pip install -r requirements.txt`. In case of CUDA problems, consult the official PyTorch [Get Started guide](https://pytorch.org/get-started/locally/).
 
 ## Implemented Models and Original Papers
 
