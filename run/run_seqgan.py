@@ -52,13 +52,13 @@ ADV_train_epoch = 200
 batch_size = 32
 max_seq_len = 20
 gen_lr = 0.01
-dis_lr = 5e-5
+dis_lr = 1e-4
 pre_log_step = 5
 adv_log_step = 5
 
 # =====Generator=====
 ADV_g_step = 1
-rollout_num = 4
+rollout_num = 32
 gen_embed_dim = 32
 gen_hidden_dim = 32
 
