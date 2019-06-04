@@ -49,10 +49,10 @@ temperature = 1
 samples_num = 10000
 MLE_train_epoch = 80
 ADV_train_epoch = 200
-batch_size = 64
+batch_size = 32
 max_seq_len = 20
 gen_lr = 0.01
-dis_lr = 1e-4
+dis_lr = 5e-5
 pre_log_step = 5
 adv_log_step = 5
 

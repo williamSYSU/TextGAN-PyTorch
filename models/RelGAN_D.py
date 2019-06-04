@@ -42,7 +42,7 @@ class RelGAN_D(CNNDiscriminator):
         self.out2logits = nn.Linear(100, 1)
         self.dropout = nn.Dropout(dropout)
 
-        self.init_parameters()
+        self.init_params()
 
     def forward(self, inp):
         """
