@@ -134,8 +134,8 @@ class SeqGANInstructor(BasicInstructor):
         """
         # prepare loader for validate
         global d_loss, train_acc
-        pos_val = self.oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
-        neg_val = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
+        pos_val = self.oracle.sample(8 * cfg.batch_size, 4 * cfg.batch_size)
+        neg_val = self.gen.sample(8 * cfg.batch_size, 4 * cfg.batch_size)
         self.dis_eval_data.reset(pos_val, neg_val)
 
         for step in range(d_step):
