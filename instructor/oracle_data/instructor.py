@@ -147,6 +147,7 @@ class BasicInstructor:
         opt.step()
 
     def show_config(self):
+        """Show parser parameters settings"""
         self.log.info(100 * '=')
         self.log.info('> training arguments:')
         for arg in vars(self.opt):
@@ -154,6 +155,10 @@ class BasicInstructor:
         self.log.info(100 * '=')
 
     def cal_metrics(self, fmt_str=False):
+        """
+        Calculate metrics
+        :param fmt_str: if return format string for logging
+        """
         self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
         oracle_nll = self.eval_gen(self.oracle,
                                    self.gen_data.loader,
@@ -167,6 +172,7 @@ class BasicInstructor:
         return oracle_nll, gen_nll
 
     def _save(self, phrase, epoch):
+        """Save model state dict and generator's samples"""
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size)
