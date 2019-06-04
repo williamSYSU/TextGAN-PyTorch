@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 import config as cfg
+from utils.helpers import truncated_normal_
 
 
 class LSTMGenerator(nn.Module):
@@ -75,7 +76,10 @@ class LSTMGenerator(nn.Module):
     def init_params(self):
         for param in self.parameters():
             if param.requires_grad:
-                torch.nn.init.normal_(param, std=0.1)
+                if cfg.use_truncated_normal:
+                    truncated_normal_(param, std=0.1)
+                else:
+                    torch.nn.init.normal_(param, std=0.1)
 
     def init_oracle(self):
         for param in self.parameters():

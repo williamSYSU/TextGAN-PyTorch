@@ -3,6 +3,9 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 
+import config as cfg
+from utils.helpers import truncated_normal_
+
 
 class CNNDiscriminator(nn.Module):
     def __init__(self, embed_dim, vocab_size, filter_sizes, num_filters, padding_idx, gpu=False,
@@ -53,7 +56,10 @@ class CNNDiscriminator(nn.Module):
     def init_params(self):
         for param in self.parameters():
             if param.requires_grad:
-                torch.nn.init.normal_(param, std=0.1)
+                if cfg.use_truncated_normal:
+                    truncated_normal_(param, std=0.1)
+                else:
+                    torch.nn.init.normal_(param, std=0.1)
 
 
 class GRUDiscriminator(nn.Module):
@@ -114,4 +120,7 @@ class GRUDiscriminator(nn.Module):
     def init_params(self):
         for param in self.parameters():
             if param.requires_grad:
-                torch.nn.init.normal_(param, std=0.1)
+                if cfg.use_truncated_normal:
+                    truncated_normal_(param, std=0.1)
+                else:
+                    torch.nn.init.normal_(param, std=0.1)
