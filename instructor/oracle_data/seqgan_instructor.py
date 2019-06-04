@@ -46,16 +46,16 @@ class SeqGANInstructor(BasicInstructor):
     def _run(self):
         # =====PRE-TRAINING=====
         # TRAIN GENERATOR
-        self.log.info('Starting Generator MLE Training...')
         if not cfg.gen_pretrain:
+            self.log.info('Starting Generator MLE Training...')
             self.pretrain_generator(cfg.MLE_train_epoch)
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
                 print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
 
         # =====TRAIN DISCRIMINATOR======
-        self.log.info('Starting Discriminator Training...')
         if not cfg.dis_pretrain:
+            self.log.info('Starting Discriminator Training...')
             self.train_discriminator(cfg.d_step, cfg.d_epoch)
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
@@ -63,7 +63,6 @@ class SeqGANInstructor(BasicInstructor):
 
         # =====ADVERSARIAL TRAINING=====
         self.log.info('Starting Adversarial Training...')
-
         self.log.info('Initial generator: %s,' % (self.cal_metrics(fmt_str=True)))
 
         for adv_epoch in range(cfg.ADV_train_epoch):
@@ -135,14 +134,14 @@ class SeqGANInstructor(BasicInstructor):
         """
         # prepare loader for validate
         global d_loss, train_acc
-        pos_val = self.oracle_samples
-        neg_val = self.gen.sample(cfg.samples_num, cfg.batch_size)
+        pos_val = self.oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
+        neg_val = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
         self.dis_eval_data.reset(pos_val, neg_val)
 
         for step in range(d_step):
             # prepare loader for training
             pos_samples = self.oracle_samples
-            neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size)
+            neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
             self.dis_data.reset(pos_samples, neg_samples)
 
             for epoch in range(d_epoch):
