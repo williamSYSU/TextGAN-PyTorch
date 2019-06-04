@@ -27,7 +27,7 @@ else:
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = 'python'
+executable = '/home/sysu2018/.virtualenvs/lzw-pytorch/bin/python'
 
 # =====Program=====
 if_test = int(False)
