@@ -14,8 +14,8 @@ import torch
 import config as cfg
 
 
-# tokenlize the file
 def get_tokenlized(file):
+    """tokenlize the file"""
     tokenlized = list()
     with open(file) as raw:
         for text in raw:
@@ -24,8 +24,8 @@ def get_tokenlized(file):
     return tokenlized
 
 
-# get word set
 def get_word_list(tokens):
+    """get word set"""
     word_set = list()
     for sentence in tokens:
         for word in sentence:
@@ -33,8 +33,8 @@ def get_word_list(tokens):
     return list(set(word_set))
 
 
-# get word_index_dict and index_word_dict
 def get_dict(word_set):
+    """get word_index_dict and index_word_dict"""
     word_index_dict = dict()
     index_word_dict = dict()
 
@@ -51,8 +51,8 @@ def get_dict(word_set):
     return word_index_dict, index_word_dict
 
 
-# get sequence length and dict size
 def text_precess(train_text_loc, test_text_loc=None):
+    """get sequence length and dict size"""
     train_tokens = get_tokenlized(train_text_loc)
     if test_text_loc is None:
         test_tokens = list()
@@ -73,8 +73,11 @@ def text_precess(train_text_loc, test_text_loc=None):
 
 
 # ========================================================================
-# init dictionary
 def init_dict():
+    """
+    Initialize dictionaries of dataset, please note that '0': padding_idx, '1': start_letter.
+    Finally save dictionary files locally.
+    """
     # image_coco
     tokens = get_tokenlized('dataset/image_coco.txt')
     tokens.extend(get_tokenlized('dataset/testdata/image_coco_test.txt'))
@@ -98,12 +101,12 @@ def init_dict():
         dictout.write(str(index_word_dict))
 
 
-# load dictionary from file
 def load_dict(dataset):
+    """Load dictionary from local files"""
     iw_path = 'dataset/{}_iw_dict.txt'.format(dataset)
     wi_path = 'dataset/{}_wi_dict.txt'.format(dataset)
 
-    if not os.path.exists(iw_path) or not os.path.exists(iw_path):
+    if not os.path.exists(iw_path) or not os.path.exists(iw_path):  # initialize dictionaries
         init_dict()
 
     with open(iw_path, 'r') as dictin:
@@ -115,6 +118,7 @@ def load_dict(dataset):
 
 
 def tensor_to_tokens(tensor, dictionary):
+    """transform Tensor to word tokens"""
     tokens = []
     for sent in tensor:
         sent_token = []
@@ -127,6 +131,7 @@ def tensor_to_tokens(tensor, dictionary):
 
 
 def tokens_to_tensor(tokens, dictionary):
+    """transform word tokens to Tensor"""
     tensor = []
     for sent in tokens:
         sent_ten = []
@@ -142,6 +147,7 @@ def tokens_to_tensor(tokens, dictionary):
 
 
 def padding_token(tokens):
+    """pad sentences with padding_token"""
     pad_tokens = []
     for sent in tokens:
         sent_token = []
@@ -157,6 +163,7 @@ def padding_token(tokens):
 
 
 def write_tokens(filename, tokens):
+    """Write word tokens to a local file (For Real data)"""
     with open(filename, 'w') as fout:
         for sent in tokens:
             fout.write(' '.join(sent))
@@ -164,6 +171,7 @@ def write_tokens(filename, tokens):
 
 
 def write_tensor(filename, tensor):
+    """Write Tensor to a local file (For Oracle data)"""
     with open(filename, 'w') as fout:
         for sent in tensor:
             fout.write(' '.join([str(i) for i in sent.tolist()]))
