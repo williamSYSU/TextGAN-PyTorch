@@ -7,25 +7,29 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import sys
-
 import torch
 
 import config as cfg
-from utils.helpers import Signal
+from utils.data_loader import GenDataIter
+from utils.helpers import Signal, create_logger
 from utils.text_process import load_dict, write_tokens, tensor_to_tokens
 
 
 class BasicInstructor:
     def __init__(self, opt):
-        self.log = open(cfg.log_filename + '.txt', 'w') if not cfg.if_test else None
-        self.model_log = open(cfg.save_root + 'log.txt', 'w') if not cfg.if_test else None
+        self.log = create_logger(__name__, silent=False, to_disk=False if cfg.if_test else True,
+                                 log_file=None if cfg.if_test
+                                 else [cfg.log_filename, cfg.save_root + 'log.txt'])
         self.sig = Signal(cfg.signal_file)
         self.opt = opt
         self.show_config()
 
         # load dictionary
         self.word_index_dict, self.index_word_dict = load_dict(cfg.dataset)
+
+        # Dataloader
+        self.oracle_data = GenDataIter(cfg.train_data)
+        self.test_data = GenDataIter(cfg.test_data)
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -57,7 +61,6 @@ class BasicInstructor:
             hidden = model.init_hidden(data_loader.batch_size)
             pred = model.forward(inp, hidden)
             loss = criterion(pred, target.view(-1))
-            # self.optimize(optimizer, loss)
             self.optimize(optimizer, loss, model)
             total_loss += loss.item()
         return total_loss / len(data_loader)
@@ -65,6 +68,7 @@ class BasicInstructor:
     def train_dis_epoch(self, model, data_loader, criterion, optimizer):
         total_loss = 0
         total_acc = 0
+        total_num = 0
         for i, data in enumerate(data_loader):
             inp, target = data['input'], data['target']
             if cfg.CUDA:
@@ -72,13 +76,14 @@ class BasicInstructor:
 
             pred = model.forward(inp)
             loss = criterion(pred, target)
-            self.optimize(optimizer, loss)
+            self.optimize(optimizer, loss, model)
 
             total_loss += loss.item()
             total_acc += torch.sum((pred.argmax(dim=-1) == target)).item()
+            total_num += inp.size(0)
 
         total_loss /= len(data_loader)
-        total_acc /= len(data_loader)
+        total_acc /= total_num
         return total_loss, total_acc
 
     @staticmethod
@@ -100,6 +105,7 @@ class BasicInstructor:
     def eval_dis(model, data_loader, criterion):
         total_loss = 0
         total_acc = 0
+        total_num = 0
         with torch.no_grad():
             for i, data in enumerate(data_loader):
                 inp, target = data['input'], data['target']
@@ -108,12 +114,11 @@ class BasicInstructor:
 
                 pred = model.forward(inp)
                 loss = criterion(pred, target)
-
                 total_loss += loss.item()
                 total_acc += torch.sum((pred.argmax(dim=-1) == target)).item()
-
+                total_num += inp.size(0)
             total_loss /= len(data_loader)
-            total_acc /= len(data_loader)
+            total_acc /= total_num
         return total_loss, total_acc
 
     @staticmethod
@@ -129,13 +134,6 @@ class BasicInstructor:
         loss.backward(retain_graph=retain_graph)
         opt.step()
 
-    def _print(self, content):
-        print(content, end='')
-        sys.stdout.flush()
-        if not cfg.if_test:
-            self.log.write(content)
-            self.model_log.write(content)
-
     def show_config(self):
         self.log.info(100 * '=')
         self.log.info('> training arguments:')
@@ -144,9 +142,13 @@ class BasicInstructor:
         self.log.info(100 * '=')
 
     def cal_metrics(self, fmt_str=False):
+        """
+        Calculate metrics
+        :param fmt_str: if return format string for logging
+        """
         self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
         self.bleu3.test_text = tensor_to_tokens(self.gen_data.target, self.index_word_dict)
-        bleu3_score = self.bleu3.get_score(ignore=True)
+        bleu3_score = self.bleu3.get_score(ignore=False)
 
         gen_nll = self.eval_gen(self.gen,
                                 self.oracle_data.loader,
@@ -154,10 +156,10 @@ class BasicInstructor:
 
         if fmt_str:
             return 'BLEU-3 = %.4f, gen_NLL = %.4f,' % (bleu3_score, gen_nll)
-
         return bleu3_score, gen_nll
 
     def _save(self, phrase, epoch):
+        """Save model state dict and generator's samples"""
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size)

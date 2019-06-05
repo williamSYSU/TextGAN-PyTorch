@@ -2,7 +2,7 @@
 # @Author       : William
 # @Project      : TextGAN-william
 # @FileName     : seqgan_instructor.py
-# @Time         : Created at 2019-04-25
+# @Time         : Created at 2019-06-05
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
@@ -12,11 +12,13 @@ import torch.nn as nn
 import torch.optim as optim
 
 import config as cfg
-from instructor.oracle_data.instructor import BasicInstructor
+from instructor.real_data.instructor import BasicInstructor
+from metrics.bleu import BLEU
 from models.SeqGAN_D import SeqGAN_D
 from models.SeqGAN_G import SeqGAN_G
 from utils import rollout
 from utils.data_loader import GenDataIter, DisDataIter
+from utils.text_process import tensor_to_tokens
 
 
 class SeqGANInstructor(BasicInstructor):
@@ -40,8 +42,11 @@ class SeqGANInstructor(BasicInstructor):
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
         self.dis_data = DisDataIter(self.gen_data.random_batch()['target'], self.oracle_data.random_batch()['target'])
-        self.dis_eval_data = DisDataIter(self.gen_data.random_batch()['target'],
-                                         self.oracle_data.random_batch()['target'])
+
+        # Metrics
+        self.bleu3 = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                          real_text=tensor_to_tokens(self.test_data.target, self.index_word_dict),
+                          gram=3)
 
     def _run(self):
         # =====PRE-TRAINING=====
@@ -131,14 +136,9 @@ class SeqGANInstructor(BasicInstructor):
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
         """
         # prepare loader for validate
-        global d_loss, train_acc
-        pos_val = self.oracle.sample(8 * cfg.batch_size, 4 * cfg.batch_size)
-        neg_val = self.gen.sample(8 * cfg.batch_size, 4 * cfg.batch_size)
-        self.dis_eval_data.reset(pos_val, neg_val)
-
         for step in range(d_step):
             # prepare loader for training
-            pos_samples = self.oracle_samples  # not re-sample the Oracle data
+            pos_samples = self.oracle_data.target
             neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
             self.dis_data.reset(pos_samples, neg_samples)
 
@@ -148,6 +148,5 @@ class SeqGANInstructor(BasicInstructor):
                                                          self.dis_opt)
 
             # =====Test=====
-            _, eval_acc = self.eval_dis(self.dis, self.dis_eval_data.loader, self.dis_criterion)
-            self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
-                phrase, step, d_loss, train_acc, eval_acc))
+            self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f,' % (
+                phrase, step, d_loss, train_acc))

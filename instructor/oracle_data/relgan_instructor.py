@@ -112,11 +112,10 @@ class RelGANInstructor(BasicInstructor):
     def adv_train_generator(self, g_step):
         total_loss = 0
         for step in range(g_step):
-            real_samples = self.oracle_data.random_batch()['target']
+            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
             gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
-            real_samples = F.one_hot(real_samples, cfg.vocab_size).float()
 
             # =====Train=====
             d_out_real = self.dis(real_samples)
@@ -131,11 +130,10 @@ class RelGANInstructor(BasicInstructor):
     def adv_train_discriminator(self, d_step):
         total_loss = 0
         for step in range(d_step):
-            real_samples = self.oracle_data.random_batch()['target']
+            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
             gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
-            real_samples = F.one_hot(real_samples, cfg.vocab_size).float()
 
             # =====Train=====
             d_out_real = self.dis(real_samples)
@@ -152,6 +150,7 @@ class RelGANInstructor(BasicInstructor):
 
     @staticmethod
     def optimize(opt, loss, model=None, retain_graph=False):
+        """Add clip_grad_norm_"""
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
         if model is not None:

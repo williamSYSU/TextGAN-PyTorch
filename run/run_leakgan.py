@@ -57,7 +57,7 @@ max_seq_len = 20
 gen_lr = 0.0015
 dis_lr = 5e-5
 pre_log_step = 1
-adv_log_step = 5
+adv_log_step = 1
 
 # =====Generator=====
 ADV_g_step = 1

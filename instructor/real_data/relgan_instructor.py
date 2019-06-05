@@ -42,11 +42,8 @@ class RelGANInstructor(BasicInstructor):
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.adv_criterion = nn.BCEWithLogitsLoss()
-        self.dis_criterion = nn.CrossEntropyLoss()  # For SeqGAN CNN Discriminator
 
         # DataLoader
-        self.oracle_data = GenDataIter(cfg.train_data)
-        self.test_data = GenDataIter(cfg.test_data)
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
         # Metrics

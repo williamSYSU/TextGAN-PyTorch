@@ -30,8 +30,7 @@ class Signal:
 
 
 def create_logger(name, silent=False, to_disk=False, log_file=None):
-    """Logger wrapper
-    """
+    """Create a new logger"""
     # setup logger
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG)
@@ -59,7 +58,9 @@ def create_logger(name, silent=False, to_disk=False, log_file=None):
 
 
 def create_oracle():
+    """Create a new Oracle model and Oracle's samples"""
     from models.Oracle import Oracle
+    print('Creating Oracle...')
     oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
                     cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
     oracle = oracle.cuda()
@@ -74,8 +75,8 @@ def create_oracle():
                cfg.oracle_samples_path.format(cfg.samples_num // 2))
 
 
-# A function to set up different temperature control policies
 def get_fixed_temperature(temper, i, N, adapt):
+    """A function to set up different temperature control policies"""
     N = 5000
 
     if adapt == 'no':
@@ -99,6 +100,7 @@ def get_fixed_temperature(temper, i, N, adapt):
 
 
 def get_losses(d_out_real, d_out_fake, loss_type='JS'):
+    """Get different adversarial losses according to given loss_type"""
     bce_loss = nn.BCEWithLogitsLoss()
 
     if loss_type == 'standard':  # the non-satuating GAN loss
@@ -143,9 +145,11 @@ def get_losses(d_out_real, d_out_fake, loss_type='JS'):
     return g_loss, d_loss
 
 
-# Implemented by @ruotianluo
-# See https://discuss.pytorch.org/t/implementing-truncated-normal-initializer/4778/15
 def truncated_normal_(tensor, mean=0, std=1):
+    """
+    Implemented by @ruotianluo
+    See https://discuss.pytorch.org/t/implementing-truncated-normal-initializer/4778/15
+    """
     size = tensor.shape
     tmp = tensor.new_empty(size + (4,)).normal_()
     valid = (tmp < 2) & (tmp > -2)

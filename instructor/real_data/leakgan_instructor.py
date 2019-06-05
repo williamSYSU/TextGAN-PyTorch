@@ -2,7 +2,7 @@
 # @Author       : William
 # @Project      : TextGAN-william
 # @FileName     : leakgan_instructor.py
-# @Time         : Created at 2019-04-25
+# @Time         : Created at 2019-06-05
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
@@ -12,12 +12,13 @@ import torch.nn as nn
 import torch.optim as optim
 
 import config as cfg
-from instructor.oracle_data.instructor import BasicInstructor
+from instructor.real_data.instructor import BasicInstructor
+from metrics.bleu import BLEU
 from models.LeakGAN_D import LeakGAN_D
 from models.LeakGAN_G import LeakGAN_G
 from utils import rollout
 from utils.data_loader import GenDataIter, DisDataIter
-from utils.text_process import write_tensor
+from utils.text_process import tensor_to_tokens, write_tokens
 
 
 class LeakGANInstructor(BasicInstructor):
@@ -45,8 +46,11 @@ class LeakGANInstructor(BasicInstructor):
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis))
         self.dis_data = DisDataIter(self.gen_data.random_batch()['target'], self.oracle_data.random_batch()['target'])
-        self.dis_eval_data = DisDataIter(self.gen_data.random_batch()['target'],
-                                         self.oracle_data.random_batch()['target'])
+
+        # Metrics
+        self.bleu3 = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                          real_text=tensor_to_tokens(self.test_data.target, self.index_word_dict),
+                          gram=3)
 
     def _run(self):
         for inter_num in range(cfg.inter_epoch):
@@ -164,14 +168,9 @@ class LeakGANInstructor(BasicInstructor):
         Training the discriminator on real_data_samples (positive) and generated samples from gen (negative).
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
         """
-        # prepare loader for validate
-        pos_val = self.oracle.sample(8 * cfg.batch_size, cfg.batch_size)
-        neg_val = self.gen.sample(8 * cfg.batch_size, cfg.batch_size, self.dis)
-        self.dis_eval_data.reset(pos_val, neg_val)
-
         for step in range(d_step):
             # prepare loader for training
-            pos_samples = self.oracle.sample(cfg.samples_num, cfg.batch_size)  # re-sample the Oracle Data
+            pos_samples = self.oracle_data.target
             neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
             self.dis_data.reset(pos_samples, neg_samples)
 
@@ -181,15 +180,13 @@ class LeakGANInstructor(BasicInstructor):
                                                          self.dis_opt)
 
             # =====Test=====
-            _, eval_acc = self.eval_dis(self.dis, self.dis_eval_data.loader, self.dis_criterion)
-            self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
-                phrase, step, d_loss, train_acc, eval_acc))
+            self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f,' % (
+                phrase, step, d_loss, train_acc))
 
     def cal_metrics(self, fmt_str=False):
         self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis))
-        oracle_nll = self.eval_gen(self.oracle,
-                                   self.gen_data.loader,
-                                   self.mle_criterion)
+        self.bleu3.test_text = tensor_to_tokens(self.gen_data.target, self.index_word_dict)
+        bleu3_score = self.bleu3.get_score(ignore=False)
 
         with torch.no_grad():
             gen_nll = 0
@@ -202,11 +199,11 @@ class LeakGANInstructor(BasicInstructor):
             gen_nll /= len(self.oracle_data.loader)
 
         if fmt_str:
-            return 'oracle_NLL = %.4f, gen_NLL = %.4f,' % (oracle_nll, gen_nll)
-        return oracle_nll, gen_nll
+            return 'BLEU-3 = %.4f, gen_NLL = %.4f,' % (bleu3_score, gen_nll)
+        return bleu3_score, gen_nll
 
     def _save(self, phrase, epoch):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis)
-        write_tensor(save_sample_path, samples)
+        write_tokens(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))

@@ -81,14 +81,13 @@ if __name__ == '__main__':
 
     # =====Dict=====
     if cfg.if_real_data:
+        from instructor.real_data.seqgan_instructor import SeqGANInstructor
+        from instructor.real_data.leakgan_instructor import LeakGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
 
-        # TODO
-        LeakGANInstructor = None
-        SeqGANInstructor = None
     else:
-        from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
+        from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
     instruction_dict = {
         'leakgan': LeakGANInstructor,
