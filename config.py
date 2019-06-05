@@ -16,7 +16,7 @@ import torch
 if_test = False
 CUDA = True
 if_save = True
-data_shuffle = True  # False
+data_shuffle = False  # False
 oracle_pretrain = True  # True
 gen_pretrain = False
 dis_pretrain = False

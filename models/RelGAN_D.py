@@ -7,14 +7,11 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import config as cfg
 from models.discriminator import CNNDiscriminator
-from utils.helpers import truncated_normal_
 
 dis_filter_sizes = [2, 3, 4, 5]
 dis_num_filters = [300, 300, 300, 300]
@@ -66,9 +63,6 @@ class RelGAN_D(CNNDiscriminator):
 
     def init_params(self):
         for param in self.parameters():
-            if param.requires_grad and len(param.shape) > 0:
-                stddev = 1 / math.sqrt(param.shape[0])
-                if cfg.use_truncated_normal:
-                    truncated_normal_(param, std=stddev)
-                else:
-                    torch.nn.init.normal_(param, std=stddev)
+            if param.requires_grad:
+                # need to be initialized with uniform
+                torch.nn.init.uniform_(param, -0.05, 0.05)
