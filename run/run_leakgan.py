@@ -34,6 +34,7 @@ run_model = 'leakgan'
 CUDA = int(True)
 if_real_data = int(False)
 data_shuffle = int(False)
+use_truncated_normal = int(True)
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
@@ -86,8 +87,9 @@ args = [
     '--model_type', model_type,
     '--loss_type', loss_type,
     '--cuda', CUDA,
-    '--device', gpu_id,
+    # '--device', gpu_id,   # comment for auto GPU
     '--shuffle', data_shuffle,
+    '--use_truncated_normal', use_truncated_normal,
 
     # Basic Train
     '--samples_num', samples_num,

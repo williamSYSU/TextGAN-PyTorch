@@ -44,6 +44,9 @@ class LeakGANInstructor(BasicInstructor):
 
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis))
+        self.dis_data = DisDataIter(self.gen_data.random_batch()['target'], self.oracle_data.random_batch()['target'])
+        self.dis_eval_data = DisDataIter(self.gen_data.random_batch()['target'],
+                                         self.oracle_data.random_batch()['target'])
 
     def _run(self):
         for inter_num in range(cfg.inter_epoch):
@@ -51,16 +54,16 @@ class LeakGANInstructor(BasicInstructor):
             self.sig.update()  # update signal
             if self.sig.pre_sig:
                 # =====DISCRIMINATOR PRE-TRAINING=====
-                self.log.info('Starting Discriminator Training...')
                 if not cfg.dis_pretrain:
+                    self.log.info('Starting Discriminator Training...')
                     self.train_discriminator(cfg.d_step, cfg.d_epoch)
                     if cfg.if_save and not cfg.if_test:
                         torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
                         print('Save pre-trained discriminator: {}'.format(cfg.pretrained_dis_path))
 
                 # =====GENERATOR MLE TRAINING=====
-                self.log.info('Starting Generator MLE Training...')
                 if not cfg.gen_pretrain:
+                    self.log.info('Starting Generator MLE Training...')
                     self.pretrain_generator(cfg.MLE_train_epoch)
                     if cfg.if_save and not cfg.if_test:
                         torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
@@ -71,7 +74,6 @@ class LeakGANInstructor(BasicInstructor):
 
         # =====ADVERSARIAL TRAINING=====
         self.log.info('Starting Adversarial Training...')
-
         self.log.info('Initial generator: %s' % (str(self.cal_metrics(fmt_str=True))))
 
         for adv_epoch in range(cfg.ADV_train_epoch):
@@ -108,7 +110,7 @@ class LeakGANInstructor(BasicInstructor):
                 pre_work_loss = 0
 
                 # =====Train=====
-                for i, data in enumerate(self.gen_data.loader):
+                for i, data in enumerate(self.oracle_data.loader):
                     inp, target = data['input'], data['target']
                     if cfg.CUDA:
                         inp, target = inp.cuda(), target.cuda()
@@ -117,8 +119,8 @@ class LeakGANInstructor(BasicInstructor):
                     self.optimize_multi(self.gen_opt, [mana_loss, work_loss])
                     pre_mana_loss += mana_loss.data.item()
                     pre_work_loss += work_loss.data.item()
-                pre_mana_loss = pre_mana_loss / len(self.gen_data.loader)
-                pre_work_loss = pre_work_loss / len(self.gen_data.loader)
+                pre_mana_loss = pre_mana_loss / len(self.oracle_data.loader)
+                pre_work_loss = pre_work_loss / len(self.oracle_data.loader)
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
@@ -165,30 +167,28 @@ class LeakGANInstructor(BasicInstructor):
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
         """
         # prepare loader for validate
-        with torch.no_grad():
-            pos_val = self.oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
-            neg_val = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
-            dis_val_data = DisDataIter(pos_val, neg_val)
+        pos_val = self.oracle.sample(8 * cfg.batch_size, cfg.batch_size)
+        neg_val = self.gen.sample(8 * cfg.batch_size, cfg.batch_size, self.dis)
+        self.dis_eval_data.reset(pos_val, neg_val)
 
         for step in range(d_step):
             # prepare loader for training
-            with torch.no_grad():
-                pos_samples = self.oracle_samples
-                neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
-                dis_train_data = DisDataIter(pos_samples, neg_samples)
+            pos_samples = self.oracle_samples
+            neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
+            self.dis_data.reset(pos_samples, neg_samples)
 
             for epoch in range(d_epoch):
                 # =====Train=====
-                d_loss, train_acc = self.train_dis_epoch(self.dis, dis_train_data.loader, self.dis_criterion,
+                d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
-                # =====Test=====
-                _, eval_acc = self.eval_dis(self.dis, dis_val_data.loader, self.dis_criterion)
-                self.log.info('[%s-DIS] d_step %d, d_epoch %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
-                    phrase, step, epoch, d_loss, train_acc, eval_acc))
+            # =====Test=====
+            _, eval_acc = self.eval_dis(self.dis, self.dis_eval_data.loader, self.dis_criterion)
+            self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
+                phrase, step, d_loss, train_acc, eval_acc))
 
     def cal_metrics(self, fmt_str=False):
-        self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, self.dis))
+        self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis))
         oracle_nll = self.eval_gen(self.oracle,
                                    self.gen_data.loader,
                                    self.mle_criterion)

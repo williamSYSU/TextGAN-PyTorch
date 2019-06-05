@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import config as cfg
+from utils.helpers import truncated_normal_
 
 dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
 goal_out_size = sum(dis_num_filters)
@@ -44,7 +45,7 @@ class LeakGAN_G(nn.Module):
         self.mana2goal = nn.Linear(hidden_dim, goal_out_size)
         self.goal2goal = nn.Linear(goal_out_size, goal_size, bias=False)
 
-        self.goal_init = nn.Parameter(torch.rand((4 * cfg.batch_size, goal_out_size)))
+        self.goal_init = nn.Parameter(torch.rand((cfg.batch_size, goal_out_size)))
 
         self.init_params()
 
@@ -381,4 +382,7 @@ class LeakGAN_G(nn.Module):
     def init_params(self):
         for param in self.parameters():
             if param.requires_grad:
-                torch.nn.init.normal_(param, std=0.1)
+                if cfg.use_truncated_normal:
+                    truncated_normal_(param, std=0.1)
+                else:
+                    torch.nn.init.normal_(param, std=0.1)

@@ -34,6 +34,7 @@ run_model = 'seqgan'
 CUDA = int(True)
 if_real_data = int(False)
 data_shuffle = int(False)
+use_truncated_normal = int(False)
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
@@ -47,9 +48,9 @@ temperature = 1
 
 # =====Basic Train=====
 samples_num = 10000
-MLE_train_epoch = 80
+MLE_train_epoch = 120
 ADV_train_epoch = 200
-batch_size = 32
+batch_size = 64
 max_seq_len = 20
 gen_lr = 0.01
 dis_lr = 1e-4
@@ -85,6 +86,7 @@ args = [
     '--cuda', CUDA,
     # '--device', gpu_id,   # comment for auto GPU
     '--shuffle', data_shuffle,
+    '--use_truncated_normal', use_truncated_normal,
 
     # Basic Train
     '--samples_num', samples_num,

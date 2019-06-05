@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 
 import config as cfg
-from models.Oracle import Oracle
 
 
 class Signal:
@@ -60,6 +59,7 @@ def create_logger(name, silent=False, to_disk=False, log_file=None):
 
 
 def create_oracle():
+    from models.Oracle import Oracle
     oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
                     cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
     oracle = oracle.cuda()
