@@ -60,14 +60,24 @@ python3 run_relgan.py 0 0
 
 2. **Visualization**
    
-   Use `utils/visualization.py` to visualize the log file, including model loss and metrics scores. Custom your log files in `log_file_list`, no more than `len(color_list)`. The log filename should exclude .txt.
+   Use `utils/visualization.py` to visualize the log file, including model loss and metrics scores. Custom your log files in `log_file_list`, no more than `len(color_list)`. The log filename should exclude `.txt`.
    
 3. **Logging**
 
    The TextGAN-PyTorch use the `logging` module in Python to record the running process, like generator's loss and metric scores. For the convenience of visualization, there would be two same log file saved in `log/log_****_****.txt` and `save/**/log.txt` respectively. Furthermore, The code would automatically save the state dict of models and a batch-size of generator's samples in `./save/**/models` and `./save/**/samples` per log step, where `**` depends on your hyper-parameters.
+   
+4. **Running Signal**
+
+   You can easily control the training process with the class `Signal` (please refer to `utils/helpers.py`) based on dictionary file `run_signal.txt`.
+
+   For using the `Signal`, just edit the local file `run_signal.txt` and set `pre_sig` to `Fasle` for example, the program will stop pre-training process and step into next training phase. It is convenient to early stop the training if you think the current training is enough.
+
+5. **Automatiaclly select GPU**
+
+   In `config.py`, the program would automatically select a GPU device with the least `GPU-Util` in `nvidia-smi`. This feature is enabled by default. If you want to manually select a GPU device, please uncomment the `--device` args in `run_[run_model].py` and specify a GPU device with command.
 
 ## TODO
 
 - [ ] Add Experiment Results
-- [ ] Fix bugs in `LeakGAN` model
-- [ ] Add instructors of `SeqGAN` and `LeakGAN` in `instrutor/real_data`
+- [x] Fix bugs in `LeakGAN` model
+- [x] Add instructors of `SeqGAN` and `LeakGAN` in `instrutor/real_data`
