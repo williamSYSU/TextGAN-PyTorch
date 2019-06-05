@@ -140,7 +140,7 @@ class SeqGANInstructor(BasicInstructor):
 
         for step in range(d_step):
             # prepare loader for training
-            pos_samples = self.oracle_samples
+            pos_samples = self.oracle_samples  # not re-sample the Oracle data
             neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
             self.dis_data.reset(pos_samples, neg_samples)
 

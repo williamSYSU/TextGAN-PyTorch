@@ -173,7 +173,7 @@ class LeakGANInstructor(BasicInstructor):
 
         for step in range(d_step):
             # prepare loader for training
-            pos_samples = self.oracle_samples
+            pos_samples = self.oracle.sample(cfg.samples_num, cfg.batch_size)  # re-sample the Oracle Data
             neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
             self.dis_data.reset(pos_samples, neg_samples)
 
