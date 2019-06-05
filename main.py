@@ -100,7 +100,3 @@ if __name__ == '__main__':
         inst._run()
     else:
         inst._test()
-    try:
-        inst.log.close()
-    except:
-        pass
