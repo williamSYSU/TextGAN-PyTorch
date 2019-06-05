@@ -27,14 +27,14 @@ else:
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = '/home/sysu2018/.virtualenvs/lzw-pytorch/bin/python'
+executable = 'python'
 
 # =====Program=====
 if_test = int(False)
 run_model = 'leakgan'
 CUDA = int(True)
 if_real_data = [int(False), int(True)]
-data_shuffle = int(True)
+data_shuffle = int(False)
 use_truncated_normal = int(True)
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
