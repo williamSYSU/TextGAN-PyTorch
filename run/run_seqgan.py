@@ -19,11 +19,12 @@ if len(sys.argv) > 2:
     print('job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 elif len(sys.argv) > 1:
     job_id = int(sys.argv[1])
-    gpu_id = '0'
+    gpu_id = 0
     print('job_id: {}, missing gpu_id (use default {})'.format(job_id, gpu_id))
 else:
-    print('Missing argument: job_id and gpu_id.')
-    quit()
+    job_id = 0
+    gpu_id = 0
+    print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
 executable = 'python'
@@ -32,7 +33,7 @@ executable = 'python'
 if_test = int(False)
 run_model = 'seqgan'
 CUDA = int(True)
-if_real_data = int(False)
+if_real_data = [int(False), int(True)]
 data_shuffle = int(False)
 use_truncated_normal = int(False)
 oracle_pretrain = int(True)
@@ -40,10 +41,10 @@ gen_pretrain = int(False)
 dis_pretrain = int(False)
 
 # =====Oracle  or Real=====
-dataset = 'oracle'
+dataset = ['oracle', 'image_coco']
 model_type = 'vanilla'
 loss_type = 'JS'
-vocab_size = 5000
+vocab_size = [5000, 6613]
 temperature = 1
 
 # =====Basic Train=====
@@ -80,7 +81,8 @@ args = [
     # Program
     '--if_test', if_test,
     '--run_model', run_model,
-    '--if_real_data', if_real_data,
+    '--dataset', dataset[job_id],
+    '--if_real_data', if_real_data[job_id],
     '--model_type', model_type,
     '--loss_type', loss_type,
     '--cuda', CUDA,
@@ -90,7 +92,7 @@ args = [
 
     # Basic Train
     '--samples_num', samples_num,
-    '--vocab_size', vocab_size,
+    '--vocab_size', vocab_size[job_id],
     '--mle_epoch', MLE_train_epoch,
     '--adv_epoch', ADV_train_epoch,
     '--batch_size', batch_size,

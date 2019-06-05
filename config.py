@@ -128,10 +128,11 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal
+        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
+    dataset = opt.dataset
     model_type = opt.model_type
     loss_type = opt.loss_type
     if_real_data = True if opt.if_real_data == 1 else False
@@ -193,6 +194,9 @@ def init_param(opt):
                                                             temperature, strftime("%m%d-%H%M", localtime()))
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'
+
+    train_data = 'dataset/' + dataset + '.txt'
+    test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
     pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
     pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
