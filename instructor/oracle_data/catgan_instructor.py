@@ -12,11 +12,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from tqdm import tqdm
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.CatGAN_D import CatGAN_D, CatGAN_C
+from models.CatGAN_D import CatGAN_C
 from models.CatGAN_G import CatGAN_G
 from models.Oracle import Oracle
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
@@ -36,21 +35,21 @@ class CatGANInstructor(BasicInstructor):
 
         self.gen = CatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
                             cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        self.dis = CatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.padding_idx,
-                            gpu=cfg.CUDA)
+        # self.dis = CatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size, cfg.padding_idx,
+        #                     gpu=cfg.CUDA)
         self.clas = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
                              cfg.padding_idx, gpu=cfg.CUDA)
-        self.clas_eval = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
-                                  cfg.padding_idx, gpu=cfg.CUDA)
+        # self.clas_eval = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
+        #                           cfg.padding_idx, gpu=cfg.CUDA)
 
         self.init_model()
 
         # Optimizer
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
-        self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
+        # self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
         self.clas_opt = optim.Adam(self.clas.parameters(), lr=cfg.clas_lr)
-        self.clas_eval_opt = optim.Adam(self.clas_eval.parameters(), lr=cfg.clas_lr)
+        # self.clas_eval_opt = optim.Adam(self.clas_eval.parameters(), lr=cfg.clas_lr)
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
@@ -104,49 +103,36 @@ class CatGANInstructor(BasicInstructor):
     # >>>Version 2
     def _run(self):
         # ===Pre-train===
-        self.train_classifier(10)
+        self.train_classifier(10, 'PRE')
 
+        self.log.info('Initial metrics: %s', self.comb_metrics(fmt_str=True))
         # ===Adv-train===
-        progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in range(cfg.ADV_train_epoch):
-            g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
-
-            d_loss = self.adv_train_discriminator(cfg.ADV_d_step)
-            c_loss, c_acc = self.train_classifier('ADV', cfg.ADV_d_step)
+            g_loss = self.adv_train_generator(cfg.ADV_g_step)
+            c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
             # c_loss, c_acc = 0, 0
 
             # =====Test=====
             # Eval classifier
-            self.clas_data.reset([self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
-                                  for i in range(cfg.k_label)])
-            eval_loss, eval_acc = self.eval_dis(self.clas_eval, self.clas_data.loader, self.clas_criterion)
             self.log.info(
-                '[ADV] epoch %d: g_loss = %.4f, gd_loss = %.4f, gc_loss = %.4f, gc_acc = %.4f, d_loss = %.4f, c_loss = %.4f, c_acc = %.4f, eval_loss = %.4f, eval_acc = %.4f,' % (
-                    adv_epoch, g_loss, gd_loss, gc_loss, gc_acc, d_loss, c_loss, c_acc, eval_loss, eval_acc))
+                '[ADV] epoch %d: g_loss = %.4f, c_loss = %.4f, c_acc = %.4f,' % (
+                    adv_epoch, g_loss, c_loss, c_acc))
             if adv_epoch % cfg.adv_log_step == 0:
+                # if adv_epoch % 3 == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
 
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        # self._run()
-        # self.train_classifier('PRE', 1)
-        # self.train_classifier('PRE',50)
-        # self.log.debug(self.adv_train_generator(1))
-        # self.cal_metrics(0)
-
-        # self.train_classifier_eval(10)
-
-        # self.clas_data.reset([self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
-        #                       for i in range(cfg.k_label)])
-        # eval_loss, eval_acc = self.eval_dis(self.clas_eval, self.clas_data.loader, self.clas_criterion)
-
-        # self.gen_data_list[0].reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=0))
-        # oracle_nll = self.eval_gen(self.oracle_list[1],
-        #                            self.gen_data_list[0].loader,
-        #                            self.mle_criterion, 1)
-        # self.log.debug(oracle_nll)
+        self._run()
+        # for _ in range(10):
+        #     self.adv_train_generator(1)
+        #     self.train_classifier(5)
+        # self.comb_metrics()
+        # self.adv_train_generator(100)
+        # self.train_classifier(1)
+        # self.clas.forward(self.gen.sample(cfg.batch_size,cfg.batch_size,one_hot=True,label_i=0))
         pass
 
     def pretrain_generator(self, epochs):
@@ -194,29 +180,43 @@ class CatGANInstructor(BasicInstructor):
     #     return np.mean(total_loss), np.mean(total_acc)
 
     # >>>Version 2
-
-    # >>>Version 2
-    def train_classifier(self, phrase, c_step):
+    def train_classifier(self, c_step, phase='PRE'):
         """假的为一类，真的分成k类"""
         total_loss = []
         total_acc = []
         for epoch in range(c_step):
-            clas_samples_list = []
-            for i in range(cfg.k_label):
-                real_samples = F.one_hot(self.oracle_data_list[i].random_batch()['target'],
-                                         cfg.vocab_size).float()
-                gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i).cpu()
-                clas_samples_list.append(torch.cat((real_samples, gen_samples), dim=0))
-                # clas_samples_list.append(real_samples)
-            self.clas_data.reset(clas_samples_list)
+            # >>>train with random batchs
+            if phase == 'ADV':
+                real_samples = []
+                fake_samples = []
+                for i in range(cfg.k_label):
+                    real_samples.append(torch.cat(
+                        [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
+                         for _ in range(2)], dim=0))  # two batch for real samples
+                    fake_samples.append(self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i).cpu())
 
-            # =====Train=====
-            c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
+                clas_samples_list = [torch.cat(fake_samples, dim=0)] + real_samples
+                self.clas_data.reset(clas_samples_list)
+                # =====Train=====
+                c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion,
+                                                     self.clas_opt)
+
+            # >>>train with entire oracle data
+            if phase == 'PRE':
+                fake_samples = torch.cat([torch.cat(
+                    [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i).detach().cpu() for _ in
+                     range(cfg.samples_num // (2 * cfg.batch_size))], dim=0) for i in range(cfg.k_label)], dim=0)
+                self.clas_data.reset(
+                    [fake_samples] + [F.one_hot(real, cfg.vocab_size).float() for real in self.oracle_samples_list])
+                for _ in range(3):
+                    # =====Train=====
+                    c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion,
+                                                         self.clas_opt)
 
             total_loss.append(c_loss)
             total_acc.append(c_acc)
-            if phrase == 'PRE':
-                self.log.info('[%s-CLAS] epoch: %d, c_loss = %.4f, c_acc = %.4f' % (phrase, epoch, c_loss, c_acc))
+            if phase == 'PRE':
+                self.log.info('[%s-CLAS] epoch: %d, c_loss = %.4f, c_acc = %.4f' % (phase, epoch, c_loss, c_acc))
         if c_step == 0:
             return 0, 0
         return np.mean(total_loss), np.mean(total_acc)
@@ -307,65 +307,28 @@ class CatGANInstructor(BasicInstructor):
 
     # >>>Version 2
     def adv_train_generator(self, g_step):
-        total_g_loss = []
-        total_gd_loss = []
-        total_gc_loss = []
-        total_gc_acc = []
+        total_loss = []
         for step in range(g_step):
-            real_samples_list = [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
+            fake_samples_list = [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i).cpu()
                                  for i in range(cfg.k_label)]
-            gen_samples_list = [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
-                                for i in range(cfg.k_label)]
+            inp = torch.cat(fake_samples_list, dim=0)
+            target = torch.zeros(inp.size(0)).long()
+            for idx in range(1, len(fake_samples_list)):
+                start = sum([fake_samples_list[i].size(0) for i in range(idx)])
+                target[start: start + fake_samples_list[idx].size(0)] = idx
+            target = target + 1
 
-            # =====Train=====
-            # Discriminator loss, input real and fake data
-            dis_real_samples = torch.cat(real_samples_list, dim=0)
-            dis_gen_samples = torch.cat(gen_samples_list, dim=0)
-
-            # shuffle
-            dis_real_samples = dis_real_samples[torch.randperm(dis_real_samples.size(0))]
-            dis_gen_samples = dis_gen_samples[torch.randperm(dis_gen_samples.size(0))]
             if cfg.CUDA:
-                dis_real_samples, dis_gen_samples = dis_real_samples.cuda(), dis_gen_samples.cuda()
-            d_out_real = self.dis(dis_real_samples)
-            d_out_fake = self.dis(dis_gen_samples)
-            gd_loss = self.dis_criterion(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
+                inp, target = inp.cuda(), target.cuda()
 
-            # Classifier loss, only input fake data
-            # clas_samples_list = [fake for fake in gen_samples_list]
-            clas_samples_list = gen_samples_list
-            self.clas_data.reset(clas_samples_list)
-            gc_loss = 0
-            gc_acc = 0
-            gc_num = 0
-            for i, data in enumerate(self.clas_data.loader):
-                inp, target = data['input'], data['target']
-                if cfg.CUDA:
-                    inp, target = inp.cuda(), target.cuda()
-                # pred = self.clas.forward(inp)
-                pred = self.clas.forward(inp)
-                loss = self.clas_criterion(pred, target)
-                gc_loss += loss
-                gc_acc += torch.sum((pred.argmax(dim=-1) == target)).item()
-                gc_num += inp.size(0)
-            gc_acc /= gc_num
-
-            # Total loss
-            g_loss = gd_loss + gc_loss
-
-            self.optimize(self.gen_adv_opt, g_loss, self.gen)
-            # self.optimize(self.gen_adv_opt, gc_loss, self.gen, retain_graph=True)
-            # self.optimize(self.gen_adv_opt, gd_loss, self.gen, retain_graph=True)
-            total_g_loss.append(g_loss.item())
-            total_gd_loss.append(gd_loss.item())
-            total_gc_loss.append(gc_loss.item())
-            total_gc_acc.append(gc_acc)
-
-            # self.log.debug('In G: g_loss = %.4f' % g_loss.item())
-
+            pred = self.clas.forward(inp)
+            loss = self.clas_criterion(pred, target)
+            self.optimize(self.gen_adv_opt, loss, self.gen)
+            # self.log.debug('[ADV-GEN] step_loss: %.4f', loss.item())
+            total_loss.append(loss.item())
         if g_step == 0:
-            return 0, 0, 0, 0
-        return np.mean(total_g_loss), np.mean(total_gd_loss), np.mean(total_gc_loss), np.mean(total_gc_acc)
+            return 0
+        return np.mean(total_loss)
 
     # def adv_train_discriminator(self, d_step):
     #     total_loss = []
@@ -413,9 +376,9 @@ class CatGANInstructor(BasicInstructor):
             for i in range(cfg.k_label):
                 self.oracle_list[i] = self.oracle_list[i].cuda()
             self.gen = self.gen.cuda()
-            self.dis = self.dis.cuda()
+            # self.dis = self.dis.cuda()
             self.clas = self.clas.cuda()
-            self.clas_eval = self.clas_eval.cuda()
+            # self.clas_eval = self.clas_eval.cuda()
 
     def update_temperature(self, i, N):
         self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
@@ -479,8 +442,8 @@ class CatGANInstructor(BasicInstructor):
 
     def comb_metrics(self, fmt_str=False):
         oracle_nll, gen_nll, self_nll = [], [], []
-        for gen_idx in range(cfg.k_label):
-            o_nll, g_nll, s_nll = self.cal_metrics(gen_idx)
+        for label_i in range(cfg.k_label):
+            o_nll, g_nll, s_nll = self.cal_metrics(label_i)
             oracle_nll.append(float('%.4f' % o_nll))
             gen_nll.append(float('%.4f' % g_nll))
             self_nll.append(float('%.4f' % s_nll))
