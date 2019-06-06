@@ -76,8 +76,33 @@ python3 run_relgan.py 0 0
 
    In `config.py`, the program would automatically select a GPU device with the least `GPU-Util` in `nvidia-smi`. This feature is enabled by default. If you want to manually select a GPU device, please uncomment the `--device` args in `run_[run_model].py` and specify a GPU device with command.
 
+## Reproduction Results
+
+ Please note the log step of each model is different. See `run_[run_model].py` for details of log step.
+
+### Synthetic data:  Oracle data
+
+- $NLL_{oracle}$
+
+  > LeakGAN suprisely outperforms RelGAN due to its temperature control, but LeakGAN’s samples suffered from severe mode collapse.
+  >
+  > Though both LeakGAN and RelGAN would suffer from mode collapse, the pattern of collapse is different. LeakGAN will generate a sentence with only a few words. RelGAN will generate repeated sentences with different words.
+
+  ![exp_results_oracle_nll](assets/exp_results_oracle_nll.png)
+
+- $NLL_{gen}$
+
+  ![exp_results_gen_nll](assets/exp_results_gen_nll.png)
+
+### Real data: Image COCO data
+
+- $NLL_{oracle}$
+- $NLL_{gen}$
+
 ## TODO
 
-- [ ] Add Experiment Results
+- [x] Add Experiment Results
 - [x] Fix bugs in `LeakGAN` model
 - [x] Add instructors of `SeqGAN` and `LeakGAN` in `instrutor/real_data`
+- [ ] Fix logging bugs for `save_root`
+- [ ] Fix issues of $NLL_{oracle}$ in `SeqGAN` model
