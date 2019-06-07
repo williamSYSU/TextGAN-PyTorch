@@ -82,7 +82,7 @@ python3 run_relgan.py 0 0
 
 ### Synthetic data:  Oracle data
 
-- $NLL_{oracle}$
+- NLL_oracle
 
   > LeakGAN suprisely outperforms RelGAN due to its temperature control, but LeakGAN’s samples suffered from severe mode collapse.
   >
@@ -90,17 +90,17 @@ python3 run_relgan.py 0 0
 
   ![Oracle data-NLL_oracle](assets/oracle_exp_oracle_nll.png)
 
-- $NLL_{gen}$
+- NLL_gen
 
   ![Oracle data-NLL_gen](assets/coco_exp_gen_nll.png)
 
 ### Real data: Image COCO data
 
-- $BLEU-3$
+- BLEU-3​
 
   ![Image COCO-BLEU-3](assets/coco_exp_bleu3.png)
 
-- $NLL_{gen}$
+- NLL_gen
 
   ![Image COCO-NLL_gen](assets/coco_exp_gen_nll.png)
 
