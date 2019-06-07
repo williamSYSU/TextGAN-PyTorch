@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import config as cfg
 from models.generator import LSTMGenerator
 from models.relational_rnn_general import RelationalMemory
+from utils.helpers import truncated_normal_
 
 
 class CatGAN_G(LSTMGenerator):
@@ -159,5 +160,7 @@ class CatGAN_G(LSTMGenerator):
         for param in self.parameters():
             if param.requires_grad and len(param.shape) > 0:
                 stddev = 1 / math.sqrt(param.shape[0])
-                # truncated_normal_(param, std=stddev)
-                torch.nn.init.normal_(param, std=stddev)
+                if cfg.use_truncated_normal:
+                    truncated_normal_(param, std=stddev)
+                else:
+                    torch.nn.init.normal_(param, std=stddev)
