@@ -88,16 +88,21 @@ python3 run_relgan.py 0 0
   >
   > Though both LeakGAN and RelGAN would suffer from mode collapse, the pattern of collapse is different. LeakGAN will generate a sentence with only a few words. RelGAN will generate repeated sentences with different words.
 
-  ![exp_results_oracle_nll](assets/exp_results_oracle_nll.png)
+  ![Oracle data-NLL_oracle](assets/oracle_exp_oracle_nll.png)
 
 - $NLL_{gen}$
 
-  ![exp_results_gen_nll](assets/exp_results_gen_nll.png)
+  ![Oracle data-NLL_gen](assets/coco_exp_gen_nll.png)
 
 ### Real data: Image COCO data
 
-- $NLL_{oracle}$
+- $BLEU-3$
+
+  ![Image COCO-BLEU-3](assets/coco_exp_bleu3.png)
+
 - $NLL_{gen}$
+
+  ![Image COCO-NLL_gen](assets/coco_exp_gen_nll.png)
 
 ## TODO
 
