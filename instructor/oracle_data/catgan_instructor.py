@@ -31,6 +31,8 @@ class CatGANInstructor(BasicInstructor):
     def __init__(self, opt):
         super(CatGANInstructor, self).__init__(opt)
 
+        # self.log = create_logger(__name__, silent=False, to_disk=True, log_file=cfg.log_filename)
+
         # generator, discriminator
         self.oracle_list = [Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                                    cfg.padding_idx, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
@@ -66,34 +68,46 @@ class CatGANInstructor(BasicInstructor):
         self.clas_data = CatClasDataIter(self.oracle_samples_list)  # fake init (reset during training)
 
     def _run(self):
-        # ===Pre-train===
-        self.train_classifier(10, 'PRE')
+        # ===Pre-train Generator===
+        if not cfg.gen_pretrain:
+            self.log.info('Starting Generator MLE Training...')
+            self.pretrain_generator(cfg.MLE_train_epoch)
+            if cfg.if_save and not cfg.if_test:
+                torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
+                print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
+
+        # ===Pre-train Classifier===
+        self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
 
         self.log.info('Initial metrics: %s', self.comb_metrics(fmt_str=True))
         # ===Adv-train===
         for adv_epoch in range(cfg.ADV_train_epoch):
-            g_loss = self.adv_train_generator(cfg.ADV_g_step)
+            g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
+            # d_loss = self.adv_train_discriminator(cfg.ADV_d_step) # !!! no adv-train for discriminator
             c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
-            # c_loss, c_acc = 0, 0
 
             # =====Test=====
-            # Eval classifier
+            # self.log.info(
+            #     '[ADV] epoch %d: g_loss = %.4f, c_loss = %.4f, c_acc = %.4f, d_loss = %.4f' % (
+            #         adv_epoch, g_loss, c_loss, c_acc, d_loss))
             self.log.info(
-                '[ADV] epoch %d: g_loss = %.4f, c_loss = %.4f, c_acc = %.4f,' % (
-                    adv_epoch, g_loss, c_loss, c_acc))
+                '[ADV] epoch %d: g_loss = %.4f, gd_loss = %.4f, gc_loss = %.4f, gc_acc = %.4f, c_loss = %.4f, c_acc = %.4f,' % (
+                    adv_epoch, g_loss, gd_loss, gc_loss, gc_acc, c_loss, c_acc))
             if adv_epoch % cfg.adv_log_step == 0:
-                # if adv_epoch % 3 == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
+                if not cfg.if_test and cfg.if_save:
+                    for label_i in range(cfg.k_label):
+                        self._save('ADV', adv_epoch, label_i)
 
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        # self._run()
+        self._run()
         # self.train_classifier(1, 'PRE')
         # self.train_classifier(1, 'ADV')
         # self.adv_train_discriminator(1)
-        self.adv_train_generator(1)
+        # self.adv_train_generator(1)
         pass
 
     def pretrain_generator(self, epochs):
@@ -321,9 +335,9 @@ class CatGANInstructor(BasicInstructor):
             return 'oracle_NLL = %s, gen_NLL = %s, self_NLL = %s,' % (oracle_nll, gen_nll, self_nll)
         return oracle_nll, gen_nll, self_nll
 
-    def _save(self, phrase, epoch, label_i=None):
+    def _save(self, phase, epoch, label_i=None):
         assert type(label_i) == int
-        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
-        save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i + 1, phrase, epoch)
+        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
+        save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
         write_tensor(save_sample_path, samples)
