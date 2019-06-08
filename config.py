@@ -132,7 +132,7 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset
+        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -148,6 +148,7 @@ def init_param(opt):
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size
     MLE_train_epoch = opt.mle_epoch
+    PRE_clas_epoch = opt.clas_pre_epoch
     ADV_train_epoch = opt.adv_epoch
     inter_epoch = opt.inter_epoch
     batch_size = opt.batch_size
