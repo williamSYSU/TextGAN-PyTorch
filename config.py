@@ -33,7 +33,7 @@ loss_type = 'RSGAN'  # standard, JS, KL, hinge, tv, LS, RSGAN (for RelGAN)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
-temperature = 2
+temperature = 1
 
 # =====Basic Train=====
 samples_num = 5000  # 10000
