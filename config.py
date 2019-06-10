@@ -16,9 +16,9 @@ import torch
 if_test = False
 CUDA = True
 if_save = True
-data_shuffle = False  # False
+data_shuffle = True  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 
 run_model = 'catgan'  # seqgan, leakgan, relgan, catgan
@@ -37,8 +37,8 @@ temperature = 1
 
 # =====Basic Train=====
 samples_num = 5000  # 10000
-MLE_train_epoch = 500  # SeqGAN-80, LeakGAN-8, RelGAN-150
-PRE_clas_epoch = 200
+MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
+PRE_clas_epoch = 150
 ADV_train_epoch = 5000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
@@ -60,14 +60,14 @@ train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
 # =====Generator=====
-ADV_g_step = 1  # 1
+ADV_g_step = 2  # 1
 rollout_num = 4  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
 goal_size = 16  # LeakGAN-16
 step_size = 4  # LeakGAN-4
 
-mem_slots = 2  # RelGAN-1
+mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
 head_size = 256  # RelGAN-256
 
