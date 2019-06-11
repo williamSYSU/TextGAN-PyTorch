@@ -13,10 +13,10 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
-data_shuffle = False  # False
+data_shuffle = True  # False
 oracle_pretrain = True  # True
 gen_pretrain = True
 dis_pretrain = False

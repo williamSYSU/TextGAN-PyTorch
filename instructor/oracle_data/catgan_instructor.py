@@ -53,6 +53,7 @@ class CatGANInstructor(BasicInstructor):
         dis_params, clas_params = self.dis.split_params()
         self.dis_opt = optim.Adam(dis_params, lr=cfg.dis_lr)
         self.clas_opt = optim.Adam(clas_params, lr=cfg.clas_lr)
+        self.desp_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
@@ -86,7 +87,8 @@ class CatGANInstructor(BasicInstructor):
         for adv_epoch in progress:
             g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
             # d_loss = self.adv_train_discriminator(cfg.ADV_d_step) # !!! no adv-train for discriminator
-            c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
+            # c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
+            d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step)
 
             # =====Test=====
             # self.log.info(
@@ -95,7 +97,7 @@ class CatGANInstructor(BasicInstructor):
             # self.log.info(
             #     '[ADV] epoch %d: g_loss = %.4f, gd_loss = %.4f, gc_loss = %.4f, gc_acc = %.4f, c_loss = %.4f, c_acc = %.4f,' % (
             #         adv_epoch, g_loss, gd_loss, gc_loss, gc_acc, c_loss, c_acc))
-            progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
+            progress.set_description('g_loss = %.4f, d_loss = %.4f' % (g_loss, d_loss))
             if adv_epoch % cfg.adv_log_step == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
@@ -111,6 +113,7 @@ class CatGANInstructor(BasicInstructor):
         # self.train_classifier(1, 'ADV')
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
+        # self.adv_train_descriptor(1)
         pass
 
     def pretrain_generator(self, epochs):
@@ -216,6 +219,64 @@ class CatGANInstructor(BasicInstructor):
         if g_step == 0:
             return 0, 0, 0, 0
         return np.mean(total_g_loss), np.mean(total_gd_loss), np.mean(total_gc_loss), np.mean(total_gc_acc)
+
+    def adv_train_descriptor(self, d_step):
+        total_d_loss = []
+        total_dd_loss = []
+        total_dc_loss = []
+        for step in range(d_step):
+            real_samples_list = [
+                F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float().cuda()
+                for i in range(cfg.k_label)]
+            gen_samples_list = [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
+                                for i in range(cfg.k_label)]
+
+            total_num = 2 * cfg.k_label * cfg.batch_size
+
+            dis_bs = cfg.batch_size
+            clas_bs = 2 * cfg.batch_size
+
+            # prepare dis data
+            dis_real_samples = torch.cat(real_samples_list, dim=0)
+            dis_gen_samples = torch.cat(gen_samples_list, dim=0)
+            dis_real_samples = dis_real_samples[torch.randperm(dis_real_samples.size(0))].detach()  # shuffle
+            dis_gen_samples = dis_gen_samples[torch.randperm(dis_gen_samples.size(0))].detach()
+
+            # prepare clas data
+            clas_samples_list = [torch.cat((real, fake), dim=0) for (real, fake) in
+                                 zip(real_samples_list, gen_samples_list)]
+            clas_inp, clas_target = self.clas_data.prepare(clas_samples_list)
+
+            if cfg.CUDA:
+                dis_real_samples, dis_gen_samples = dis_real_samples.cuda(), dis_gen_samples.cuda()
+                clas_inp, clas_target = clas_inp.cuda(), clas_target.cuda()
+
+            for b in range(total_num // clas_bs):
+                # Discriminator loss
+                self.dis.dis_or_clas = 'dis'
+                d_out_real = self.dis(dis_real_samples[b * dis_bs:(b + 1) * dis_bs])
+                d_out_fake = self.dis(dis_gen_samples[b * dis_bs:(b + 1) * dis_bs])
+                dd_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
+                self.dis.dis_or_clas = None
+
+                # Classifier loss
+                self.clas.dis_or_clas = 'clas'
+                pred = self.clas(clas_inp[b * clas_bs:(b + 1) * clas_bs])
+                dc_loss = self.clas_criterion(pred, clas_target[b * clas_bs:(b + 1) * clas_bs])
+                self.clas.dis_or_clas = None
+
+                d_loss = dd_loss + dc_loss
+                self.optimize(self.desp_opt, d_loss)
+
+                total_d_loss.append(d_loss.item())
+                total_dd_loss.append(dd_loss.item())
+                total_dc_loss.append(dc_loss.item())
+
+            # self.log.debug('In G: d_loss = %.4f' % d_loss.item())
+
+        if d_step == 0:
+            return 0, 0, 0
+        return np.mean(total_d_loss), np.mean(total_dd_loss), np.mean(total_dc_loss)
 
     def adv_train_discriminator(self, d_step):
         self.dis.dis_or_clas = 'dis'  # !!!!!
