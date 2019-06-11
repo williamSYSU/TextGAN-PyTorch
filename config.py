@@ -13,12 +13,12 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = True  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 
 run_model = 'catgan'  # seqgan, leakgan, relgan, catgan
