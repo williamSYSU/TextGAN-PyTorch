@@ -307,8 +307,8 @@ class CatGANInstructor(BasicInstructor):
     def optimize(opt, loss, model=None, retain_graph=False):
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
-        # if model is not None:
-        #     torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
+        if model is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
         opt.step()
 
     def cal_metrics(self, label_i=None):

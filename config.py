@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = True  # False
@@ -38,7 +38,7 @@ temperature = 1
 # =====Basic Train=====
 samples_num = 5000  # 10000
 MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
-PRE_clas_epoch = 150
+PRE_clas_epoch = 1
 ADV_train_epoch = 5000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
@@ -60,7 +60,7 @@ train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
 # =====Generator=====
-ADV_g_step = 2  # 1
+ADV_g_step = 1  # 1
 rollout_num = 4  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
