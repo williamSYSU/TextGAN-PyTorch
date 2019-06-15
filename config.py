@@ -20,7 +20,7 @@ data_shuffle = True  # False
 oracle_pretrain = True  # True
 gen_pretrain = True
 dis_pretrain = False
-clas_pretrain = False
+clas_pretrain = True
 
 run_model = 'catgan'  # seqgan, leakgan, relgan, catgan
 k_label = 2  # num of labels

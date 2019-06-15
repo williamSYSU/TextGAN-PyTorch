@@ -88,14 +88,16 @@ class CatGANInstructor(BasicInstructor):
         # self.adv_train_descriptor(50)
 
         self.log.info('Initial metrics: %s', self.comb_metrics(fmt_str=True))
+        self.freeze_dis = False
+        self.freeze_clas = False
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
             g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
-            # if adv_epoch < 5:
-            #     d_loss = self.adv_train_discriminator(cfg.ADV_d_step)  # !!! no adv-train for discriminator
-            c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
-            # d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step)
+            # if d_loss > 1:
+            #     d_loss = self.adv_train_discriminator(1)  # !!! no adv-train for discriminator
+            # c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
+            d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step)
 
             # =====Test=====
             # self.log.info(
@@ -104,8 +106,8 @@ class CatGANInstructor(BasicInstructor):
             # self.log.info(
             #     '[ADV] epoch %d: g_loss = %.4f, gd_loss = %.4f, gc_loss = %.4f, gc_acc = %.4f, c_loss = %.4f, c_acc = %.4f,' % (
             #         adv_epoch, g_loss, gd_loss, gc_loss, gc_acc, c_loss, c_acc))
-            progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
-            # progress.set_description('g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f' % (g_loss, d_loss, dd_loss))
+            # progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
+            progress.set_description('g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f' % (g_loss, d_loss, dd_loss))
             if adv_epoch % cfg.adv_log_step == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
@@ -228,7 +230,7 @@ class CatGANInstructor(BasicInstructor):
             return 0, 0, 0, 0
         return np.mean(total_g_loss), np.mean(total_gd_loss), np.mean(total_gc_loss), np.mean(total_gc_acc)
 
-    def adv_train_descriptor(self, d_step, freeze_dis=False, freeze_clas=False):
+    def adv_train_descriptor(self, d_step):
         total_d_loss = []
         total_dd_loss = []
         total_dc_loss = []
@@ -260,8 +262,8 @@ class CatGANInstructor(BasicInstructor):
                 clas_inp, clas_target = clas_inp.cuda(), clas_target.cuda()
 
             for b in range(total_num // clas_bs):
-                if freeze_dis:
-                    dd_loss = torch.Tensor(0)
+                if self.freeze_dis:
+                    dd_loss = torch.Tensor([0])
                 else:
                     # Discriminator loss
                     self.dis.dis_or_clas = 'dis'
@@ -270,8 +272,8 @@ class CatGANInstructor(BasicInstructor):
                     dd_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
                     self.dis.dis_or_clas = None
 
-                if freeze_clas:
-                    dc_loss = torch.Tensor(0)
+                if self.freeze_clas:
+                    dc_loss = torch.Tensor([0])
                 else:
                     # Classifier loss
                     self.clas.dis_or_clas = 'clas'
@@ -279,12 +281,18 @@ class CatGANInstructor(BasicInstructor):
                     dc_loss = self.clas_criterion(pred, clas_target[b * clas_bs:(b + 1) * clas_bs])
                     self.clas.dis_or_clas = None
 
-                d_loss = dd_loss + dc_loss
+                if self.freeze_dis:
+                    d_loss = dc_loss
+                else:
+                    d_loss = dd_loss + dc_loss
                 self.optimize(self.desp_opt, d_loss)
 
                 total_d_loss.append(d_loss.item())
                 total_dd_loss.append(dd_loss.item())
                 total_dc_loss.append(dc_loss.item())
+
+            if dd_loss < 1:
+                self.freeze_dis = True
 
             # self.log.debug('In G: d_loss = %.4f' % d_loss.item())
 
@@ -317,7 +325,7 @@ class CatGANInstructor(BasicInstructor):
 
             self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss.append(d_loss.item())
-        self.log.debug('In D: g_loss = %.4f' % g_loss.item())
+        self.log.debug('In D: d_loss = %.4f, g_loss = %.4f' % (d_loss.item(), g_loss.item()))
         self.dis.dis_or_clas = None
         if d_step == 0:
             return 0
