@@ -79,7 +79,13 @@ class CatGANInstructor(BasicInstructor):
                 print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
 
         # ===Pre-train Classifier===
-        self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
+        if not cfg.clas_pretrain:
+            self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
+            if cfg.if_save and not cfg.if_test:
+                torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
+                print('Save pre-trained classifier: {}'.format(cfg.pretrained_clas_path))
+        # self.adv_train_discriminator(5)
+        # self.adv_train_descriptor(50)
 
         self.log.info('Initial metrics: %s', self.comb_metrics(fmt_str=True))
         # ===Adv-train===
@@ -320,6 +326,10 @@ class CatGANInstructor(BasicInstructor):
         if cfg.gen_pretrain:
             self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
             self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path))
+
+        if cfg.clas_pretrain:
+            self.log.info('Load pretrained classifier: {}'.format(cfg.pretrained_clas_path))
+            self.clas.load_state_dict(torch.load(cfg.pretrained_clas_path))
 
         if cfg.CUDA:
             for i in range(cfg.k_label):

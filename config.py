@@ -20,6 +20,7 @@ data_shuffle = True  # False
 oracle_pretrain = True  # True
 gen_pretrain = False
 dis_pretrain = False
+clas_pretrain = False
 
 run_model = 'catgan'  # seqgan, leakgan, relgan, catgan
 k_label = 2  # num of labels
@@ -119,6 +120,7 @@ multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
 pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
 pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
 pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
+pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}.pt'.format(run_model, model_type)
 signal_file = 'run_signal.txt'
 
 tips = ''
@@ -133,7 +135,8 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch
+        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
+        pretrained_clas_path
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -207,6 +210,7 @@ def init_param(opt):
     pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
     pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
     pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
+    pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}.pt'.format(run_model, model_type)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'save/log', 'dataset',
