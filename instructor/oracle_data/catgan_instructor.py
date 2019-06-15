@@ -81,7 +81,7 @@ class CatGANInstructor(BasicInstructor):
         # ===Pre-train Classifier===
         if not cfg.clas_pretrain:
             self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
-            if cfg.if_save and not cfg.if_test:
+            if cfg.if_save:
                 torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
                 print('Save pre-trained classifier: {}'.format(cfg.pretrained_clas_path))
         # self.adv_train_discriminator(5)
@@ -92,7 +92,8 @@ class CatGANInstructor(BasicInstructor):
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
             g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
-            # d_loss = self.adv_train_discriminator(cfg.ADV_d_step) # !!! no adv-train for discriminator
+            # if adv_epoch < 5:
+            #     d_loss = self.adv_train_discriminator(cfg.ADV_d_step)  # !!! no adv-train for discriminator
             c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
             # d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step)
 
@@ -104,6 +105,7 @@ class CatGANInstructor(BasicInstructor):
             #     '[ADV] epoch %d: g_loss = %.4f, gd_loss = %.4f, gc_loss = %.4f, gc_acc = %.4f, c_loss = %.4f, c_acc = %.4f,' % (
             #         adv_epoch, g_loss, gd_loss, gc_loss, gc_acc, c_loss, c_acc))
             progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
+            # progress.set_description('g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f' % (g_loss, d_loss, dd_loss))
             if adv_epoch % cfg.adv_log_step == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
@@ -226,7 +228,7 @@ class CatGANInstructor(BasicInstructor):
             return 0, 0, 0, 0
         return np.mean(total_g_loss), np.mean(total_gd_loss), np.mean(total_gc_loss), np.mean(total_gc_acc)
 
-    def adv_train_descriptor(self, d_step):
+    def adv_train_descriptor(self, d_step, freeze_dis=False, freeze_clas=False):
         total_d_loss = []
         total_dd_loss = []
         total_dc_loss = []
@@ -258,18 +260,24 @@ class CatGANInstructor(BasicInstructor):
                 clas_inp, clas_target = clas_inp.cuda(), clas_target.cuda()
 
             for b in range(total_num // clas_bs):
-                # Discriminator loss
-                self.dis.dis_or_clas = 'dis'
-                d_out_real = self.dis(dis_real_samples[b * dis_bs:(b + 1) * dis_bs])
-                d_out_fake = self.dis(dis_gen_samples[b * dis_bs:(b + 1) * dis_bs])
-                dd_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
-                self.dis.dis_or_clas = None
+                if freeze_dis:
+                    dd_loss = torch.Tensor(0)
+                else:
+                    # Discriminator loss
+                    self.dis.dis_or_clas = 'dis'
+                    d_out_real = self.dis(dis_real_samples[b * dis_bs:(b + 1) * dis_bs])
+                    d_out_fake = self.dis(dis_gen_samples[b * dis_bs:(b + 1) * dis_bs])
+                    dd_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
+                    self.dis.dis_or_clas = None
 
-                # Classifier loss
-                self.clas.dis_or_clas = 'clas'
-                pred = self.clas(clas_inp[b * clas_bs:(b + 1) * clas_bs])
-                dc_loss = self.clas_criterion(pred, clas_target[b * clas_bs:(b + 1) * clas_bs])
-                self.clas.dis_or_clas = None
+                if freeze_clas:
+                    dc_loss = torch.Tensor(0)
+                else:
+                    # Classifier loss
+                    self.clas.dis_or_clas = 'clas'
+                    pred = self.clas(clas_inp[b * clas_bs:(b + 1) * clas_bs])
+                    dc_loss = self.clas_criterion(pred, clas_target[b * clas_bs:(b + 1) * clas_bs])
+                    self.clas.dis_or_clas = None
 
                 d_loss = dd_loss + dc_loss
                 self.optimize(self.desp_opt, d_loss)
@@ -378,8 +386,8 @@ class CatGANInstructor(BasicInstructor):
     def optimize(opt, loss, model=None, retain_graph=False):
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
-        if model is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
+        # if model is not None:
+        #     torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
         opt.step()
 
     def cal_metrics(self, label_i=None):
