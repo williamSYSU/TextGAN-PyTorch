@@ -96,18 +96,12 @@ class CatGANInstructor(BasicInstructor):
             g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
             # if d_loss > 1:
             #     d_loss = self.adv_train_discriminator(1)  # !!! no adv-train for discriminator
-            # c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
-            d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step)
+            c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
+            # d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step)
 
             # =====Test=====
-            # self.log.info(
-            #     '[ADV] epoch %d: g_loss = %.4f, c_loss = %.4f, c_acc = %.4f, d_loss = %.4f' % (
-            #         adv_epoch, g_loss, c_loss, c_acc, d_loss))
-            # self.log.info(
-            #     '[ADV] epoch %d: g_loss = %.4f, gd_loss = %.4f, gc_loss = %.4f, gc_acc = %.4f, c_loss = %.4f, c_acc = %.4f,' % (
-            #         adv_epoch, g_loss, gd_loss, gc_loss, gc_acc, c_loss, c_acc))
-            # progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
-            progress.set_description('g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f' % (g_loss, d_loss, dd_loss))
+            progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
+            # progress.set_description('g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f' % (g_loss, d_loss, dd_loss))
             if adv_epoch % cfg.adv_log_step == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
@@ -124,6 +118,7 @@ class CatGANInstructor(BasicInstructor):
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
+
         pass
 
     def pretrain_generator(self, epochs):

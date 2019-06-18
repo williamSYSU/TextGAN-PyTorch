@@ -13,14 +13,14 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = True  # False
 oracle_pretrain = True  # True
 gen_pretrain = True
 dis_pretrain = False
-clas_pretrain = True
+clas_pretrain = False
 
 run_model = 'catgan'  # seqgan, leakgan, relgan, catgan
 k_label = 2  # num of labels
@@ -40,7 +40,7 @@ temperature = 1
 samples_num = 5000  # 10000
 MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 150
-ADV_train_epoch = 10000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 5000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
