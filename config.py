@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = True  # False
