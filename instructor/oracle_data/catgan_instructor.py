@@ -94,8 +94,7 @@ class CatGANInstructor(BasicInstructor):
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
             g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
-            # if d_loss > 1:
-            #     d_loss = self.adv_train_discriminator(1)  # !!! no adv-train for discriminator
+            # d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')  # !!! no adv-train for discriminator
             c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
             # d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step)
 
@@ -119,7 +118,26 @@ class CatGANInstructor(BasicInstructor):
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
 
-        pass
+        # self.freeze_dis = False
+        # self.freeze_clas = False
+        # # self.train_classifier(150, 'PRE')
+        # # self.adv_train_discriminator(50,'PRE')
+        # # self.adv_train_descriptor(200, 'PRE')
+        #
+        # progress = tqdm(range(cfg.ADV_train_epoch))
+        # for adv_epoch in progress:
+        #     g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
+        #     d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')
+        #     # d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step, 'ADV')
+        #
+        #     # =====Test=====
+        #     progress.set_description(
+        #         'g_loss = %.4f, d_loss = %.4f' % (g_loss, d_loss))
+        #     # progress.set_description(
+        #     #     'g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f' % (
+        #     #         g_loss, d_loss, dd_loss, dc_loss))
+        #     if adv_epoch % cfg.adv_log_step == 0:
+        #         self.log.info('[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
 
     def pretrain_generator(self, epochs):
         """
@@ -139,7 +157,7 @@ class CatGANInstructor(BasicInstructor):
                     for label_i in range(cfg.k_label):
                         self._save('MLE', epoch, label_i)
 
-    def train_classifier(self, c_step, phase):
+    def train_classifier(self, c_step, phase='PRE'):
         """真假样本一起训练，为了让分类器不那么强"""
         self.clas.dis_or_clas = 'clas'  # !!!!!
         total_loss = []
@@ -184,6 +202,9 @@ class CatGANInstructor(BasicInstructor):
             dis_gen_samples = torch.cat(gen_samples_list, dim=0)
 
             # shuffle
+            # perm = torch.randperm(dis_real_samples.size(0))
+            # dis_real_samples = dis_real_samples[perm]
+            # dis_gen_samples = dis_gen_samples[perm]
             dis_real_samples = dis_real_samples[torch.randperm(dis_real_samples.size(0))]
             dis_gen_samples = dis_gen_samples[torch.randperm(dis_gen_samples.size(0))]
             if cfg.CUDA:
@@ -194,7 +215,6 @@ class CatGANInstructor(BasicInstructor):
             self.dis.dis_or_clas = None
 
             # Classifier loss, only input fake data
-            # clas_samples_list = [fake for fake in gen_samples_list]
             self.clas.dis_or_clas = 'clas'  # !!!!!
             inp = torch.cat(gen_samples_list, dim=0)
             target = torch.zeros(inp.size(0)).long()
@@ -207,9 +227,12 @@ class CatGANInstructor(BasicInstructor):
             gc_loss = self.clas_criterion(pred, target)
             gc_acc = torch.sum((pred.argmax(dim=-1) == target)).item() / inp.size(0)
             self.clas.dis_or_clas = None
+            # gc_loss = torch.Tensor([0])
+            # gc_acc = torch.Tensor([0])
 
             # Total loss
             g_loss = gd_loss + gc_loss
+            # g_loss = gd_loss
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             # self.optimize(self.gen_adv_opt, gc_loss, self.gen, retain_graph=True)
@@ -225,7 +248,7 @@ class CatGANInstructor(BasicInstructor):
             return 0, 0, 0, 0
         return np.mean(total_g_loss), np.mean(total_gd_loss), np.mean(total_gc_loss), np.mean(total_gc_acc)
 
-    def adv_train_descriptor(self, d_step):
+    def adv_train_descriptor(self, d_step, phase='PRE'):
         total_d_loss = []
         total_dd_loss = []
         total_dc_loss = []
@@ -244,6 +267,7 @@ class CatGANInstructor(BasicInstructor):
             # prepare dis data
             dis_real_samples = torch.cat(real_samples_list, dim=0)
             dis_gen_samples = torch.cat(gen_samples_list, dim=0)
+            # perm = torch.randperm(dis_real_samples.size(0))
             dis_real_samples = dis_real_samples[torch.randperm(dis_real_samples.size(0))].detach()  # shuffle
             dis_gen_samples = dis_gen_samples[torch.randperm(dis_gen_samples.size(0))].detach()
 
@@ -257,27 +281,23 @@ class CatGANInstructor(BasicInstructor):
                 clas_inp, clas_target = clas_inp.cuda(), clas_target.cuda()
 
             for b in range(total_num // clas_bs):
-                if self.freeze_dis:
-                    dd_loss = torch.Tensor([0])
-                else:
-                    # Discriminator loss
-                    self.dis.dis_or_clas = 'dis'
-                    d_out_real = self.dis(dis_real_samples[b * dis_bs:(b + 1) * dis_bs])
-                    d_out_fake = self.dis(dis_gen_samples[b * dis_bs:(b + 1) * dis_bs])
-                    dd_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
-                    self.dis.dis_or_clas = None
+                # Discriminator loss
+                self.dis.dis_or_clas = 'dis'
+                d_out_real = self.dis(dis_real_samples[b * dis_bs:(b + 1) * dis_bs])
+                d_out_fake = self.dis(dis_gen_samples[b * dis_bs:(b + 1) * dis_bs])
+                dd_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
+                self.dis.dis_or_clas = None
 
-                if self.freeze_clas:
-                    dc_loss = torch.Tensor([0])
-                else:
-                    # Classifier loss
-                    self.clas.dis_or_clas = 'clas'
-                    pred = self.clas(clas_inp[b * clas_bs:(b + 1) * clas_bs])
-                    dc_loss = self.clas_criterion(pred, clas_target[b * clas_bs:(b + 1) * clas_bs])
-                    self.clas.dis_or_clas = None
+                # Classifier loss
+                self.clas.dis_or_clas = 'clas'
+                pred = self.clas(clas_inp[b * clas_bs:(b + 1) * clas_bs])
+                dc_loss = self.clas_criterion(pred, clas_target[b * clas_bs:(b + 1) * clas_bs])
+                self.clas.dis_or_clas = None
 
                 if self.freeze_dis:
                     d_loss = dc_loss
+                elif self.freeze_clas:
+                    d_loss = dd_loss
                 else:
                     d_loss = dd_loss + dc_loss
                 self.optimize(self.desp_opt, d_loss)
@@ -286,16 +306,32 @@ class CatGANInstructor(BasicInstructor):
                 total_dd_loss.append(dd_loss.item())
                 total_dc_loss.append(dc_loss.item())
 
-            if dd_loss < 1:
-                self.freeze_dis = True
+                # if dd_loss < 0.2:
+                #     if not self.freeze_dis:
+                #         self.log.debug('Freeze dis!')
+                #     self.freeze_dis = True
+                # else:
+                #     if self.freeze_dis:
+                #         self.log.debug('Unfreeze dis!')
+                #     self.freeze_dis = False
+                if dc_loss < 0.5:
+                    if not self.freeze_clas:
+                        self.log.debug('Freeze clas!')
+                    self.freeze_clas = True
+                else:
+                    if self.freeze_clas:
+                        self.log.debug('Unfreeze clas!')
+                    self.freeze_clas = False
 
-            # self.log.debug('In G: d_loss = %.4f' % d_loss.item())
+            if phase == 'PRE':
+                self.log.debug('[PRE-epoch %d]In G: d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f', step, d_loss.item(),
+                               dd_loss.item(), dc_loss.item())
 
         if d_step == 0:
             return 0, 0, 0
         return np.mean(total_d_loss), np.mean(total_dd_loss), np.mean(total_dc_loss)
 
-    def adv_train_discriminator(self, d_step):
+    def adv_train_discriminator(self, d_step, phase='PRE'):
         self.dis.dis_or_clas = 'dis'  # !!!!!
         total_loss = []
         for step in range(d_step):
@@ -307,6 +343,9 @@ class CatGANInstructor(BasicInstructor):
             gen_samples = torch.cat([self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
                                      for i in range(cfg.k_label)], dim=0)
             # shuffle
+            # perm = torch.randperm(real_samples.size(0))
+            # real_samples = real_samples[perm].detach()
+            # gen_samples = gen_samples[perm].detach()
             real_samples = real_samples[torch.randperm(real_samples.size(0))].detach()
             gen_samples = gen_samples[torch.randperm(gen_samples.size(0))].detach()
             if cfg.CUDA:
@@ -320,7 +359,9 @@ class CatGANInstructor(BasicInstructor):
 
             self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss.append(d_loss.item())
-        self.log.debug('In D: d_loss = %.4f, g_loss = %.4f' % (d_loss.item(), g_loss.item()))
+
+            if phase == 'PRE':
+                self.log.debug('[PRE-epoch %d]In D: d_loss = %.4f, g_loss = %.4f', step, d_loss.item(), g_loss.item())
         self.dis.dis_or_clas = None
         if d_step == 0:
             return 0

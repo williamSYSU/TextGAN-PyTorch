@@ -151,6 +151,7 @@ class CatGAN_C(CNNDiscriminator):
         # Discriminator part
         self.dis_highway = nn.Linear(self.feature_dim, self.feature_dim)
         self.dis_feature2out = nn.Linear(self.feature_dim, 100)
+        # self.dis_out2logits = nn.Linear(100, 1)
         self.dis_out2logits = nn.Linear(100 * num_rep, 1)
 
         # Classifier part
@@ -182,6 +183,7 @@ class CatGAN_C(CNNDiscriminator):
             pred = torch.sigmoid(dis_highway) * F.relu(dis_highway) + (
                     1. - torch.sigmoid(dis_highway)) * pred  # dis_highway
             pred = self.dis_feature2out(self.dropout(pred))  # batch_size * num_rep * 100
+            # logits = self.dis_out2logits(self.dropout(pred.view(-1, 100))).squeeze(1)  # [batch_size * num_rep]
             logits = self.dis_out2logits(self.dropout(pred.view(inp.size(0), -1))).squeeze(1)  # [batch_size]
         else:
             clas_highway = self.clas_highway(pred)
