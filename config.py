@@ -16,9 +16,9 @@ import torch
 if_test = False
 CUDA = True
 if_save = True
-data_shuffle = False  # False
+data_shuffle = True  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
@@ -37,9 +37,9 @@ temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 10000  # 10000
+samples_num = 5000  # 10000
 MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
-PRE_clas_epoch = 200
+PRE_clas_epoch = 150
 ADV_train_epoch = 5000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
@@ -49,7 +49,7 @@ padding_idx = 0
 start_token = 'BOS'
 padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
-gen_adv_lr = 1e-4  # RelGAN-1e-4
+gen_adv_lr = 1e-3  # RelGAN-1e-4
 dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
 clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0

@@ -79,28 +79,30 @@ class CatGANInstructor(BasicInstructor):
                 print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
 
         # ===Pre-train Classifier===
-        if not cfg.clas_pretrain:
-            self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
-            if cfg.if_save:
-                torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
-                print('Save pre-trained classifier: {}'.format(cfg.pretrained_clas_path))
+        # if not cfg.clas_pretrain:
+        #     self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
+        #     if cfg.if_save:
+        #         torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
+        #         print('Save pre-trained classifier: {}'.format(cfg.pretrained_clas_path))
         # self.adv_train_discriminator(5)
         # self.adv_train_descriptor(50)
 
         self.log.info('Initial metrics: %s', self.comb_metrics(fmt_str=True))
-        self.freeze_dis = False
+        self.freeze_dis = True
         self.freeze_clas = False
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
             g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
             # d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')  # !!! no adv-train for discriminator
-            c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
-            # d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step)
+            # c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
+            d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step, 'ADV')
+
+            self.update_temperature(adv_epoch, cfg.ADV_train_epoch)
 
             # =====Test=====
-            progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
-            # progress.set_description('g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f' % (g_loss, d_loss, dd_loss))
+            # progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
+            progress.set_description('g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f' % (g_loss, d_loss, dd_loss))
             if adv_epoch % cfg.adv_log_step == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
@@ -111,33 +113,36 @@ class CatGANInstructor(BasicInstructor):
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        self._run()
+        # self._run()
         # self.train_classifier(1, 'PRE')
         # self.train_classifier(1, 'ADV')
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
 
-        # self.freeze_dis = False
+        # >>>>>>>>>>>Test adversarial training Discriminator
+        # self.freeze_dis = True
         # self.freeze_clas = False
         # # self.train_classifier(150, 'PRE')
         # # self.adv_train_discriminator(50,'PRE')
-        # # self.adv_train_descriptor(200, 'PRE')
+        # # self.adv_train_descriptor(150, 'PRE')
         #
         # progress = tqdm(range(cfg.ADV_train_epoch))
         # for adv_epoch in progress:
         #     g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
-        #     d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')
-        #     # d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step, 'ADV')
+        #     # d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')
+        #     d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step, 'ADV')
         #
         #     # =====Test=====
-        #     progress.set_description(
-        #         'g_loss = %.4f, d_loss = %.4f' % (g_loss, d_loss))
         #     # progress.set_description(
-        #     #     'g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f' % (
-        #     #         g_loss, d_loss, dd_loss, dc_loss))
+        #         # 'g_loss = %.4f, d_loss = %.4f' % (g_loss, d_loss))
+        #     progress.set_description(
+        #         'g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f' % (
+        #             g_loss, d_loss, dd_loss, dc_loss))
         #     if adv_epoch % cfg.adv_log_step == 0:
         #         self.log.info('[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
+
+        self.train_classifier(150, 'PRE')
 
     def pretrain_generator(self, epochs):
         """
@@ -277,7 +282,7 @@ class CatGANInstructor(BasicInstructor):
             clas_inp, clas_target = self.clas_data.prepare(clas_samples_list)
 
             if cfg.CUDA:
-                dis_real_samples, dis_gen_samples = dis_real_samples.cuda(), dis_gen_samples.cuda()
+                dis_real_samples, dis_gen_samples = dis_real_samples.detach().cuda(), dis_gen_samples.detach().cuda()
                 clas_inp, clas_target = clas_inp.cuda(), clas_target.cuda()
 
             for b in range(total_num // clas_bs):
@@ -306,7 +311,7 @@ class CatGANInstructor(BasicInstructor):
                 total_dd_loss.append(dd_loss.item())
                 total_dc_loss.append(dc_loss.item())
 
-                # if dd_loss < 0.2:
+                # if dd_loss < 0.1:
                 #     if not self.freeze_dis:
                 #         self.log.debug('Freeze dis!')
                 #     self.freeze_dis = True
@@ -314,14 +319,14 @@ class CatGANInstructor(BasicInstructor):
                 #     if self.freeze_dis:
                 #         self.log.debug('Unfreeze dis!')
                 #     self.freeze_dis = False
-                if dc_loss < 0.5:
-                    if not self.freeze_clas:
-                        self.log.debug('Freeze clas!')
-                    self.freeze_clas = True
-                else:
-                    if self.freeze_clas:
-                        self.log.debug('Unfreeze clas!')
-                    self.freeze_clas = False
+                # if dc_loss < 0.5:
+                #     if not self.freeze_clas:
+                #         self.log.debug('Freeze clas!')
+                #     self.freeze_clas = True
+                # else:
+                #     if self.freeze_clas:
+                #         self.log.debug('Unfreeze clas!')
+                #     self.freeze_clas = False
 
             if phase == 'PRE':
                 self.log.debug('[PRE-epoch %d]In G: d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f', step, d_loss.item(),
@@ -346,10 +351,10 @@ class CatGANInstructor(BasicInstructor):
             # perm = torch.randperm(real_samples.size(0))
             # real_samples = real_samples[perm].detach()
             # gen_samples = gen_samples[perm].detach()
-            real_samples = real_samples[torch.randperm(real_samples.size(0))].detach()
-            gen_samples = gen_samples[torch.randperm(gen_samples.size(0))].detach()
+            # real_samples = real_samples[torch.randperm(real_samples.size(0))].detach()
+            # gen_samples = gen_samples[torch.randperm(gen_samples.size(0))].detach()
             if cfg.CUDA:
-                real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
+                real_samples, gen_samples = real_samples.detach().cuda(), gen_samples.detach().cuda()
 
             # =====Train=====
             d_out_real = self.dis(real_samples)
