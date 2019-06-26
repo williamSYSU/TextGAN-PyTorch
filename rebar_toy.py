@@ -52,6 +52,7 @@ class Toy(nn.Module):
 
         self.embed = nn.Embedding(VOCAB_SIZE, EMBED_DIM)
         self.embed2hid = nn.Linear(EMBED_DIM, VOCAB_SIZE)
+        self.hid2hid = nn.Linear(VOCAB_SIZE, VOCAB_SIZE)
         self.hid2out = nn.Linear(VOCAB_SIZE, 2)
 
     def get_params(self):
@@ -62,20 +63,51 @@ class Toy(nn.Module):
 
         return params
 
+    # def forward(self, inp):
+    #     emb = self.embed(inp)
+    #     hidden = self.embed2hid(emb)
+    #
+    #     pred = F.softmax(hidden, dim=-1)
+    #     samples = torch.argmax(pred, dim=-1).detach()
+    #     samples_onehot = F.one_hot(samples, VOCAB_SIZE).float()
+    #
+    #     gumbel_u = F.softmax(self.add_gumbel_u(hidden), dim=-1)
+    #     gumbel_v = F.softmax(self.add_gumbel_v(hidden, samples), dim=-1)
+    #
+    #     hardlogQ = self.log_likelihood(samples_onehot, hidden)
+    #
+    #     return hidden, pred, samples, samples_onehot, gumbel_u, gumbel_v, hardlogQ
+
     def forward(self, inp):
+        # first layer
         emb = self.embed(inp)
         hidden = self.embed2hid(emb)
-
         pred = F.softmax(hidden, dim=-1)
         samples = torch.argmax(pred, dim=-1).detach()
         samples_onehot = F.one_hot(samples, VOCAB_SIZE).float()
-
         gumbel_u = F.softmax(self.add_gumbel_u(hidden), dim=-1)
         gumbel_v = F.softmax(self.add_gumbel_v(hidden, samples), dim=-1)
-
         hardlogQ = self.log_likelihood(samples_onehot, hidden)
 
-        return hidden, pred, samples, samples_onehot, gumbel_u, gumbel_v, hardlogQ
+        # second layer
+        emb_2 = self.embed(samples)
+        hidden_2 = self.hid2hid(emb_2)
+        pred_2 = F.softmax(hidden_2, dim=-1)
+        samples_2 = torch.argmax(pred_2, dim=-1).detach()
+        samples_onehot_2 = F.one_hot(samples_2, VOCAB_SIZE).float()
+        gumbel_u_2 = F.softmax(self.add_gumbel_u(hidden_2), dim=-1)
+        gumbel_v_2 = F.softmax(self.add_gumbel_v(hidden_2, samples_2), dim=-1)
+        hardlogQ_2 = self.log_likelihood(samples_onehot_2, hidden_2)
+
+        # cat
+        pred_out = torch.stack((pred, pred_2), dim=1)
+        samples_out = torch.stack((samples, samples_2), dim=1)
+        samples_onehot_out = torch.stack((samples_onehot, samples_onehot_2), dim=1)
+        gumbel_u_out = torch.stack((gumbel_u, gumbel_u_2), dim=1)
+        gumbel_v_out = torch.stack((gumbel_v, gumbel_v_2), dim=1)
+        hardlogQ_out = torch.stack((hardlogQ, hardlogQ_2), dim=1)
+
+        return hidden_2, pred_out, samples_out, samples_onehot_out, gumbel_u_out, gumbel_v_out, hardlogQ_out
 
     @staticmethod
     def add_gumbel_u(hidden, eps=1e-10):
