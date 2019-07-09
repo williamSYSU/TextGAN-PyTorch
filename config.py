@@ -22,7 +22,7 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'relgan'  # seqgan, leakgan, relgan, catgan, bargan
+run_model = 'bargan'  # seqgan, leakgan, relgan, catgan, bargan
 k_label = 2  # num of labels
 use_truncated_normal = True
 n_samples = 1
@@ -50,13 +50,13 @@ padding_idx = 0
 start_token = 'BOS'
 padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
-gen_adv_lr = 5e-4  # RelGAN-1e-4
-dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
+gen_adv_lr = 1e-3  # RelGAN-1e-4
+dis_lr = 1e-3  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
 clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
 pre_log_step = 20
-adv_log_step = 40
+adv_log_step = 10
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -76,7 +76,7 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_step = 1  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
@@ -103,7 +103,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device=0
+# device=1
 # print('device: ', device)
 torch.cuda.set_device(device)
 

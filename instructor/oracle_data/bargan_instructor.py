@@ -19,7 +19,7 @@ from instructor.oracle_data.instructor import BasicInstructor
 from models.BarGAN_D import BarGAN_D
 from models.BarGAN_G import BarGAN_G
 from utils.data_loader import GenDataIter
-from utils.helpers import get_fixed_temperature
+from utils.helpers import get_fixed_temperature, get_losses
 
 
 class BarGANInstructor(BasicInstructor):
@@ -170,8 +170,8 @@ class BarGANInstructor(BasicInstructor):
             # total_loss += g_loss.item()
 
             # REBAR
-            # d_out_real = self.dis(real_samples_onehot)
-            d_out_real = None
+            d_out_real = self.dis(real_samples_onehot)
+            # d_out_real = None # Cross Entropy
             d_out_hard_fake = self.dis(gen_samples_onehot)
             d_out_gumu_fake = self.dis(all_gumbel_u)
             d_out_gumv_fake = self.dis(all_gumbel_v)
@@ -253,14 +253,17 @@ class BarGANInstructor(BasicInstructor):
                         real_data, fake_data = real_data.cuda(), fake_data.cuda()
                         real_target, fake_target = real_target.cuda(), fake_target.cuda()
 
-                    # d_out_real = self.dis(real_data)
-                    # d_out_fake = self.dis(fake_data)
-                    # _, d_loss = get_losses(d_out_real, d_out_fake, cfg.loss_type)
+                    # RSGAN
                     d_out_real = self.dis(real_data)
                     d_out_fake = self.dis(fake_data)
-                    d_real_loss = self.cross_entro_cri(d_out_real, real_target)
-                    d_fake_loss = self.cross_entro_cri(d_out_fake, fake_target)
-                    d_loss = d_real_loss + d_fake_loss
+                    _, d_loss = get_losses(d_out_real, d_out_fake, cfg.loss_type)
+
+                    # Cross Entropy
+                    # d_out_real = self.dis(real_data)
+                    # d_out_fake = self.dis(fake_data)
+                    # d_real_loss = self.cross_entro_cri(d_out_real, real_target)
+                    # d_fake_loss = self.cross_entro_cri(d_out_fake, fake_target)
+                    # d_loss = d_real_loss + d_fake_loss
 
                     self.optimize(self.dis_opt, d_loss, self.dis)
                     total_loss.append(d_loss.item())
@@ -276,15 +279,15 @@ class BarGANInstructor(BasicInstructor):
         hardlogQ = torch.sum(hardlogQ, dim=1)
 
         # RSGAN
-        # g_loss_hard, _ = get_losses(d_out_real, d_out_hard_fake, cfg.loss_type)
-        # g_loss_gumu, _ = get_losses(d_out_real, d_out_gumu_fake, cfg.loss_type)
-        # g_loss_gumv, _ = get_losses(d_out_real, d_out_gumv_fake, cfg.loss_type)
+        g_loss_hard, _ = get_losses(d_out_real, d_out_hard_fake, cfg.loss_type)
+        g_loss_gumu, _ = get_losses(d_out_real, d_out_gumu_fake, cfg.loss_type)
+        g_loss_gumv, _ = get_losses(d_out_real, d_out_gumv_fake, cfg.loss_type)
 
         # Cross Entropy
-        g_target = torch.ones(d_out_hard_fake.size(0)).long().cuda()
-        g_loss_hard = self.cross_entro_cri(d_out_hard_fake, g_target)
-        g_loss_gumu = self.cross_entro_cri(d_out_gumu_fake, g_target)
-        g_loss_gumv = self.cross_entro_cri(d_out_gumv_fake, g_target)
+        # g_target = torch.ones(d_out_hard_fake.size(0)).long().cuda()
+        # g_loss_hard = self.cross_entro_cri(d_out_hard_fake, g_target)
+        # g_loss_gumu = self.cross_entro_cri(d_out_gumu_fake, g_target)
+        # g_loss_gumv = self.cross_entro_cri(d_out_gumv_fake, g_target)
 
         # Reverse Cross Entropy
         # g_target = torch.zeros(d_out_hard_fake.size(0)).long().cuda()
