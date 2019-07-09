@@ -13,18 +13,19 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
-data_shuffle = True  # False
+data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan
+run_model = 'relgan'  # seqgan, leakgan, relgan, catgan, bargan
 k_label = 2  # num of labels
-use_truncated_normal = False
+use_truncated_normal = True
+n_samples = 1
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
@@ -37,10 +38,10 @@ temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 5000  # 10000
-MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
+samples_num = 10000  # 10000
+MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 150
-ADV_train_epoch = 5000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
@@ -49,13 +50,13 @@ padding_idx = 0
 start_token = 'BOS'
 padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
-gen_adv_lr = 1e-3  # RelGAN-1e-4
+gen_adv_lr = 5e-4  # RelGAN-1e-4
 dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
 clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
 pre_log_step = 20
-adv_log_step = 20
+adv_log_step = 40
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -76,7 +77,7 @@ head_size = 256  # RelGAN-256
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
 ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
-ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
+ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
 dis_hidden_dim = 64
@@ -102,7 +103,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device=3
+# device=0
 # print('device: ', device)
 torch.cuda.set_device(device)
 

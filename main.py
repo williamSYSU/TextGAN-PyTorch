@@ -1,24 +1,15 @@
-# -*- coding: utf-8 -*-
-# @Author       : William
-# @Project      : TextGAN-william
-# @FileName     : config.py
-# @Time         : Created at 2019-03-18
-# @Blog         : http://zhiweil.ml/
-# @Description  :
-# Copyrights (C) 2018. All Rights Reserved.
 from __future__ import print_function
 
 import argparse
 
 import config as cfg
-from utils.text_process import text_process, load_test_dict
+from utils.text_process import text_process
 
 
 def program_config(parser):
     # Program
     parser.add_argument('--if_test', default=cfg.if_test, type=int)
     parser.add_argument('--run_model', default=cfg.run_model, type=str)
-    parser.add_argument('--k_label', default=cfg.k_label, type=int)
     parser.add_argument('--dataset', default=cfg.dataset, type=str)
     parser.add_argument('--model_type', default=cfg.model_type, type=str)
     parser.add_argument('--loss_type', default=cfg.loss_type, type=str)
@@ -92,34 +83,36 @@ if __name__ == '__main__':
 
     if opt.if_real_data:
         opt.max_seq_len, opt.vocab_size = text_process('dataset/' + opt.dataset + '.txt')
-        cfg.extend_vocab_size = len(load_test_dict(opt.dataset)[0])  # init classifier vocab_size
     cfg.init_param(opt)
     opt.save_root = cfg.save_root
 
-    # ===Dict===
+    # =====Dict=====
     if cfg.if_real_data:
         from instructor.real_data.seqgan_instructor import SeqGANInstructor
         from instructor.real_data.leakgan_instructor import LeakGANInstructor
         from instructor.real_data.maligan_instructor import MaliGANInstructor
         from instructor.real_data.jsdgan_instructor import JSDGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
-        from instructor.real_data.sentigan_instructor import SentiGANInstructor
 
+        CatGANInstructor = None
+        BarGANInstructor = None
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
         from instructor.oracle_data.maligan_instructor import MaliGANInstructor
         from instructor.oracle_data.jsdgan_instructor import JSDGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
-        from instructor.oracle_data.sentigan_instructor import SentiGANInstructor
-
+        from instructor.oracle_data.catgan_instructor import CatGANInstructor
+        from instructor.oracle_data.bargan_instructor import BarGANInstructor
     instruction_dict = {
         'seqgan': SeqGANInstructor,
         'leakgan': LeakGANInstructor,
         'maligan': MaliGANInstructor,
         'jsdgan': JSDGANInstructor,
         'relgan': RelGANInstructor,
-        'sentigan': SentiGANInstructor,
+        'catgan': CatGANInstructor,
+        'bargan': BarGANInstructor
+
     }
 
     inst = instruction_dict[cfg.run_model](opt)
