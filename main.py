@@ -96,6 +96,7 @@ if __name__ == '__main__':
 
         CatGANInstructor = None
         BarGANInstructor = None
+        EvoGANInstructor = None
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
@@ -104,6 +105,7 @@ if __name__ == '__main__':
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
         from instructor.oracle_data.catgan_instructor import CatGANInstructor
         from instructor.oracle_data.bargan_instructor import BarGANInstructor
+        from instructor.oracle_data.evogan_instructor import EvoGANInstructor
     instruction_dict = {
         'seqgan': SeqGANInstructor,
         'leakgan': LeakGANInstructor,
@@ -111,8 +113,8 @@ if __name__ == '__main__':
         'jsdgan': JSDGANInstructor,
         'relgan': RelGANInstructor,
         'catgan': CatGANInstructor,
-        'bargan': BarGANInstructor
-
+        'bargan': BarGANInstructor,
+        'evogan': EvoGANInstructor,
     }
 
     inst = instruction_dict[cfg.run_model](opt)

@@ -22,10 +22,13 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'bargan'  # seqgan, leakgan, relgan, catgan, bargan
+run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan
 k_label = 2  # num of labels
 use_truncated_normal = True
-n_samples = 1
+
+# =====EvoGAN=====
+n_parent = 3
+n_child = 3
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
