@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -27,14 +27,19 @@ k_label = 2  # num of labels
 use_truncated_normal = True
 
 # =====EvoGAN=====
-n_parent = 3
-n_child = 3
+n_parent = 1
+evo_d_step = 5
+eval_b_num = 5  # >= n_parent*ADV_d_step
+lambda_fd = 0.0
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'RSGAN'  # standard, JS, KL, hinge, tv, LS, RSGAN (for RelGAN)
+loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'rsgan lsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+eval_type = 'nll'  # standard, rsgan, nll
+d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
@@ -53,13 +58,13 @@ padding_idx = 0
 start_token = 'BOS'
 padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
-gen_adv_lr = 1e-3  # RelGAN-1e-4
-dis_lr = 1e-3  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
+gen_adv_lr = 1e-4  # RelGAN-1e-4
+dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
 clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
 pre_log_step = 20
-adv_log_step = 10
+adv_log_step = 40
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -79,7 +84,7 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 1  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
@@ -106,7 +111,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device=1
+# device=2
 # print('device: ', device)
 torch.cuda.set_device(device)
 
@@ -140,18 +145,24 @@ def init_param(opt):
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
         pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
-        pretrained_clas_path
+        pretrained_clas_path, n_parent, evo_d_step, mu_type, eval_type, d_type
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
     dataset = opt.dataset
     model_type = opt.model_type
     loss_type = opt.loss_type
+    mu_type = opt.mu_type
+    eval_type = opt.eval_type
+    d_type = opt.d_type
     if_real_data = True if opt.if_real_data == 1 else False
     CUDA = True if opt.cuda == 1 else False
     device = opt.device
     data_shuffle = opt.shuffle
     use_truncated_normal = True if opt.use_truncated_normal == 1 else False
+
+    n_parent = opt.n_parent
+    evo_d_step = opt.evo_d_step
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size
@@ -217,7 +228,7 @@ def init_param(opt):
     pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}.pt'.format(run_model, model_type)
 
     # Create Directory
-    dir_list = ['save', 'savefig', 'log', 'pretrain', 'save/log', 'dataset',
+    dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
                 'pretrain/oracle_data', 'pretrain/real_data']
     if not if_test:
         dir_list.extend([save_root, save_samples_root, save_model_root])

@@ -13,12 +13,19 @@ def program_config(parser):
     parser.add_argument('--dataset', default=cfg.dataset, type=str)
     parser.add_argument('--model_type', default=cfg.model_type, type=str)
     parser.add_argument('--loss_type', default=cfg.loss_type, type=str)
+    parser.add_argument('--mu_type', default=cfg.mu_type, type=str)
+    parser.add_argument('--eval_type', default=cfg.eval_type, type=str)
+    parser.add_argument('--d_type', default=cfg.d_type, type=str)
     parser.add_argument('--if_real_data', default=cfg.if_real_data, type=int)
     parser.add_argument('--cuda', default=cfg.CUDA, type=int)
     parser.add_argument('--device', default=cfg.device, type=int)
     parser.add_argument('--shuffle', default=cfg.data_shuffle, type=int)
     parser.add_argument('--gen_init', default=cfg.gen_init, type=str)
     parser.add_argument('--dis_init', default=cfg.dis_init, type=str)
+
+    # EvoGAN
+    parser.add_argument('--n_parent', default=cfg.n_parent, type=int)
+    parser.add_argument('--evo_d_step', default=cfg.evo_d_step, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
