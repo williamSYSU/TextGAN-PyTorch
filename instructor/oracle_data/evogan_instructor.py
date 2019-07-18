@@ -7,6 +7,7 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 import os
+import random
 
 import torch
 import torch.nn as nn
@@ -35,7 +36,6 @@ class EvoGANInstructor(BasicInstructor):
         self.parents = [EvoGAN_G(cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim, cfg.gen_hidden_dim,
                                  cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA).state_dict()
                         for _ in range(cfg.n_parent)]  # list of Generator state_dict
-        # self.parents = [copy.deepcopy(self.gen.state_dict()) for _ in range(cfg.n_parent)]
         self.dis = EvoGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
                             cfg.padding_idx, gpu=cfg.CUDA)
 
@@ -47,6 +47,8 @@ class EvoGANInstructor(BasicInstructor):
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
+        self.parent_mle_opts = [copy.deepcopy(self.gen_opt.state_dict())
+                                for _ in range(cfg.n_parent)]
         self.parent_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
                             for _ in range(cfg.n_parent)]  # list of optimizer state dict
 
@@ -79,17 +81,21 @@ class EvoGANInstructor(BasicInstructor):
             self.gen = self.gen.cuda()
             self.dis = self.dis.cuda()
 
-    def load_gen(self, parent, parent_opt):
+    def load_gen(self, parent, parent_opt, mle=False):
         self.gen.load_state_dict(parent)
-        self.gen_adv_opt.load_state_dict(parent_opt)
-        self.gen_adv_opt.zero_grad()
+        if mle:
+            self.gen_opt.load_state_dict(parent_opt)
+            self.gen_opt.zero_grad()
+        else:
+            self.gen_adv_opt.load_state_dict(parent_opt)
+            self.gen_adv_opt.zero_grad()
 
     def _run(self):
         # =====PRE-TRAINING (GENERATOR)=====
         if not cfg.gen_pretrain:
-            for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_opts)):
+            for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_mle_opts)):
                 self.log.info('Starting Generator-{} MLE Training...'.format(i))
-                self.load_gen(parent, parent_opt)  # load state dict
+                self.load_gen(parent, parent_opt, mle=True)  # load state dict
                 self.pretrain_generator(cfg.MLE_train_epoch)
                 self.parents[i] = copy.deepcopy(self.gen.state_dict())  # save state dict
                 if cfg.if_save and not cfg.if_test:
@@ -120,6 +126,12 @@ class EvoGANInstructor(BasicInstructor):
         print('>>> Begin test...')
 
         self._run()
+        # create_oracle()
+        # self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
+        # self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
+        # self.oracle_data.reset(self.oracle_samples)
+        # gt = self.eval_gen(self.oracle,self.oracle_data.loader,self.mle_criterion)
+        # print(gt)
 
         # self.adv_train_discriminator(1)
         # self.evolve_generator(1)
@@ -172,7 +184,16 @@ class EvoGANInstructor(BasicInstructor):
             for j, criterionG in enumerate(self.G_critertion):
                 # Variation
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
+                # single loss
                 self.variation(evo_g_step, criterionG)
+
+                # double loss with random weight
+                # choice = random.sample(range(0, 3), 2)
+                # cri_list = [self.G_critertion[choice[0]], self.G_critertion[choice[1]]]
+                # self.variation(evo_g_step, cri_list)
+
+                # all loss with random weight
+                # self.variation(evo_g_step, self.G_critertion)
 
                 # Evaluation
                 with torch.no_grad():
@@ -238,7 +259,20 @@ class EvoGANInstructor(BasicInstructor):
             # =====Train=====
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
-            g_loss = criterionG(d_out_fake, d_out_real)
+            if type(criterionG) == list:  # multiple loss
+                # double loss
+                rand_w = torch.rand(1).cuda()
+                cri_1, cri_2 = criterionG
+                g_loss = rand_w * cri_1(d_out_fake, d_out_real) + (1 - rand_w) * cri_2(d_out_fake, d_out_real)
+
+                # all loss
+                # rand_w = F.softmax(torch.rand(len(criterionG)).cuda(), dim=0)
+                # all_loss = []
+                # for crit in criterionG:
+                #     all_loss.append(crit(d_out_fake, d_out_real))
+                # g_loss = torch.dot(rand_w, torch.stack(all_loss, dim=0))
+            else:
+                g_loss = criterionG(d_out_fake, d_out_real)
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss += g_loss.item()
 
@@ -248,15 +282,24 @@ class EvoGANInstructor(BasicInstructor):
         """Evaluation all child, update child score. Note that the eval data should be the same"""
         if eval_type == 'standard':
             Fq = self.eval_d_out_fake.mean().cpu().item()
-            d_loss = self.D_critertion(self.eval_d_out_fake, self.eval_d_out_real)
-            gradients = torch.autograd.grad(outputs=d_loss, inputs=self.dis.parameters(),
-                                            grad_outputs=torch.ones(d_loss.size()).to(cfg.device),
-                                            create_graph=True, retain_graph=True, only_inputs=True)
-            with torch.no_grad():
-                for i, grad in enumerate(gradients):
-                    grad = grad.view(-1)
-                    allgrad = grad if i == 0 else torch.cat([allgrad, grad], dim=0)
-            Fd = -torch.log(torch.norm(allgrad)).data.cpu().item()
+            # d_loss = self.D_critertion(self.eval_d_out_fake, self.eval_d_out_real)
+
+            # Gradient based
+            # gradients = torch.autograd.grad(outputs=d_loss, inputs=self.dis.parameters(),
+            #                                 grad_outputs=torch.ones(d_loss.size()).to(cfg.device),
+            #                                 create_graph=True, retain_graph=True, only_inputs=True)
+            # with torch.no_grad():
+            #     for i, grad in enumerate(gradients):
+            #         grad = grad.view(-1)
+            #         allgrad = grad if i == 0 else torch.cat([allgrad, grad], dim=0)
+            # Fd = -torch.log(torch.norm(allgrad)).data.cpu().item()
+
+            # NLL_self
+            # self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.eval_b_num * cfg.batch_size))
+            # Fd = self.eval_gen(self.gen,
+            #                    self.gen_data.loader,
+            #                    self.mle_criterion)  # NLL_Self
+            Fd = 0
         elif eval_type == 'rsgan':
             g_loss, _ = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'RSGAN')
 
