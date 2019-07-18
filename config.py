@@ -28,16 +28,16 @@ use_truncated_normal = True
 
 # =====EvoGAN=====
 n_parent = 1
-evo_d_step = 5
 eval_b_num = 5  # >= n_parent*ADV_d_step
 lambda_fd = 0.0
+d_out_mean = True
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan lsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+mu_type = 'rsgan rsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'standard'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
@@ -111,7 +111,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device=2
+# device=3
 # print('device: ', device)
 torch.cuda.set_device(device)
 
@@ -145,7 +145,7 @@ def init_param(opt):
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
         pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
-        pretrained_clas_path, n_parent, evo_d_step, mu_type, eval_type, d_type
+        pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -162,7 +162,9 @@ def init_param(opt):
     use_truncated_normal = True if opt.use_truncated_normal == 1 else False
 
     n_parent = opt.n_parent
-    evo_d_step = opt.evo_d_step
+    eval_b_num = opt.eval_b_num
+    lambda_fd = opt.lambda_fd
+    d_out_mean = opt.d_out_mean
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size

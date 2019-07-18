@@ -65,7 +65,7 @@ class GANLoss(nn.Module):
         return target_tensor.expand_as(prediction)
 
     def G_loss(self, Dfake, Dreal):
-        if self.loss_mode != 'rsgan':
+        if self.loss_mode != 'rsgan' and cfg.d_out_mean:
             Dfake = torch.mean(Dfake.view(cfg.batch_size, -1), dim=-1)
             Dreal = torch.mean(Dreal.view(cfg.batch_size, -1), dim=-1)
 
@@ -104,7 +104,7 @@ class GANLoss(nn.Module):
         return g_loss
 
     def D_loss(self, Dfake, Dreal):
-        if self.loss_mode != 'rsgan':
+        if self.loss_mode != 'rsgan' and cfg.d_out_mean:
             Dfake = torch.mean(Dfake.view(cfg.batch_size, -1), dim=-1)
             Dreal = torch.mean(Dreal.view(cfg.batch_size, -1), dim=-1)
 

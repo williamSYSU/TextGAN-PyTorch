@@ -25,7 +25,9 @@ def program_config(parser):
 
     # EvoGAN
     parser.add_argument('--n_parent', default=cfg.n_parent, type=int)
-    parser.add_argument('--evo_d_step', default=cfg.evo_d_step, type=int)
+    parser.add_argument('--eval_b_num', default=cfg.eval_b_num, type=int)
+    parser.add_argument('--lambda_fd', default=cfg.lambda_fd, type=int)
+    parser.add_argument('--d_out_mean', default=cfg.d_out_mean, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
