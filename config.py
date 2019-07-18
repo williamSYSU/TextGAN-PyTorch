@@ -18,7 +18,7 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
