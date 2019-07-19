@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
 # @Project      : TextGAN-william
-# @FileName     : catgan_instructor.py
-# @Time         : Created at 2019-05-28
+# @FileName     : evocatgan_instructor.py
+# @Time         : Created at 2019-07-18
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
+import copy
 import numpy as np
 import os
 import torch
@@ -18,6 +19,8 @@ import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.CatGAN_D import CatGAN_C
 from models.CatGAN_G import CatGAN_G
+from models.EvocatGAN_D import EvoCatGAN_D, EvoCatGAN_C
+from models.EvocatGAN_G import EvoCatGAN_G
 from models.Oracle import Oracle
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
@@ -26,11 +29,11 @@ from utils.helpers import get_fixed_temperature
 from utils.text_process import write_tensor
 
 
-class CatGANInstructor(BasicInstructor):
+class EvoCatGANInstructor(BasicInstructor):
     """===Version 3==="""
 
     def __init__(self, opt):
-        super(CatGANInstructor, self).__init__(opt)
+        super(EvoCatGANInstructor, self).__init__(opt)
 
         # self.log = create_logger(__name__, silent=False, to_disk=True, log_file=cfg.log_filename)
 
@@ -38,10 +41,15 @@ class CatGANInstructor(BasicInstructor):
         self.oracle_list = [Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                                    cfg.padding_idx, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
 
-        self.gen = CatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
-                            cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        self.dis = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
-                            cfg.padding_idx, gpu=cfg.CUDA)
+        self.gen = EvoCatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
+                               cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
+
+        self.parents = [EvoCatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
+                                    cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx,
+                                    gpu=cfg.CUDA).state_dict()
+                        for _ in range(cfg.n_parent)]  # list of Generator state_dict
+        self.dis = EvoCatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
+                               cfg.padding_idx, gpu=cfg.CUDA)
         self.clas = self.dis
 
         self.init_model()
@@ -54,6 +62,11 @@ class CatGANInstructor(BasicInstructor):
         self.dis_opt = optim.Adam(dis_params, lr=cfg.dis_lr)
         self.clas_opt = optim.Adam(clas_params, lr=cfg.clas_lr)
         self.desp_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
+
+        self.parent_mle_opts = [copy.deepcopy(self.gen_opt.state_dict())
+                                for _ in range(cfg.n_parent)]
+        self.parent_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
+                            for _ in range(cfg.n_parent)]  # list of optimizer state dict
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
@@ -143,29 +156,6 @@ class CatGANInstructor(BasicInstructor):
         #         self.log.info('[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
 
         # self.train_classifier(150, 'PRE')
-        # count = 0
-        #
-        # while True:
-        #     self.oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
-        #                          cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        #     if cfg.CUDA:
-        #         self.oracle = self.oracle.cuda()
-        #     self.oracle_data.reset(self.oracle.sample(cfg.samples_num, 8 * cfg.batch_size))
-        #     gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion, 0)
-        #     if 5.6 < gt < 5.7:
-        #         print(gt)
-        #         torch.save(self.oracle.state_dict(), 'pretrain/oracle_data/oracle{}_lstm.pt.tmp'.format(count))
-        #         torch.save(self.oracle.sample(cfg.samples_num, 8 * cfg.batch_size),
-        #                    'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt.tmp'.format(count, cfg.samples_num))
-        #         torch.save(self.oracle.sample(cfg.samples_num // 2, 8 * cfg.batch_size),
-        #                    'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt.tmp'.format(count, cfg.samples_num // 2))
-        #         count += 1
-        #         if count >= 2:
-        #             break
-
-        # gt0 = self.eval_gen(self.oracle_list[0], self.oracle_data_list[0].loader, self.mle_criterion, 0)
-        # gt1 = self.eval_gen(self.oracle_list[1], self.oracle_data_list[1].loader, self.mle_criterion, 0)
-        # print(gt0, '\n', gt1)
 
     def pretrain_generator(self, epochs):
         """

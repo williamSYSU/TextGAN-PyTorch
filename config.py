@@ -13,16 +13,16 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan
+run_model = 'evocatgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
@@ -37,7 +37,7 @@ if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan rsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+mu_type = 'rsgan lsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'standard'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
@@ -111,7 +111,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device=3
+device = 3
 # print('device: ', device)
 torch.cuda.set_device(device)
 
