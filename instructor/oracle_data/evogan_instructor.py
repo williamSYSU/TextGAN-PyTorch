@@ -240,7 +240,7 @@ class EvoGANInstructor(BasicInstructor):
             # =====Train=====
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
-            d_loss = self.D_critertion(d_out_fake, d_out_real)
+            d_loss = self.D_critertion(d_out_real, d_out_fake)
 
             self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss += d_loss.item()
@@ -263,16 +263,16 @@ class EvoGANInstructor(BasicInstructor):
                 # double loss
                 rand_w = torch.rand(1).cuda()
                 cri_1, cri_2 = criterionG
-                g_loss = rand_w * cri_1(d_out_fake, d_out_real) + (1 - rand_w) * cri_2(d_out_fake, d_out_real)
+                g_loss = rand_w * cri_1(d_out_real, d_out_fake) + (1 - rand_w) * cri_2(d_out_real, d_out_fake)
 
                 # all loss
                 # rand_w = F.softmax(torch.rand(len(criterionG)).cuda(), dim=0)
                 # all_loss = []
                 # for crit in criterionG:
-                #     all_loss.append(crit(d_out_fake, d_out_real))
+                #     all_loss.append(crit(d_out_real, d_out_fake))
                 # g_loss = torch.dot(rand_w, torch.stack(all_loss, dim=0))
             else:
-                g_loss = criterionG(d_out_fake, d_out_real)
+                g_loss = criterionG(d_out_real, d_out_fake)
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss += g_loss.item()
 
