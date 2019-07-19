@@ -49,8 +49,8 @@ class EvoGANInstructor(BasicInstructor):
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
         self.parent_mle_opts = [copy.deepcopy(self.gen_opt.state_dict())
                                 for _ in range(cfg.n_parent)]
-        self.parent_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
-                            for _ in range(cfg.n_parent)]  # list of optimizer state dict
+        self.parent_adv_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
+                                for _ in range(cfg.n_parent)]  # list of optimizer state dict
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
@@ -114,7 +114,7 @@ class EvoGANInstructor(BasicInstructor):
             # TEST
             if adv_epoch % cfg.adv_log_step == 0:
                 best_id = int(np.argmax(score))
-                self.load_gen(self.parents[best_id], self.parent_opts[best_id])
+                self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 
                 self.log.info('[ADV] epoch %d: g_fit: %s, d_loss: %.4f, %s' % (
                     adv_epoch, str(fit_score[best_id]), d_loss, self.cal_metrics(fmt_str=True)))
@@ -180,7 +180,7 @@ class EvoGANInstructor(BasicInstructor):
         selected_mutation = []
         count = 0
 
-        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_opts)):
+        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
             for j, criterionG in enumerate(self.G_critertion):
                 # Variation
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
@@ -225,7 +225,7 @@ class EvoGANInstructor(BasicInstructor):
                 count += 1
 
         self.parents = copy.deepcopy(best_child)
-        self.parent_opts = copy.deepcopy(best_child_opt)
+        self.parent_adv_opts = copy.deepcopy(best_child_opt)
         self.best_fake_samples = torch.cat(best_fake_samples, dim=0)
         return best_score, np.array(best_fit), selected_mutation
 
