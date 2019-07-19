@@ -64,7 +64,7 @@ class GANLoss(nn.Module):
             target_tensor = target_tensor.cuda()
         return target_tensor.expand_as(prediction)
 
-    def G_loss(self, Dfake, Dreal):
+    def G_loss(self, Dreal, Dfake):
         if self.loss_mode != 'rsgan' and cfg.d_out_mean:
             Dfake = torch.mean(Dfake.view(cfg.batch_size, -1), dim=-1)
             Dreal = torch.mean(Dreal.view(cfg.batch_size, -1), dim=-1)
@@ -103,7 +103,7 @@ class GANLoss(nn.Module):
 
         return g_loss
 
-    def D_loss(self, Dfake, Dreal):
+    def D_loss(self, Dreal, Dfake):
         if self.loss_mode != 'rsgan' and cfg.d_out_mean:
             Dfake = torch.mean(Dfake.view(cfg.batch_size, -1), dim=-1)
             Dreal = torch.mean(Dreal.view(cfg.batch_size, -1), dim=-1)
@@ -137,7 +137,7 @@ class GANLoss(nn.Module):
 
         return loss_fake + loss_real
 
-    def __call__(self, Dfake, Dreal):
+    def __call__(self, Dreal, Dfake):
         """Calculate loss given Discriminator's output and grount truth labels.
         Parameters:
             prediction (tensor) - - tpyically the prediction output from a discriminator
@@ -146,8 +146,8 @@ class GANLoss(nn.Module):
             the calculated loss.
         """
         if self.which_net == 'G':
-            return self.G_loss(Dfake, Dreal)
+            return self.G_loss(Dreal, Dfake)
         elif self.which_net == 'D':
-            return self.D_loss(Dfake, Dreal)
+            return self.D_loss(Dreal, Dfake)
         else:
             raise NotImplementedError('which_net name [%s] is not recognized' % self.which_net)
