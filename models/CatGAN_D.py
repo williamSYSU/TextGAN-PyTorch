@@ -44,12 +44,12 @@ class CatGAN_C(CNNDiscriminator):
         self.dis_highway = nn.Linear(self.feature_dim, self.feature_dim)
         self.dis_feature2out = nn.Linear(self.feature_dim, 100)
         # self.dis_out2logits = nn.Linear(100, 1)
-        self.dis_out2logits = nn.Linear(100 * num_rep, 1)
+        self.dis_out2logits = nn.Linear(100, 1)
 
         # Classifier part
         self.clas_highway = nn.Linear(self.feature_dim, self.feature_dim)
         self.clas_feature2out = nn.Linear(self.feature_dim, 100)
-        self.clas_out2logits = nn.Linear(100 * num_rep, k_label)
+        self.clas_out2logits = nn.Linear(100, k_label)
 
         self.dropout = nn.Dropout(dropout)
         self.init_params()
@@ -67,7 +67,7 @@ class CatGAN_C(CNNDiscriminator):
         cons = [F.relu(conv(emb)) for conv in self.convs]  # [batch_size * num_filter * (seq_len-k_h+1) * num_rep]
         pools = [F.max_pool2d(con, (con.size(2), 1)).squeeze(2) for con in cons]  # [batch_size * num_filter * num_rep]
         pred = torch.cat(pools, 1)
-        pred = pred.permute(0, 2, 1)  # batch_size * num_rep * feature_dim
+        pred = pred.permute(0, 2, 1).contiguous().view(-1, self.feature_dim)  # (batch_size * num_rep) * feature_dim
 
         assert self.dis_or_clas, 'Need to set dis_or_clas before forward!!'
         if self.dis_or_clas == 'dis':
@@ -76,13 +76,13 @@ class CatGAN_C(CNNDiscriminator):
                     1. - torch.sigmoid(dis_highway)) * pred  # dis_highway
             pred = self.dis_feature2out(self.dropout(pred))  # batch_size * num_rep * 100
             # logits = self.dis_out2logits(self.dropout(pred.view(-1, 100))).squeeze(1)  # [batch_size * num_rep]
-            logits = self.dis_out2logits(self.dropout(pred.view(inp.size(0), -1))).squeeze(1)  # [batch_size]
+            logits = self.dis_out2logits(self.dropout(pred)).squeeze(1)  # [batch_size * num_rep]
         else:
             clas_highway = self.clas_highway(pred)
             pred = torch.sigmoid(clas_highway) * F.relu(clas_highway) + (
                     1. - torch.sigmoid(clas_highway)) * pred  # clas_highway
             pred = self.clas_feature2out(self.dropout(pred))  # batch_size * num_rep * 100
-            logits = self.clas_out2logits(self.dropout(pred.view(inp.size(0), -1))).squeeze(1)  # batch_size * k_label
+            logits = self.clas_out2logits(self.dropout(pred)).squeeze(1)  # [batch_size * num_rep]
 
         return logits
 
