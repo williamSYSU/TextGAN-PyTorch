@@ -19,13 +19,14 @@ import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.CatGAN_D import CatGAN_C
 from models.CatGAN_G import CatGAN_G
-from models.EvocatGAN_D import EvoCatGAN_D, EvoCatGAN_C
+from models.EvocatGAN_D import EvoCatGAN_C
 from models.EvocatGAN_G import EvoCatGAN_G
 from models.Oracle import Oracle
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
-from utils.helpers import get_fixed_temperature
+from utils.gan_loss import GANLoss
+from utils.helpers import get_fixed_temperature, get_losses
 from utils.text_process import write_tensor
 
 
@@ -65,13 +66,16 @@ class EvoCatGANInstructor(BasicInstructor):
 
         self.parent_mle_opts = [copy.deepcopy(self.gen_opt.state_dict())
                                 for _ in range(cfg.n_parent)]
-        self.parent_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
-                            for _ in range(cfg.n_parent)]  # list of optimizer state dict
+        self.parent_adv_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
+                                for _ in range(cfg.n_parent)]  # list of optimizer state dict
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = nn.BCEWithLogitsLoss()
         self.clas_criterion = nn.CrossEntropyLoss()
+        self.G_critertion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
+        self.D_critertion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
+        self.C_critertion = GANLoss(cfg.loss_type, 'C', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
         self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
@@ -82,17 +86,56 @@ class EvoCatGANInstructor(BasicInstructor):
                               for i in range(cfg.k_label)]
         self.clas_data = CatClasDataIter(self.oracle_samples_list)  # fake init (reset during training)
 
+        self.freeze_dis = False
+        self.freeze_clas = False
+
+    def init_model(self):
+        if cfg.oracle_pretrain:
+            for i in range(cfg.k_label):
+                oracle_path = cfg.multi_oracle_state_dict_path.format(i)
+                if not os.path.exists(oracle_path):
+                    create_multi_oracle(cfg.k_label)
+                self.oracle_list[i].load_state_dict(torch.load(oracle_path))
+
+        if cfg.gen_pretrain:
+            for i in range(cfg.n_parent):
+                self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
+                self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % i)
+
+        if cfg.clas_pretrain:
+            self.log.info('Load pretrained classifier: {}'.format(cfg.pretrained_clas_path))
+            self.clas.load_state_dict(torch.load(cfg.pretrained_clas_path))
+
+        if cfg.CUDA:
+            for i in range(cfg.k_label):
+                self.oracle_list[i] = self.oracle_list[i].cuda()
+            self.gen = self.gen.cuda()
+            self.dis = self.dis.cuda()
+
+    def load_gen(self, parent, parent_opt, mle=False):
+        self.gen.load_state_dict(parent)
+        if mle:
+            self.gen_opt.load_state_dict(parent_opt)
+            self.gen_opt.zero_grad()
+        else:
+            self.gen_adv_opt.load_state_dict(parent_opt)
+            self.gen_adv_opt.zero_grad()
+
     def _run(self):
         # ===Pre-train Generator===
         if not cfg.gen_pretrain:
-            self.log.info('Starting Generator MLE Training...')
-            self.pretrain_generator(cfg.MLE_train_epoch)
-            if cfg.if_save and not cfg.if_test:
-                torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
-                print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
+            for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_mle_opts)):
+                self.log.info('Starting Generator-{} MLE Training...'.format(i))
+                self.load_gen(parent, parent_opt, mle=True)  # load state dict
+                self.pretrain_generator(cfg.MLE_train_epoch)
+                self.parents[i] = copy.deepcopy(self.gen.state_dict())  # save state dict
+                if cfg.if_save and not cfg.if_test:
+                    torch.save(self.gen.state_dict(), cfg.pretrained_gen_path + '%d' % i)
+                    self.log.info('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path + '%d' % i))
 
         # ===Pre-train Classifier===
         # if not cfg.clas_pretrain:
+        #     self.load_gen(self.parents[0],self.parent_mle_opts[0])
         #     self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
         #     if cfg.if_save:
         #         torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
@@ -100,33 +143,31 @@ class EvoCatGANInstructor(BasicInstructor):
         # self.adv_train_discriminator(5)
         # self.adv_train_descriptor(50)
 
-        self.log.info('Initial metrics: %s', self.comb_metrics(fmt_str=True))
-        self.freeze_dis = True
+        self.freeze_dis = False
         self.freeze_clas = False
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
-            g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
-            # d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')  # !!! no adv-train for discriminator
-            # c_loss, c_acc = self.train_classifier(cfg.ADV_d_step, 'ADV')
-            d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step, 'ADV')
-
-            self.update_temperature(adv_epoch, cfg.ADV_train_epoch)
+            score, fit_score, select_mu = self.evolve_generator(cfg.ADV_g_step)
+            d_loss, dd_loss, dc_loss = self.evolve_descriptor(cfg.ADV_d_step, 'ADV')
+            progress.set_description('mu: %s, d_loss = %.4f' % (' '.join(select_mu), d_loss))
 
             # =====Test=====
-            # progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, c_loss))
-            progress.set_description('g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f' % (g_loss, d_loss, dd_loss))
             if adv_epoch % cfg.adv_log_step == 0:
-                self.log.info(
-                    '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
-                if not cfg.if_test and cfg.if_save:
+                best_id = int(np.argmax(score))
+                self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
+
+                self.log.info('[ADV] epoch %d: g_fit: %s, d_loss: %.4f, %s' % (
+                    adv_epoch, str(fit_score[best_id]), d_loss, self.comb_metrics(fmt_str=True)))
+
+                if cfg.if_save and not cfg.if_test:
                     for label_i in range(cfg.k_label):
                         self._save('ADV', adv_epoch, label_i)
 
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        # self._run()
+        self._run()
         # self.train_classifier(1, 'PRE')
         # self.train_classifier(1, 'ADV')
         # self.adv_train_discriminator(1)
@@ -156,6 +197,9 @@ class EvoCatGANInstructor(BasicInstructor):
         #         self.log.info('[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
 
         # self.train_classifier(150, 'PRE')
+        # self.variation(1, self.G_critertion[0])
+        # self.evolve_generator(1)
+        # self.evolve_descriptor(1)
 
     def pretrain_generator(self, epochs):
         """
@@ -176,6 +220,7 @@ class EvoCatGANInstructor(BasicInstructor):
                         self._save('MLE', epoch, label_i)
 
     def train_classifier(self, c_step, phase='PRE'):
+        # TODO: for each parent
         """真假样本一起训练，为了让分类器不那么强"""
         self.clas.dis_or_clas = 'clas'  # !!!!!
         total_loss = []
@@ -202,48 +247,275 @@ class EvoCatGANInstructor(BasicInstructor):
             return 0, 0
         return np.mean(total_loss), np.mean(total_acc)
 
-    def adv_train_generator(self, g_step):
+    def evolve_generator(self, evo_g_step):
+        best_score = np.zeros(cfg.n_parent)
+        best_fit = []
+        best_child = []
+        best_child_opt = []
+        best_fake_samples_pred = []
+        selected_mutation = []
+        count = 0
+
+        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
+            for j, criterionG in enumerate(self.G_critertion):
+                # ===Variation===
+                self.load_gen(parent, parent_opt)  # load state dict to self.gen
+                # single loss
+                self.variation(evo_g_step, criterionG)
+
+                # double loss with random weight
+                # choice = random.sample(range(0, 3), 2)
+                # cri_list = [self.G_critertion[choice[0]], self.G_critertion[choice[1]]]
+                # self.variation(evo_g_step, cri_list)
+
+                # all loss with random weight
+                # self.variation(evo_g_step, self.G_critertion)
+
+                # ===Evaluation===
+                Fq, Fd, Fc, score, eval_fake_samples_pred = self.evaluation(cfg.eval_type)
+
+                # ===Selection===
+                if count < cfg.n_parent:
+                    best_score[count] = score
+                    best_fit.append([Fq, Fd, Fc, score])
+                    best_child.append(copy.deepcopy(self.gen.state_dict()))
+                    best_child_opt.append(copy.deepcopy(self.gen_adv_opt.state_dict()))
+                    best_fake_samples_pred.append(eval_fake_samples_pred)
+                    selected_mutation.append(criterionG.loss_mode)
+                else:  # larger than previous child, replace it
+                    fit_com = score - best_score
+                    if max(fit_com) > 0:
+                        id_replace = np.where(fit_com == max(fit_com))[0][0]
+                        best_score[id_replace] = score
+                        best_fit[id_replace] = [Fq, Fd, Fc, score]
+                        best_child[id_replace] = copy.deepcopy(self.gen.state_dict())
+                        best_child_opt[id_replace] = copy.deepcopy(self.gen_adv_opt.state_dict())
+                        best_fake_samples_pred[id_replace] = eval_fake_samples_pred
+                        selected_mutation[id_replace] = criterionG.loss_mode
+                count += 1
+
+        self.parents = copy.deepcopy(best_child)
+        self.parent_adv_opts = copy.deepcopy(best_child_opt)
+        self.best_fake_samples_pred = best_fake_samples_pred
+        return best_score, np.array(best_fit), selected_mutation
+
+    # def evolve_descriptor(self, evo_d_step, phase='PRE'):
+    #     global dc_loss, dd_loss, d_loss
+    #     total_d_loss = []
+    #     total_dd_loss = []
+    #     total_dc_loss = []
+    #
+    #     all_gen_samples_list = list(map(self.merge, *self.best_fake_samples_pred))
+    #     for step in range(evo_d_step):
+    #         real_samples_list = [
+    #             F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float().cuda()
+    #             for i in range(cfg.k_label)]
+    #         gen_samples_list = [all_gen_samples_list[i][step * cfg.batch_size:(step + 1) * cfg.batch_size]
+    #                             for i in range(cfg.k_label)]
+    #
+    #         total_num = 2 * cfg.k_label * cfg.batch_size
+    #
+    #         dis_bs = cfg.batch_size
+    #         clas_bs = 2 * cfg.batch_size
+    #
+    #         # prepare dis data
+    #         dis_real_samples = torch.cat(real_samples_list, dim=0)
+    #         dis_gen_samples = torch.cat(gen_samples_list, dim=0)
+    #         # perm = torch.randperm(dis_real_samples.size(0))
+    #         dis_real_samples = dis_real_samples[torch.randperm(dis_real_samples.size(0))].detach()  # shuffle
+    #         dis_gen_samples = dis_gen_samples[torch.randperm(dis_gen_samples.size(0))].detach()
+    #
+    #         # prepare clas data
+    #         clas_samples_list = [torch.cat((real, fake), dim=0) for (real, fake) in
+    #                              zip(real_samples_list, gen_samples_list)]
+    #         clas_inp, clas_target = CatClasDataIter.prepare(clas_samples_list)
+    #
+    #         if cfg.CUDA:
+    #             dis_real_samples, dis_gen_samples = dis_real_samples.detach().cuda(), dis_gen_samples.detach().cuda()
+    #             clas_inp, clas_target = clas_inp.cuda(), clas_target.cuda()
+    #
+    #         for b in range(total_num // clas_bs):
+    #             # Discriminator loss
+    #             if not self.freeze_dis:
+    #                 self.dis.dis_or_clas = 'dis'
+    #                 d_out_real = self.dis(dis_real_samples[b * dis_bs:(b + 1) * dis_bs])
+    #                 d_out_fake = self.dis(dis_gen_samples[b * dis_bs:(b + 1) * dis_bs])
+    #                 dd_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
+    #                 self.dis.dis_or_clas = None
+    #
+    #             # Classifier loss
+    #             if not self.freeze_clas:
+    #                 self.clas.dis_or_clas = 'clas'
+    #                 pred = self.clas(clas_inp[b * clas_bs:(b + 1) * clas_bs])
+    #                 dc_loss = self.clas_criterion(pred, clas_target[b * clas_bs:(b + 1) * clas_bs])
+    #                 self.clas.dis_or_clas = None
+    #
+    #             if self.freeze_dis:
+    #                 d_loss = dc_loss
+    #                 dd_loss = torch.Tensor([0])
+    #             elif self.freeze_clas:
+    #                 d_loss = dd_loss
+    #                 dc_loss = torch.Tensor([0])
+    #             else:
+    #                 d_loss = dd_loss + dc_loss
+    #             self.optimize(self.desp_opt, d_loss)
+    #
+    #             total_d_loss.append(d_loss.item())
+    #             total_dd_loss.append(dd_loss.item())
+    #             total_dc_loss.append(dc_loss.item())
+    #
+    #             # if dd_loss < 0.1:
+    #             #     if not self.freeze_dis:
+    #             #         self.log.debug('Freeze dis!')
+    #             #     self.freeze_dis = True
+    #             # else:
+    #             #     if self.freeze_dis:
+    #             #         self.log.debug('Unfreeze dis!')
+    #             #     self.freeze_dis = False
+    #             # if dc_loss < 0.5:
+    #             #     if not self.freeze_clas:
+    #             #         self.log.debug('Freeze clas!')
+    #             #     self.freeze_clas = True
+    #             # else:
+    #             #     if self.freeze_clas:
+    #             #         self.log.debug('Unfreeze clas!')
+    #             #     self.freeze_clas = False
+    #
+    #         if phase == 'PRE':
+    #             self.log.debug('[PRE-epoch %d]In G: d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f', step, d_loss.item(),
+    #                            dd_loss.item(), dc_loss.item())
+    #
+    #     if evo_d_step == 0:
+    #         return 0, 0, 0
+    #     return np.mean(total_d_loss), np.mean(total_dd_loss), np.mean(total_dc_loss)
+
+    def evolve_descriptor(self, evo_d_step, phase='PRE'):
+        global dc_loss, dd_loss, d_loss
+        total_d_loss = []
+        total_dd_loss = []
+        total_dc_loss = []
+
+        all_gen_samples_list = list(map(self.merge, *self.best_fake_samples_pred))
+        for step in range(evo_d_step):
+            dis_real_samples, dis_gen_samples, clas_inp, clas_target = self.prepare_dis_clas_data('D',
+                                                                                                  all_gen_samples_list,
+                                                                                                  step)
+
+            # Discriminator loss
+            if not self.freeze_dis:
+                self.dis.dis_or_clas = 'dis'
+                d_out_real = self.dis(dis_real_samples)
+                d_out_fake = self.dis(dis_gen_samples)
+                dd_loss = self.D_critertion(d_out_real, d_out_fake)
+                self.dis.dis_or_clas = None
+            else:
+                dd_loss = torch.Tensor([0.]).cuda()
+
+            # Classifier loss
+            if not self.freeze_clas:
+                self.clas.dis_or_clas = 'clas'
+                pred = self.clas(clas_inp)
+                dc_loss = self.clas_criterion(pred, clas_target)
+                self.clas.dis_or_clas = None
+            else:
+                dc_loss = torch.Tensor([0.]).cuda()
+
+            d_loss = dd_loss + dc_loss
+            self.optimize(self.desp_opt, d_loss)
+
+            total_d_loss.append(d_loss.item())
+            total_dd_loss.append(dd_loss.item())
+            total_dc_loss.append(dc_loss.item())
+
+            if phase == 'PRE':
+                self.log.debug('[PRE-epoch %d]In G: d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f', step, d_loss.item(),
+                               dd_loss.item(), dc_loss.item())
+
+        if evo_d_step == 0:
+            return 0, 0, 0
+        return np.mean(total_d_loss), np.mean(total_dd_loss), np.mean(total_dc_loss)
+
+    # def variation(self, g_step, criterionG):
+    #     """Optimize one child (Generator)"""
+    #     total_g_loss = []
+    #     total_gd_loss = []
+    #     total_gc_loss = []
+    #     total_gc_acc = []
+    #     for step in range(g_step):
+    #         real_samples_list = [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
+    #                              for i in range(cfg.k_label)]
+    #         gen_samples_list = [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
+    #                             for i in range(cfg.k_label)]
+    #
+    #         # =====Train=====
+    #         # Discriminator loss, input real and fake data
+    #         self.dis.dis_or_clas = 'dis'  # !!!!!
+    #         dis_real_samples = torch.cat(real_samples_list, dim=0)
+    #         dis_gen_samples = torch.cat(gen_samples_list, dim=0)
+    #
+    #         # shuffle
+    #         # perm = torch.randperm(dis_real_samples.size(0))
+    #         # dis_real_samples = dis_real_samples[perm]
+    #         # dis_gen_samples = dis_gen_samples[perm]
+    #         dis_real_samples = dis_real_samples[torch.randperm(dis_real_samples.size(0))]
+    #         dis_gen_samples = dis_gen_samples[torch.randperm(dis_gen_samples.size(0))]
+    #         if cfg.CUDA:
+    #             dis_real_samples, dis_gen_samples = dis_real_samples.cuda(), dis_gen_samples.cuda()
+    #         d_out_real = self.dis(dis_real_samples)
+    #         d_out_fake = self.dis(dis_gen_samples)
+    #         gd_loss = criterionG(d_out_real, d_out_fake)
+    #         self.dis.dis_or_clas = None
+    #
+    #         # Classifier loss, only input fake data
+    #         self.clas.dis_or_clas = 'clas'  # !!!!!
+    #         inp, target = CatClasDataIter.prepare(gen_samples_list, detach=False, gpu=cfg.CUDA)
+    #         pred = self.clas(inp)
+    #         gc_loss = self.clas_criterion(pred, target)
+    #         gc_acc = torch.sum((pred.argmax(dim=-1) == target)).item() / inp.size(0)
+    #         self.clas.dis_or_clas = None
+    #         # gc_loss = torch.Tensor([0])
+    #         # gc_acc = torch.Tensor([0])
+    #
+    #         # Total loss
+    #         g_loss = gd_loss + gc_loss
+    #         # g_loss = gd_loss
+    #
+    #         self.optimize(self.gen_adv_opt, g_loss, self.gen)
+    #         # self.optimize(self.gen_adv_opt, gc_loss, self.gen, retain_graph=True)
+    #         # self.optimize(self.gen_adv_opt, gd_loss, self.gen, retain_graph=True)
+    #         total_g_loss.append(g_loss.item())
+    #         total_gd_loss.append(gd_loss.item())
+    #         total_gc_loss.append(gc_loss.item())
+    #         total_gc_acc.append(gc_acc)
+    #
+    #         # self.log.debug('In G: g_loss = %.4f' % g_loss.item())
+    #
+    #     if g_step == 0:
+    #         return 0, 0, 0, 0
+    #     return np.mean(total_g_loss), np.mean(total_gd_loss), np.mean(total_gc_loss), np.mean(total_gc_acc)
+
+    def variation(self, g_step, criterionG):
+        """Optimize one child (Generator)"""
         total_g_loss = []
         total_gd_loss = []
         total_gc_loss = []
         total_gc_acc = []
         for step in range(g_step):
-            real_samples_list = [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
-                                 for i in range(cfg.k_label)]
-            gen_samples_list = [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
-                                for i in range(cfg.k_label)]
+            dis_real_samples, dis_gen_samples, clas_inp, clas_target = self.prepare_dis_clas_data('G')
 
             # =====Train=====
             # Discriminator loss, input real and fake data
             self.dis.dis_or_clas = 'dis'  # !!!!!
-            dis_real_samples = torch.cat(real_samples_list, dim=0)
-            dis_gen_samples = torch.cat(gen_samples_list, dim=0)
-
-            # shuffle
-            # perm = torch.randperm(dis_real_samples.size(0))
-            # dis_real_samples = dis_real_samples[perm]
-            # dis_gen_samples = dis_gen_samples[perm]
-            dis_real_samples = dis_real_samples[torch.randperm(dis_real_samples.size(0))]
-            dis_gen_samples = dis_gen_samples[torch.randperm(dis_gen_samples.size(0))]
-            if cfg.CUDA:
-                dis_real_samples, dis_gen_samples = dis_real_samples.cuda(), dis_gen_samples.cuda()
             d_out_real = self.dis(dis_real_samples)
             d_out_fake = self.dis(dis_gen_samples)
-            gd_loss = self.dis_criterion(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
+            gd_loss = criterionG(d_out_real, d_out_fake)
             self.dis.dis_or_clas = None
 
             # Classifier loss, only input fake data
             self.clas.dis_or_clas = 'clas'  # !!!!!
-            inp = torch.cat(gen_samples_list, dim=0)
-            target = torch.zeros(inp.size(0)).long()
-            for idx in range(1, len(gen_samples_list)):
-                start = sum([gen_samples_list[i].size(0) for i in range(idx)])
-                target[start: start + gen_samples_list[idx].size(0)] = idx
-            if cfg.CUDA:
-                inp, target = inp.cuda(), target.cuda()
-            pred = self.clas(inp)
-            gc_loss = self.clas_criterion(pred, target)
-            gc_acc = torch.sum((pred.argmax(dim=-1) == target)).item() / inp.size(0)
+            pred = self.clas(clas_inp)
+            gc_loss = self.clas_criterion(pred, clas_target)
+            gc_acc = torch.sum((pred.argmax(dim=-1) == clas_target)).item() / clas_inp.size(0)
             self.clas.dis_or_clas = None
             # gc_loss = torch.Tensor([0])
             # gc_acc = torch.Tensor([0])
@@ -253,8 +525,6 @@ class EvoCatGANInstructor(BasicInstructor):
             # g_loss = gd_loss
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
-            # self.optimize(self.gen_adv_opt, gc_loss, self.gen, retain_graph=True)
-            # self.optimize(self.gen_adv_opt, gd_loss, self.gen, retain_graph=True)
             total_g_loss.append(g_loss.item())
             total_gd_loss.append(gd_loss.item())
             total_gc_loss.append(gc_loss.item())
@@ -266,146 +536,66 @@ class EvoCatGANInstructor(BasicInstructor):
             return 0, 0, 0, 0
         return np.mean(total_g_loss), np.mean(total_gd_loss), np.mean(total_gc_loss), np.mean(total_gc_acc)
 
-    def adv_train_descriptor(self, d_step, phase='PRE'):
-        total_d_loss = []
-        total_dd_loss = []
-        total_dc_loss = []
-        for step in range(d_step):
-            real_samples_list = [
-                F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float().cuda()
-                for i in range(cfg.k_label)]
-            gen_samples_list = [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
-                                for i in range(cfg.k_label)]
+    def evaluation(self, eval_type):
+        """Evaluation all child, update child score. Note that the eval data should be the same"""
+        with torch.no_grad():
+            # elif eval_type == 'rsgan':
+            #     g_loss, _ = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'RSGAN')
+            #
+            #     Fq = g_loss.item()
+            #     Fd = g_loss.item()
+            if eval_type == 'nll':
+                nll_oracle = []
+                nll_gen = []
+                nll_self = []
+                eval_fake_samples_pred = []
+                for label_i in range(cfg.k_label):
+                    fake_samples, fake_samples_pred = self.gen.sample(cfg.eval_b_num * cfg.batch_size,
+                                                                      cfg.eval_b_num * cfg.batch_size,
+                                                                      one_hot=True, need_samples=True, label_i=label_i)
+                    eval_fake_samples_pred.append(fake_samples_pred)
+                    self.gen_data_list[label_i].reset(fake_samples)
 
-            total_num = 2 * cfg.k_label * cfg.batch_size
-
-            dis_bs = cfg.batch_size
-            clas_bs = 2 * cfg.batch_size
-
-            # prepare dis data
-            dis_real_samples = torch.cat(real_samples_list, dim=0)
-            dis_gen_samples = torch.cat(gen_samples_list, dim=0)
-            # perm = torch.randperm(dis_real_samples.size(0))
-            dis_real_samples = dis_real_samples[torch.randperm(dis_real_samples.size(0))].detach()  # shuffle
-            dis_gen_samples = dis_gen_samples[torch.randperm(dis_gen_samples.size(0))].detach()
-
-            # prepare clas data
-            clas_samples_list = [torch.cat((real, fake), dim=0) for (real, fake) in
-                                 zip(real_samples_list, gen_samples_list)]
-            clas_inp, clas_target = self.clas_data.prepare(clas_samples_list)
-
-            if cfg.CUDA:
-                dis_real_samples, dis_gen_samples = dis_real_samples.detach().cuda(), dis_gen_samples.detach().cuda()
-                clas_inp, clas_target = clas_inp.cuda(), clas_target.cuda()
-
-            for b in range(total_num // clas_bs):
-                # Discriminator loss
-                self.dis.dis_or_clas = 'dis'
-                d_out_real = self.dis(dis_real_samples[b * dis_bs:(b + 1) * dis_bs])
-                d_out_fake = self.dis(dis_gen_samples[b * dis_bs:(b + 1) * dis_bs])
-                dd_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
-                self.dis.dis_or_clas = None
-
-                # Classifier loss
-                self.clas.dis_or_clas = 'clas'
-                pred = self.clas(clas_inp[b * clas_bs:(b + 1) * clas_bs])
-                dc_loss = self.clas_criterion(pred, clas_target[b * clas_bs:(b + 1) * clas_bs])
-                self.clas.dis_or_clas = None
-
-                if self.freeze_dis:
-                    d_loss = dc_loss
-                elif self.freeze_clas:
-                    d_loss = dd_loss
+                    if cfg.lambda_fq != 0:
+                        nll_oracle.append(-self.eval_gen(self.oracle_list[label_i],
+                                                         self.gen_data_list[label_i].loader,
+                                                         self.mle_criterion, label_i))  # NLL_Oracle
+                    if cfg.lambda_fd != 0:
+                        # nll_gen.append(-self.eval_gen(self.gen,
+                        #                               self.oracle_data_list[label_i].loader,
+                        #                               self.mle_criterion, label_i))  # NLL_gen
+                        nll_self.append(self.eval_gen(self.gen,
+                                                      self.gen_data_list[label_i].loader,
+                                                      self.mle_criterion, label_i))  # NLL_self
+                if cfg.k_label == 1:
+                    Fq = nll_oracle[0] if len(nll_oracle) > 0 else 0
+                    Fd = nll_self[0] if len(nll_self) > 0 else 0
+                elif cfg.k_label == 2:
+                    Fq = nll_oracle[0] * nll_oracle[1] / (nll_oracle[0] + nll_oracle[1]) if len(nll_oracle) > 0 else 0
+                    Fd = nll_self[0] * nll_self[1] / (nll_self[0] + nll_self[1]) if len(nll_self) > 0 else 0
                 else:
-                    d_loss = dd_loss + dc_loss
-                self.optimize(self.desp_opt, d_loss)
+                    raise NotImplementedError("k_label = %d is not supported" % cfg.k_label)
 
-                total_d_loss.append(d_loss.item())
-                total_dd_loss.append(dd_loss.item())
-                total_dc_loss.append(dc_loss.item())
+                # Classifier loss for Fc
+                if cfg.lambda_fc != 0 and cfg.k_label == 2:
+                    self.clas.dis_or_clas = 'clas'  # !!!!!
+                    inp, target = CatClasDataIter.prepare(
+                        [eval_fake_samples_pred[0][:cfg.batch_size], eval_fake_samples_pred[1][:cfg.batch_size]],
+                        gpu=cfg.CUDA)
+                    pred = self.clas(inp)
+                    Fc = -self.clas_criterion(pred, target).item()
+                    self.clas.dis_or_clas = None
+                else:
+                    Fc = 0
+            else:
+                raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
-                # if dd_loss < 0.1:
-                #     if not self.freeze_dis:
-                #         self.log.debug('Freeze dis!')
-                #     self.freeze_dis = True
-                # else:
-                #     if self.freeze_dis:
-                #         self.log.debug('Unfreeze dis!')
-                #     self.freeze_dis = False
-                # if dc_loss < 0.5:
-                #     if not self.freeze_clas:
-                #         self.log.debug('Freeze clas!')
-                #     self.freeze_clas = True
-                # else:
-                #     if self.freeze_clas:
-                #         self.log.debug('Unfreeze clas!')
-                #     self.freeze_clas = False
-
-            if phase == 'PRE':
-                self.log.debug('[PRE-epoch %d]In G: d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f', step, d_loss.item(),
-                               dd_loss.item(), dc_loss.item())
-
-        if d_step == 0:
-            return 0, 0, 0
-        return np.mean(total_d_loss), np.mean(total_dd_loss), np.mean(total_dc_loss)
-
-    def adv_train_discriminator(self, d_step, phase='PRE'):
-        self.dis.dis_or_clas = 'dis'  # !!!!!
-        total_loss = []
-        for step in range(d_step):
-            # real_samples = torch.cat([F.one_hot(self.all_oracle_data.random_batch()['target'], cfg.vocab_size).float()
-            #                           for _ in range(cfg.k_label)], dim=0)
-            real_samples = torch.cat(
-                [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
-                 for i in range(cfg.k_label)], dim=0)
-            gen_samples = torch.cat([self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
-                                     for i in range(cfg.k_label)], dim=0)
-            # shuffle
-            # perm = torch.randperm(real_samples.size(0))
-            # real_samples = real_samples[perm].detach()
-            # gen_samples = gen_samples[perm].detach()
-            # real_samples = real_samples[torch.randperm(real_samples.size(0))].detach()
-            # gen_samples = gen_samples[torch.randperm(gen_samples.size(0))].detach()
-            if cfg.CUDA:
-                real_samples, gen_samples = real_samples.detach().cuda(), gen_samples.detach().cuda()
-
-            # =====Train=====
-            d_out_real = self.dis(real_samples)
-            d_out_fake = self.dis(gen_samples)
-            d_loss = self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_real))
-            g_loss = self.dis_criterion(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
-
-            self.optimize(self.dis_opt, d_loss, self.dis)
-            total_loss.append(d_loss.item())
-
-            if phase == 'PRE':
-                self.log.debug('[PRE-epoch %d]In D: d_loss = %.4f, g_loss = %.4f', step, d_loss.item(), g_loss.item())
-        self.dis.dis_or_clas = None
-        if d_step == 0:
-            return 0
-        return np.mean(total_loss)
-
-    def init_model(self):
-        if cfg.oracle_pretrain:
-            for i in range(cfg.k_label):
-                oracle_path = cfg.multi_oracle_state_dict_path.format(i)
-                if not os.path.exists(oracle_path):
-                    create_multi_oracle(cfg.k_label)
-                self.oracle_list[i].load_state_dict(torch.load(oracle_path))
-
-        if cfg.gen_pretrain:
-            self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
-            self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path))
-
-        if cfg.clas_pretrain:
-            self.log.info('Load pretrained classifier: {}'.format(cfg.pretrained_clas_path))
-            self.clas.load_state_dict(torch.load(cfg.pretrained_clas_path))
-
-        if cfg.CUDA:
-            for i in range(cfg.k_label):
-                self.oracle_list[i] = self.oracle_list[i].cuda()
-            self.gen = self.gen.cuda()
-            self.dis = self.dis.cuda()
+            score = cfg.lambda_fq * Fq + cfg.lambda_fd * Fd + cfg.lambda_fc * Fc
+            Fq = round(Fq, 3)
+            Fd = round(Fd, 3)
+            Fc = round(Fc, 3)
+            score = round(score, 3)
+            return Fq, Fd, Fc, score, eval_fake_samples_pred
 
     def update_temperature(self, i, N):
         self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
@@ -448,8 +638,8 @@ class EvoCatGANInstructor(BasicInstructor):
     def optimize(opt, loss, model=None, retain_graph=False):
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
-        # if model is not None:
-        #     torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
+        if model is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
         opt.step()
 
     def cal_metrics(self, label_i=None):
@@ -485,3 +675,39 @@ class EvoCatGANInstructor(BasicInstructor):
         save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
         write_tensor(save_sample_path, samples)
+
+    @staticmethod
+    def merge(*args):
+        return torch.cat(args, dim=0)
+
+    def prepare_dis_clas_data(self, which, all_gen_samples_list=None, step=None):
+        real_samples_list = [
+            F.one_hot(self.oracle_data_list[i].random_batch()['target'][:cfg.batch_size // cfg.k_label],
+                      cfg.vocab_size).float().cuda()
+            for i in range(cfg.k_label)]
+        if which == 'D':
+            assert all_gen_samples_list is not None and step is not None, 'samples and step have to be given!'
+            gen_samples_list = [
+                all_gen_samples_list[i][
+                step * (cfg.batch_size // cfg.k_label):(step + 1) * (cfg.batch_size // cfg.k_label)]
+                for i in range(cfg.k_label)]
+        elif which == 'G':
+            gen_samples_list = [
+                self.gen.sample(cfg.batch_size // cfg.k_label, cfg.batch_size // cfg.k_label, one_hot=True, label_i=i)
+                for i in range(cfg.k_label)]
+        else:
+            raise NotImplementedError('Only support for D and G!')
+
+        # prepare dis data
+        dis_real_samples = torch.cat(real_samples_list, dim=0)
+        dis_gen_samples = torch.cat(gen_samples_list, dim=0)
+
+        # prepare clas data
+        clas_samples_list = [torch.cat((real, fake), dim=0) for (real, fake) in
+                             zip(real_samples_list, gen_samples_list)]
+        clas_inp, clas_target = CatClasDataIter.prepare(clas_samples_list, detach=True if which == 'D' else False,
+                                                        gpu=cfg.CUDA)
+        clas_inp = clas_inp[:cfg.batch_size]
+        clas_target = clas_target[:cfg.batch_size]
+
+        return dis_real_samples, dis_gen_samples, clas_inp, clas_target
