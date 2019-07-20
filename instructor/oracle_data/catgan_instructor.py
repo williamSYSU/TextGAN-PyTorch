@@ -66,6 +66,8 @@ class CatGANInstructor(BasicInstructor):
         self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
                               for i in range(cfg.k_label)]
         self.clas_data = CatClasDataIter(self.oracle_samples_list)  # fake init (reset during training)
+        self.freeze_dis = cfg.freeze_dis
+        self.freeze_clas = cfg.freeze_clas
 
     def _run(self):
         # ===Pre-train Generator===
@@ -77,17 +79,14 @@ class CatGANInstructor(BasicInstructor):
                 print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
 
         # ===Pre-train Classifier===
-        # if not cfg.clas_pretrain:
-        #     self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
-        #     if cfg.if_save:
-        #         torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
-        #         print('Save pre-trained classifier: {}'.format(cfg.pretrained_clas_path))
+        if not cfg.clas_pretrain:
+            self.train_classifier(cfg.PRE_clas_epoch, 'PRE')
+            if cfg.if_save:
+                torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
+                print('Save pre-trained classifier: {}'.format(cfg.pretrained_clas_path))
         # self.adv_train_discriminator(5)
         # self.adv_train_descriptor(50)
 
-        self.log.info('Initial metrics: %s', self.comb_metrics(fmt_str=True))
-        self.freeze_dis = True
-        self.freeze_clas = False
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
@@ -112,58 +111,11 @@ class CatGANInstructor(BasicInstructor):
         self.log.debug('>>> Begin test...')
 
         self._run()
-        # self.train_classifier(1, 'PRE')
+        # self.train_classifier(300, 'PRE')
         # self.train_classifier(1, 'ADV')
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
-
-        # >>>>>>>>>>>Test adversarial training Discriminator
-        # self.freeze_dis = True
-        # self.freeze_clas = False
-        # # self.train_classifier(150, 'PRE')
-        # # self.adv_train_discriminator(50,'PRE')
-        # # self.adv_train_descriptor(150, 'PRE')
-        #
-        # progress = tqdm(range(cfg.ADV_train_epoch))
-        # for adv_epoch in progress:
-        #     g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
-        #     # d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')
-        #     d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step, 'ADV')
-        #
-        #     # =====Test=====
-        #     # progress.set_description(
-        #         # 'g_loss = %.4f, d_loss = %.4f' % (g_loss, d_loss))
-        #     progress.set_description(
-        #         'g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f' % (
-        #             g_loss, d_loss, dd_loss, dc_loss))
-        #     if adv_epoch % cfg.adv_log_step == 0:
-        #         self.log.info('[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
-
-        # self.train_classifier(150, 'PRE')
-        # count = 0
-        #
-        # while True:
-        #     self.oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
-        #                          cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        #     if cfg.CUDA:
-        #         self.oracle = self.oracle.cuda()
-        #     self.oracle_data.reset(self.oracle.sample(cfg.samples_num, 8 * cfg.batch_size))
-        #     gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion, 0)
-        #     if 5.6 < gt < 5.7:
-        #         print(gt)
-        #         torch.save(self.oracle.state_dict(), 'pretrain/oracle_data/oracle{}_lstm.pt.tmp'.format(count))
-        #         torch.save(self.oracle.sample(cfg.samples_num, 8 * cfg.batch_size),
-        #                    'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt.tmp'.format(count, cfg.samples_num))
-        #         torch.save(self.oracle.sample(cfg.samples_num // 2, 8 * cfg.batch_size),
-        #                    'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt.tmp'.format(count, cfg.samples_num // 2))
-        #         count += 1
-        #         if count >= 2:
-        #             break
-
-        # gt0 = self.eval_gen(self.oracle_list[0], self.oracle_data_list[0].loader, self.mle_criterion, 0)
-        # gt1 = self.eval_gen(self.oracle_list[1], self.oracle_data_list[1].loader, self.mle_criterion, 0)
-        # print(gt0, '\n', gt1)
 
     def pretrain_generator(self, epochs):
         """
@@ -194,9 +146,9 @@ class CatGANInstructor(BasicInstructor):
             pred = self.clas(clas_inp)
             c_loss = self.clas_criterion(pred, clas_target)
             c_acc = torch.sum((pred.argmax(dim=-1) == clas_target)).item() / clas_inp.size(0)
-            self.optimize(self.clas, c_loss, self.clas)
+            self.optimize(self.clas_opt, c_loss, self.clas)
 
-            total_loss.append(c_loss)
+            total_loss.append(c_loss.item())
             total_acc.append(c_acc)
             if phase == 'PRE':
                 self.log.info('[%s-CLAS] epoch: %d, c_loss = %.4f, c_acc = %.4f' % (phase, epoch, c_loss, c_acc))
