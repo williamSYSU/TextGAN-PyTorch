@@ -86,8 +86,8 @@ class EvoCatGANInstructor(BasicInstructor):
                               for i in range(cfg.k_label)]
         self.clas_data = CatClasDataIter(self.oracle_samples_list)  # fake init (reset during training)
 
-        self.freeze_dis = False
-        self.freeze_clas = False
+        self.freeze_dis = cfg.freeze_dis
+        self.freeze_clas = cfg.freeze_clas
 
     def init_model(self):
         if cfg.oracle_pretrain:
@@ -95,12 +95,12 @@ class EvoCatGANInstructor(BasicInstructor):
                 oracle_path = cfg.multi_oracle_state_dict_path.format(i)
                 if not os.path.exists(oracle_path):
                     create_multi_oracle(cfg.k_label)
-                self.oracle_list[i].load_state_dict(torch.load(oracle_path))
+                self.oracle_list[i].load_state_dict(torch.load(oracle_path, map_location='cuda:%d' % cfg.device))
 
         if cfg.gen_pretrain:
             for i in range(cfg.n_parent):
                 self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-                self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % i)
+                self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % i, map_location='cuda:%d' % cfg.device)
 
         if cfg.clas_pretrain:
             self.log.info('Load pretrained classifier: {}'.format(cfg.pretrained_clas_path))
@@ -140,11 +140,8 @@ class EvoCatGANInstructor(BasicInstructor):
         #     if cfg.if_save:
         #         torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
         #         print('Save pre-trained classifier: {}'.format(cfg.pretrained_clas_path))
-        # self.adv_train_discriminator(5)
         # self.adv_train_descriptor(50)
 
-        self.freeze_dis = False
-        self.freeze_clas = False
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
@@ -168,35 +165,6 @@ class EvoCatGANInstructor(BasicInstructor):
         self.log.debug('>>> Begin test...')
 
         self._run()
-        # self.train_classifier(1, 'PRE')
-        # self.train_classifier(1, 'ADV')
-        # self.adv_train_discriminator(1)
-        # self.adv_train_generator(1)
-        # self.adv_train_descriptor(1)
-
-        # >>>>>>>>>>>Test adversarial training Discriminator
-        # self.freeze_dis = True
-        # self.freeze_clas = False
-        # # self.train_classifier(150, 'PRE')
-        # # self.adv_train_discriminator(50,'PRE')
-        # # self.adv_train_descriptor(150, 'PRE')
-        #
-        # progress = tqdm(range(cfg.ADV_train_epoch))
-        # for adv_epoch in progress:
-        #     g_loss, gd_loss, gc_loss, gc_acc = self.adv_train_generator(cfg.ADV_g_step)
-        #     # d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')
-        #     d_loss, dd_loss, dc_loss = self.adv_train_descriptor(cfg.ADV_d_step, 'ADV')
-        #
-        #     # =====Test=====
-        #     # progress.set_description(
-        #         # 'g_loss = %.4f, d_loss = %.4f' % (g_loss, d_loss))
-        #     progress.set_description(
-        #         'g_loss = %.4f, d_loss = %.4f, dd_loss = %.4f, dc_loss = %.4f' % (
-        #             g_loss, d_loss, dd_loss, dc_loss))
-        #     if adv_epoch % cfg.adv_log_step == 0:
-        #         self.log.info('[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
-
-        # self.train_classifier(150, 'PRE')
         # self.variation(1, self.G_critertion[0])
         # self.evolve_generator(1)
         # self.evolve_descriptor(1)
@@ -544,17 +512,20 @@ class EvoCatGANInstructor(BasicInstructor):
             #
             #     Fq = g_loss.item()
             #     Fd = g_loss.item()
+            eval_fake_samples = []
+            eval_fake_samples_pred = []
+            for label_i in range(cfg.k_label):
+                fake_samples, fake_samples_pred = self.gen.sample(cfg.eval_b_num * cfg.batch_size,
+                                                                  cfg.eval_b_num * cfg.batch_size,
+                                                                  one_hot=True, need_samples=True, label_i=label_i)
+                eval_fake_samples.append(fake_samples)
+                eval_fake_samples_pred.append(fake_samples_pred)
             if eval_type == 'nll':
                 nll_oracle = []
                 nll_gen = []
                 nll_self = []
-                eval_fake_samples_pred = []
                 for label_i in range(cfg.k_label):
-                    fake_samples, fake_samples_pred = self.gen.sample(cfg.eval_b_num * cfg.batch_size,
-                                                                      cfg.eval_b_num * cfg.batch_size,
-                                                                      one_hot=True, need_samples=True, label_i=label_i)
-                    eval_fake_samples_pred.append(fake_samples_pred)
-                    self.gen_data_list[label_i].reset(fake_samples)
+                    self.gen_data_list[label_i].reset(eval_fake_samples[label_i])
 
                     if cfg.lambda_fq != 0:
                         nll_oracle.append(-self.eval_gen(self.oracle_list[label_i],
@@ -587,6 +558,15 @@ class EvoCatGANInstructor(BasicInstructor):
                     self.clas.dis_or_clas = None
                 else:
                     Fc = 0
+            elif eval_type == 'standard':
+                self.dis.dis_or_clas = 'dis'
+                fake_samples = torch.cat(eval_fake_samples_pred, dim=0)[
+                    torch.randperm(eval_fake_samples_pred[0].size(0) * 2)]
+                Fq = self.dis(fake_samples[:cfg.batch_size]).mean().cpu().item()
+                self.dis.dis_or_clas = None
+                Fd = 0
+                Fc = 0
+                pass
             else:
                 raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 

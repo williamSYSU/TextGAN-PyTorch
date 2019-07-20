@@ -81,10 +81,10 @@ class GANLoss(nn.Module):
         else:
             raise NotImplementedError('which_D name [%s] is not recognized' % self.which_D)
 
-        if self.loss_mode in ['lsgan', 'nsgan']:
+        if self.loss_mode in ['lsgan', 'nsgan']:  # !!! 这里的nsgan就是传统的vanilla
             loss_fake = self.loss(prediction_fake, real_tensor)
             g_loss = loss_fake
-        elif self.loss_mode == 'vanilla':
+        elif self.loss_mode == 'vanilla':  # !!! 这里的vanilla就是论文中的nsgan
             loss_fake = -self.loss(prediction_fake, fake_tensor)
             g_loss = loss_fake
         elif self.loss_mode in ['wgan', 'hinge'] and self.which_D == 'S':
