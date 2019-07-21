@@ -130,11 +130,12 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
-            # all_d_out_real = torch.cat(all_d_out_real, dim=0)
-            # all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
-            # all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
-            # all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-            # g_loss += self.dis_criterion(all_d_out_fake - all_d_out_real, torch.ones_like(all_d_out_fake))
+            if cfg.use_all_real_fake:
+                all_d_out_real = torch.cat(all_d_out_real, dim=0)
+                all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
+                all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
+                all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
+                g_loss += self.dis_criterion(all_d_out_fake - all_d_out_real, torch.ones_like(all_d_out_fake))
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss.append(g_loss.item())
@@ -161,11 +162,12 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
-            # all_d_out_real = torch.cat(all_d_out_real, dim=0)
-            # all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
-            # all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
-            # all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-            # d_loss += self.dis_criterion(all_d_out_real - all_d_out_fake, torch.ones_like(all_d_out_real))
+            if cfg.use_all_real_fake:
+                all_d_out_real = torch.cat(all_d_out_real, dim=0)
+                all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
+                all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
+                all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
+                d_loss += self.dis_criterion(all_d_out_real - all_d_out_fake, torch.ones_like(all_d_out_real))
 
             self.optimize(self.gen_adv_opt, d_loss, self.gen)
             total_loss.append(d_loss.item())

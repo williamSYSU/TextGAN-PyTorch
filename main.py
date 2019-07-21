@@ -32,6 +32,7 @@ def program_config(parser):
     parser.add_argument('--d_out_mean', default=cfg.d_out_mean, type=int)
     parser.add_argument('--freeze_dis', default=cfg.freeze_dis, type=int)
     parser.add_argument('--freeze_clas', default=cfg.freeze_clas, type=int)
+    parser.add_argument('--use_all_real_fake', default=cfg.use_all_real_fake, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)

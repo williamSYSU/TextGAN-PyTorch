@@ -35,6 +35,7 @@ lambda_fc = 1.0
 d_out_mean = True
 freeze_dis = True
 freeze_clas = False
+use_all_real_fake = False
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
@@ -153,7 +154,7 @@ def init_param(opt):
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
         pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, lambda_fc, freeze_dis, freeze_clas
+        lambda_fq, lambda_fc, freeze_dis, freeze_clas, use_all_real_fake
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -177,6 +178,7 @@ def init_param(opt):
     d_out_mean = opt.d_out_mean
     freeze_dis = opt.freeze_dis
     freeze_clas = opt.freeze_clas
+    use_all_real_fake = opt.use_all_real_fake
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size
