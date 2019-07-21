@@ -274,6 +274,7 @@ class EvoCatGANInstructor(BasicInstructor):
         total_dc_loss = []
 
         all_gen_samples_list = list(map(self.merge, *self.best_fake_samples_pred))
+        all_gen_samples_list = self.shuffle_eval_samples(all_gen_samples_list)
         for step in range(evo_d_step):
             dis_real_samples, dis_gen_samples, clas_inp, clas_target = self.prepare_dis_clas_data('D',
                                                                                                   all_gen_samples_list,
@@ -542,3 +543,9 @@ class EvoCatGANInstructor(BasicInstructor):
         clas_target = clas_target[:cfg.batch_size]
 
         return dis_real_samples, dis_gen_samples, clas_inp, clas_target
+
+    def shuffle_eval_samples(self, all_eval_samples):
+        temp = []
+        for i in range(cfg.k_label):
+            temp.append(all_eval_samples[i][torch.randperm(all_eval_samples[i].size(0))])
+        return temp
