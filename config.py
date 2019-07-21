@@ -18,7 +18,7 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
@@ -42,7 +42,7 @@ dataset = 'oracle'  # oracle, image_coco, emnlp_news
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'rsgan lsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'standard'  # standard, rsgan, nll
+eval_type = 'nll'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
 
