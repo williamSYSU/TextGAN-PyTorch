@@ -22,7 +22,7 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'evocatgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = False
 
@@ -33,7 +33,7 @@ lambda_fq = 1.0
 lambda_fd = 0.0
 lambda_fc = 1.0
 d_out_mean = True
-freeze_dis = True
+freeze_dis = False
 freeze_clas = False
 use_all_real_fake = False
 
