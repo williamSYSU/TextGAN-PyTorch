@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -22,40 +22,34 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
 # =====EvoGAN=====
-n_parent = 10
+n_parent = 1
 eval_b_num = 5  # >= n_parent*ADV_d_step
-lambda_fq = 1.0
 lambda_fd = 0.0
-lambda_fc = 1.0
 d_out_mean = True
-freeze_dis = False
-freeze_clas = False
-use_all_real_fake = False
-use_population = True
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15
+dataset = 'oracle'  # oracle, image_coco, emnlp_news
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan lsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'rsgan'  # standard, rsgan, nll
+mu_type = 'rsgan rsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+eval_type = 'standard'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
-vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr15_cat0: 4981
+vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 10000  # 10000, mr15: 2000, mr15_cat0: 1500
+samples_num = 10000  # 10000
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
-PRE_clas_epoch = 300
-ADV_train_epoch = 10000  # SeqGAN, LeakGAN-200, RelGAN-3000
+PRE_clas_epoch = 150
+ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
@@ -74,8 +68,6 @@ adv_log_step = 40
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
-cat_train_data = 'dataset/{}_cat{}.txt'
-cat_test_data = 'dataset/testdata//{}_cat{}_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1
@@ -119,7 +111,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 0
+# device=3
 # print('device: ', device)
 torch.cuda.set_device(device)
 
@@ -131,21 +123,19 @@ save_model_root = save_root + 'models/'
 
 oracle_state_dict_path = 'pretrain/oracle_data/oracle_lstm.pt'
 oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}.pt'
-# oracle_state_dict_path = 'pretrain/oracle_data/relgan_oracle_lstm.pt'
-# oracle_samples_path = 'pretrain/oracle_data/relgan_oracle_lstm_samples_{}.pt'
 multi_oracle_state_dict_path = 'pretrain/oracle_data/oracle{}_lstm.pt'
 multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
 
 pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
-pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
-pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
-pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
+pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
+pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
+pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}.pt'.format(run_model, model_type)
 signal_file = 'run_signal.txt'
 
 tips = ''
 
-if samples_num == 5000 and 'cat' not in run_model:
-    raise AssertionError('warning: samples_num={}, run_model={}'.format(samples_num, run_model))
+assert samples_num == 5000 and 'cat' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num,
+                                                                                                  run_model)
 
 
 # Init settings according to parser
@@ -158,8 +148,7 @@ def init_param(opt):
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
         pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
-        pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, lambda_fc, freeze_dis, freeze_clas, use_all_real_fake, use_population
+        pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -177,14 +166,8 @@ def init_param(opt):
 
     n_parent = opt.n_parent
     eval_b_num = opt.eval_b_num
-    lambda_fq = opt.lambda_fq
     lambda_fd = opt.lambda_fd
-    lambda_fc = opt.lambda_fc
     d_out_mean = opt.d_out_mean
-    freeze_dis = opt.freeze_dis
-    freeze_clas = opt.freeze_clas
-    use_all_real_fake = opt.use_all_real_fake
-    use_population = opt.use_population
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size
@@ -245,9 +228,9 @@ def init_param(opt):
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
     pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
-    pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
-    pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
-    pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
+    pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
+    pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
+    pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}.pt'.format(run_model, model_type)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
