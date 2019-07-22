@@ -131,9 +131,9 @@ multi_oracle_state_dict_path = 'pretrain/oracle_data/oracle{}_lstm.pt'
 multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
 
 pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
-pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
-pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
-pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}.pt'.format(run_model, model_type)
+pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
+pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
+pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
 signal_file = 'run_signal.txt'
 
 tips = ''
@@ -234,9 +234,9 @@ def init_param(opt):
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
     pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
-    pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
-    pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
-    pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}.pt'.format(run_model, model_type)
+    pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
+    pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
+    pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
