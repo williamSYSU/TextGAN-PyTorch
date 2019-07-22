@@ -141,10 +141,14 @@ class EvoCatGANInstructor(BasicInstructor):
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        self._run()
+        # self._run()
         # self.variation(1, self.G_critertion[0])
         # self.evolve_generator(1)
         # self.evolve_discriminator(1)
+        for (oracle, oracle_data) in zip(self.oracle_list, self.oracle_data_list):
+            gt = self.eval_gen(oracle, oracle_data.loader, self.mle_criterion, 1)
+            print(gt)
+        print(self.eval_gen(self.oracle_list[1], self.oracle_data_list[0].loader, self.mle_criterion, 1))
 
     def pretrain_generator(self, epochs):
         """
@@ -223,7 +227,22 @@ class EvoCatGANInstructor(BasicInstructor):
             for (real_samples, fake_samples) in zip(dis_real_samples, dis_gen_samples):
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
+
+                # vanilla
                 d_loss += self.D_critertion(d_out_real, d_out_fake)
+
+                # real --> real
+                # d_out_real_reshape = d_out_real.view(cfg.batch_size, -1)
+                # d_out_fake_reshape = d_out_fake.view(cfg.batch_size, -1)
+                # cut_size = cfg.batch_size // 2
+                # target_size = cfg.batch_size * cfg.num_rep // 2
+                # d_loss += self.D_critertion(
+                #     d_out_real_reshape[:cut_size].view(-1) - d_out_real_reshape[cut_size:].view(-1),
+                #     torch.zeros(target_size).cuda())
+                # d_loss += self.D_critertion(
+                #     d_out_fake_reshape[:cut_size].view(-1) - d_out_fake_reshape[cut_size:].view(-1),
+                #     torch.zeros(target_size).cuda())
+
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
@@ -316,11 +335,11 @@ class EvoCatGANInstructor(BasicInstructor):
                 else:
                     raise NotImplementedError("k_label = %d is not supported" % cfg.k_label)
 
-            elif eval_type == 'rsgan':
-                # TODO: rsgan loss at each category
-                fake_samples = torch.cat(eval_fake_samples_pred, dim=0)[
-                    torch.randperm(eval_fake_samples_pred[0].size(0) * 2)]
-                Fq = self.dis(fake_samples[:cfg.batch_size]).mean().cpu().item()
+            elif eval_type == 'standard':
+                q_s = []
+                for fake_samples in eval_fake_samples_pred:
+                    q_s.append(self.dis(fake_samples[:cfg.batch_size]).mean().cpu().item())
+                Fq = q_s[0] * q_s[1] / (q_s[0] + q_s[1])
                 Fd = 0
                 pass
             else:

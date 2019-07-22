@@ -130,12 +130,12 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
-            if cfg.use_all_real_fake:
-                all_d_out_real = torch.cat(all_d_out_real, dim=0)
-                all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
-                all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
-                all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-                g_loss += self.dis_criterion(all_d_out_fake - all_d_out_real, torch.ones_like(all_d_out_fake))
+            # if cfg.use_all_real_fake:
+            #     all_d_out_real = torch.cat(all_d_out_real, dim=0)
+            #     all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
+            #     all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
+            #     all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
+            #     g_loss += self.dis_criterion(all_d_out_fake - all_d_out_real, torch.ones_like(all_d_out_fake))
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss.append(g_loss.item())
@@ -155,10 +155,25 @@ class CatGANInstructor(BasicInstructor):
             d_loss = 0
             all_d_out_real = []
             all_d_out_fake = []
-            for (real_samples, fake_samples) in zip(dis_real_samples, dis_gen_samples):
+            for (real_samples, fake_samples) in zip(dis_real_samples, dis_gen_samples):  # for each label samples
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
-                d_loss += self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_fake))
+
+                # vanilla
+                # d_loss += self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_fake))
+
+                # real --> real
+                d_out_real_reshape = d_out_real.view(cfg.batch_size, -1)
+                d_out_fake_reshape = d_out_fake.view(cfg.batch_size, -1)
+                cut_size = cfg.batch_size // 2
+                target_size = cfg.batch_size * cfg.num_rep // 2
+                d_loss += self.dis_criterion(
+                    d_out_real_reshape[:cut_size].view(-1) - d_out_real_reshape[cut_size:].view(-1),
+                    torch.zeros(target_size).cuda())
+                d_loss += self.dis_criterion(
+                    d_out_fake_reshape[:cut_size].view(-1) - d_out_fake_reshape[cut_size:].view(-1),
+                    torch.zeros(target_size).cuda())
+
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
