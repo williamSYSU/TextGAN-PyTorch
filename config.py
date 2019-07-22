@@ -139,8 +139,8 @@ signal_file = 'run_signal.txt'
 
 tips = ''
 
-assert samples_num == 5000 and 'cat' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num,
-                                                                                                  run_model)
+if samples_num == 5000 and 'cat' not in run_model:
+    raise AssertionError('warning: samples_num={}, run_model={}'.format(samples_num, run_model))
 
 
 # Init settings according to parser
