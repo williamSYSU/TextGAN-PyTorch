@@ -22,12 +22,12 @@ gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'relgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
 # =====EvoGAN=====
-n_parent = 1
+n_parent = 2
 eval_b_num = 5  # >= n_parent*ADV_d_step
 lambda_fq = 1.0
 lambda_fd = 0.0
@@ -51,10 +51,10 @@ temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 10000  # 10000
+samples_num = 5000  # 10000
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 300
-ADV_train_epoch = 10000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
