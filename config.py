@@ -138,6 +138,9 @@ signal_file = 'run_signal.txt'
 
 tips = ''
 
+assert samples_num == 5000 and 'cat' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num,
+                                                                                                  run_model)
+
 
 # Init settings according to parser
 def init_param(opt):
