@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -139,8 +139,8 @@ signal_file = 'run_signal.txt'
 
 tips = ''
 
-if samples_num == 5000 and 'cat' not in run_model:
-    raise AssertionError('warning: samples_num={}, run_model={}'.format(samples_num, run_model))
+assert samples_num == 5000 and 'cat' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num,
+                                                                                                  run_model)
 
 
 # Init settings according to parser
