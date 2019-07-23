@@ -22,7 +22,7 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
@@ -35,24 +35,24 @@ lambda_fc = 1.0
 d_out_mean = True
 freeze_dis = False
 freeze_clas = False
-use_all_real_fake = True
+use_all_real_fake = False
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news
+dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'rsgan lsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'nll'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
-vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
+vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat0: 4981
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 10000  # 10000
-MLE_train_epoch = 300  # SeqGAN-80, LeakGAN-8, RelGAN-150
+samples_num = 5000  # 10000
+MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 300
 ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
@@ -73,6 +73,8 @@ adv_log_step = 40
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
+cat_train_data = 'dataset/{}_cat{}.txt'
+cat_test_data = 'dataset/testdata//{}_cat{}_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1

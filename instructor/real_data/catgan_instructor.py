@@ -2,10 +2,11 @@
 # @Author       : William
 # @Project      : TextGAN-william
 # @FileName     : catgan_instructor.py
-# @Time         : Created at 2019-05-28
+# @Time         : Created at 2019-07-23
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
+
 import numpy as np
 import os
 import torch
@@ -15,7 +16,8 @@ import torch.optim as optim
 from tqdm import tqdm
 
 import config as cfg
-from instructor.oracle_data.instructor import BasicInstructor
+from instructor.real_data.instructor import BasicInstructor
+from metrics.bleu import BLEU
 from models.CatGAN_D import CatGAN_C, CatGAN_D
 from models.CatGAN_G import CatGAN_G
 from models.Oracle import Oracle
@@ -23,7 +25,7 @@ from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
 from utils.helpers import get_fixed_temperature
-from utils.text_process import write_tensor
+from utils.text_process import write_tensor, tensor_to_tokens, write_tokens
 
 
 class CatGANInstructor(BasicInstructor):
@@ -53,14 +55,26 @@ class CatGANInstructor(BasicInstructor):
         self.dis_criterion = nn.BCEWithLogitsLoss()
 
         # DataLoader
-        self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
-                                    for i in range(cfg.k_label)]
-        self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
-        self.all_oracle_data = CatGenDataIter(self.oracle_samples_list)  # Shuffled all oracle data
+        # self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
+        #                             for i in range(cfg.k_label)]
+        # self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
+        # self.all_oracle_data = CatGenDataIter(self.oracle_samples_list)  # Shuffled all oracle data
         self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
                               for i in range(cfg.k_label)]
-        self.freeze_dis = cfg.freeze_dis
-        self.freeze_clas = cfg.freeze_clas
+
+        self.oracle_data_list = [GenDataIter(cfg.cat_train_data.format(cfg.dataset, i)) for i in range(cfg.k_label)]
+        self.test_data_list = [GenDataIter(cfg.cat_test_data.format(cfg.dataset, i)) for i in
+                               range(cfg.k_label)]
+        self.oracle_samples_list = [self.oracle_data_list[i].target for i in range(cfg.k_label)]
+        self.all_oracle_data = CatGenDataIter(self.oracle_samples_list)
+
+        # Metrics
+        self.bleu3 = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+                           real_text=tensor_to_tokens(self.test_data_list[i].target, self.index_word_dict),
+                           gram=3) for i in range(cfg.k_label)]
+        self.self_bleu3 = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+                                real_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+                                gram=3) for i in range(cfg.k_label)]
 
     def _run(self):
         # ===Pre-train Generator===
@@ -77,16 +91,17 @@ class CatGANInstructor(BasicInstructor):
             g_loss = self.adv_train_generator(cfg.ADV_g_step)
             d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')  # !!! no adv-train for discriminator
 
-            # self.update_temperature(adv_epoch, cfg.ADV_train_epoch)
+            self.update_temperature(adv_epoch, cfg.ADV_train_epoch)
 
             # =====Test=====
-            progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, d_loss))
-            if adv_epoch % cfg.adv_log_step == 0:
-                self.log.info(
-                    '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
-                if not cfg.if_test and cfg.if_save:
-                    for label_i in range(cfg.k_label):
-                        self._save('ADV', adv_epoch, label_i)
+            progress.set_description(
+                'g_loss = %.4f, d_loss = %.4f, temp = %.4f' % (g_loss, d_loss, self.gen.temperature))
+            # if adv_epoch % cfg.adv_log_step == 0:
+            #     self.log.info(
+            #         '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
+            #     if not cfg.if_test and cfg.if_save:
+            #         for label_i in range(cfg.k_label):
+            #             self._save('ADV', adv_epoch, label_i)
 
     def _test(self):
         self.log.debug('>>> Begin test...')
@@ -95,6 +110,7 @@ class CatGANInstructor(BasicInstructor):
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
+        pass
 
     def pretrain_generator(self, epochs):
         """
@@ -194,20 +210,11 @@ class CatGANInstructor(BasicInstructor):
         return np.mean(total_loss)
 
     def init_model(self):
-        if cfg.oracle_pretrain:
-            for i in range(cfg.k_label):
-                oracle_path = cfg.multi_oracle_state_dict_path.format(i)
-                if not os.path.exists(oracle_path):
-                    create_multi_oracle(cfg.k_label)
-                self.oracle_list[i].load_state_dict(torch.load(oracle_path, map_location='cuda:%d' % cfg.device))
-
         if cfg.gen_pretrain:
             self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
             self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path, map_location='cuda:%d' % cfg.device))
 
         if cfg.CUDA:
-            for i in range(cfg.k_label):
-                self.oracle_list[i] = self.oracle_list[i].cuda()
             self.gen = self.gen.cuda()
             self.dis = self.dis.cuda()
 
@@ -259,36 +266,45 @@ class CatGANInstructor(BasicInstructor):
     def cal_metrics(self, label_i=None):
         assert type(label_i) == int, 'missing label'
         self.gen_data_list[label_i].reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i))
-        oracle_nll = self.eval_gen(self.oracle_list[label_i],
-                                   self.gen_data_list[label_i].loader,
-                                   self.mle_criterion, label_i)
+        new_gen_tokens = tensor_to_tokens(self.gen_data_list[label_i].target, self.index_word_dict)
+        self.bleu3[label_i].test_text = new_gen_tokens
+
+        bleu3_score = self.bleu3[label_i].get_score(ignore=False)
+
         gen_nll = self.eval_gen(self.gen,
                                 self.oracle_data_list[label_i].loader,
                                 self.mle_criterion, label_i)
+
         self_nll = self.eval_gen(self.gen,
                                  self.gen_data_list[label_i].loader,
                                  self.mle_criterion, label_i)
 
-        return oracle_nll, gen_nll, self_nll
+        self.self_bleu3[label_i].test_text = new_gen_tokens
+        self.self_bleu3[label_i].real_text = tensor_to_tokens(
+            self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i), self.index_word_dict)
+        self_bleu3_score = self.self_bleu3[label_i].get_score(ignore=False)
+
+        return bleu3_score, gen_nll, self_nll, self_bleu3_score
 
     def comb_metrics(self, fmt_str=False):
-        oracle_nll, gen_nll, self_nll = [], [], []
+        bleu3, gen_nll, self_nll, self_bleu3 = [], [], [], []
         for label_i in range(cfg.k_label):
-            o_nll, g_nll, s_nll = self.cal_metrics(label_i)
-            oracle_nll.append(float('%.4f' % o_nll))
+            bl3, g_nll, s_nll, sbl3 = self.cal_metrics(label_i)
+            bleu3.append(float('%.4f' % bl3))
             gen_nll.append(float('%.4f' % g_nll))
             self_nll.append(float('%.4f' % s_nll))
+            self_bleu3.append(float('%.4f' % sbl3))
 
         if fmt_str:
-            return 'oracle_NLL = %s, gen_NLL = %s, self_NLL = %s,' % (oracle_nll, gen_nll, self_nll)
-        return oracle_nll, gen_nll, self_nll
+            return 'bleu3 = %s, gen_NLL = %s, self_NLL = %s, self_bleu3 = %s' % (bleu3, gen_nll, self_nll, self_bleu3)
+        return bleu3, gen_nll, self_nll, self_bleu3
 
     def _save(self, phase, epoch, label_i=None):
         assert type(label_i) == int
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
-        write_tensor(save_sample_path, samples)
+        write_tokens(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))
 
     def prepare_dis_data(self, which):
         assert which == 'D' or which == 'G', 'only support for D and G!!'

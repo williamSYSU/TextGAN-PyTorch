@@ -107,8 +107,8 @@ if __name__ == '__main__':
         from instructor.real_data.maligan_instructor import MaliGANInstructor
         from instructor.real_data.jsdgan_instructor import JSDGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
+        from instructor.real_data.catgan_instructor import CatGANInstructor
 
-        CatGANInstructor = None
         BarGANInstructor = None
         EvoGANInstructor = None
         EvoCatGANInstructor = None
