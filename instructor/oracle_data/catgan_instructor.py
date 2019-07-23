@@ -80,7 +80,7 @@ class CatGANInstructor(BasicInstructor):
             # self.update_temperature(adv_epoch, cfg.ADV_train_epoch)
 
             # =====Test=====
-            progress.set_description('g_loss = %.4f, c_loss = %.4f' % (g_loss, d_loss))
+            progress.set_description('g_loss = %.4f, d_loss = %.4f' % (g_loss, d_loss))
             if adv_epoch % cfg.adv_log_step == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))

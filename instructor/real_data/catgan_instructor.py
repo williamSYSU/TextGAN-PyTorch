@@ -96,12 +96,12 @@ class CatGANInstructor(BasicInstructor):
             # =====Test=====
             progress.set_description(
                 'g_loss = %.4f, d_loss = %.4f, temp = %.4f' % (g_loss, d_loss, self.gen.temperature))
-            # if adv_epoch % cfg.adv_log_step == 0:
-            #     self.log.info(
-            #         '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
-            #     if not cfg.if_test and cfg.if_save:
-            #         for label_i in range(cfg.k_label):
-            #             self._save('ADV', adv_epoch, label_i)
+            if adv_epoch % cfg.adv_log_step == 0:
+                self.log.info(
+                    '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
+                if not cfg.if_test and cfg.if_save:
+                    for label_i in range(cfg.k_label):
+                        self._save('ADV', adv_epoch, label_i)
 
     def _test(self):
         self.log.debug('>>> Begin test...')
