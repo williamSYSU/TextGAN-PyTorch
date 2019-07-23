@@ -125,13 +125,21 @@ class EvoGANInstructor(BasicInstructor):
     def _test(self):
         print('>>> Begin test...')
 
-        self._run()
+        # self._run()
         # create_oracle()
         # self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
         # self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
         # self.oracle_data.reset(self.oracle_samples)
-        # gt = self.eval_gen(self.oracle,self.oracle_data.loader,self.mle_criterion)
-        # print(gt)
+
+        # self.oracle.load_state_dict(torch.load('pretrain/oracle_data/relgan_oracle_lstm.pt'))
+        # big_samples = self.oracle.sample(cfg.samples_num, 8 * cfg.batch_size)
+        # small_samples = self.oracle.sample(cfg.samples_num // 2, 8 * cfg.batch_size)
+        # torch.save(big_samples, 'pretrain/oracle_data/relgan_oracle_lstm_samples_10000.pt')
+        # torch.save(small_samples, 'pretrain/oracle_data/relgan_oracle_lstm_samples_5000.pt')
+        # self.oracle_data.reset(big_samples)
+
+        gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion)
+        print(gt)
 
         # self.adv_train_discriminator(1)
         # self.evolve_generator(1)
@@ -316,7 +324,9 @@ class EvoGANInstructor(BasicInstructor):
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
-        score = Fq + cfg.lambda_fd * Fd
+        Fq = round(Fq, 3)
+        Fd = round(Fd, 3)
+        score = cfg.lambda_fq * Fq + cfg.lambda_fd * Fd
         return Fq, Fd, score
 
     def update_temperature(self, i, N):
