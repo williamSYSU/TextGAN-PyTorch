@@ -13,29 +13,30 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
-use_truncated_normal = False
+use_truncated_normal = True
 
 # =====EvoGAN=====
-n_parent = 1
+n_parent = 10
 eval_b_num = 5  # >= n_parent*ADV_d_step
 lambda_fq = 1.0
-lambda_fd = 1.0
+lambda_fd = 0.0
 lambda_fc = 1.0
 d_out_mean = True
 freeze_dis = False
 freeze_clas = False
 use_all_real_fake = False
+use_population = True
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
@@ -43,18 +44,18 @@ dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'rsgan lsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'nll'  # standard, rsgan, nll
+eval_type = 'rsgan'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
-vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat0: 4981
+vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr15_cat0: 4981
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 5000  # 10000
-MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
+samples_num = 10000  # 10000, mr15: 2000, mr15_cat0: 1500
+MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 300
-ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 10000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
@@ -118,7 +119,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 2
+# device = 0
 # print('device: ', device)
 torch.cuda.set_device(device)
 
@@ -158,7 +159,7 @@ def init_param(opt):
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
         pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, lambda_fc, freeze_dis, freeze_clas, use_all_real_fake
+        lambda_fq, lambda_fc, freeze_dis, freeze_clas, use_all_real_fake, use_population
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -183,6 +184,7 @@ def init_param(opt):
     freeze_dis = opt.freeze_dis
     freeze_clas = opt.freeze_clas
     use_all_real_fake = opt.use_all_real_fake
+    use_population = opt.use_population
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size

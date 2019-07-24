@@ -19,6 +19,7 @@ from instructor.oracle_data.instructor import BasicInstructor
 from models.CatGAN_D import CatGAN_C, CatGAN_D
 from models.CatGAN_G import CatGAN_G
 from models.Oracle import Oracle
+from models.SlotCatGAN_G import SlotCatGAN_G
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
@@ -38,6 +39,8 @@ class CatGANInstructor(BasicInstructor):
 
         self.gen = CatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
                             cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
+        # self.gen = SlotCatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
+        #                     cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
         self.dis = CatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
                             cfg.padding_idx, gpu=cfg.CUDA)
 
@@ -77,10 +80,11 @@ class CatGANInstructor(BasicInstructor):
             g_loss = self.adv_train_generator(cfg.ADV_g_step)
             d_loss = self.adv_train_discriminator(cfg.ADV_d_step, 'ADV')  # !!! no adv-train for discriminator
 
-            # self.update_temperature(adv_epoch, cfg.ADV_train_epoch)
+            self.update_temperature(adv_epoch, cfg.ADV_train_epoch)
 
             # =====Test=====
-            progress.set_description('g_loss = %.4f, d_loss = %.4f' % (g_loss, d_loss))
+            progress.set_description(
+                'g_loss = %.4f, d_loss = %.4f, temp = %.4f' % (g_loss, d_loss, self.gen.temperature))
             if adv_epoch % cfg.adv_log_step == 0:
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
@@ -95,6 +99,9 @@ class CatGANInstructor(BasicInstructor):
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
+        # self.update_temperature(1000,2000)
+        # print(self.gen.temperature)
+        pass
 
     def pretrain_generator(self, epochs):
         """
