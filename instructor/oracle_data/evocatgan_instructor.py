@@ -17,7 +17,6 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.CatGAN_D import CatGAN_C
 from models.CatGAN_G import CatGAN_G
 from models.EvocatGAN_D import EvoCatGAN_C
 from models.EvocatGAN_G import EvoCatGAN_G
