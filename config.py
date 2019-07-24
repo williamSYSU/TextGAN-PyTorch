@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -22,7 +22,7 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
@@ -35,7 +35,7 @@ lambda_fc = 1.0
 d_out_mean = True
 freeze_dis = False
 freeze_clas = False
-use_all_real_fake = True
+use_all_real_fake = False
 use_population = False
 
 # =====Oracle or Real, type=====

@@ -62,8 +62,7 @@ class CatGANInstructor(BasicInstructor):
         self.all_oracle_data = CatGenDataIter(self.oracle_samples_list)  # Shuffled all oracle data
         self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
                               for i in range(cfg.k_label)]
-        self.freeze_dis = cfg.freeze_dis
-        self.freeze_clas = cfg.freeze_clas
+        # self.freeze_id = None
 
     def _run(self):
         # ===Pre-train Generator===
@@ -86,8 +85,19 @@ class CatGANInstructor(BasicInstructor):
             progress.set_description(
                 'g_loss = %.4f, d_loss = %.4f, temp = %.4f' % (g_loss, d_loss, self.gen.temperature))
             if adv_epoch % cfg.adv_log_step == 0:
+                oracle_nll, gen_nll, self_nll = self.comb_metrics(fmt_str=False)
+                fmt_metrics = 'oracle_NLL = %s, gen_NLL = %s, self_NLL = %s,' % (oracle_nll, gen_nll, self_nll)
                 self.log.info(
-                    '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
+                    '[ADV] epoch %d : %s' % (adv_epoch, fmt_metrics))
+
+                # balance the oracle_nll
+                # ora_arr = np.array(oracle_nll)
+                # if np.max(np.max(ora_arr) - ora_arr) > 0.2:
+                #     self.freeze_id = np.argmin(ora_arr)
+                #     self.log.info('Freezing category %d...', self.freeze_id)
+                # else:
+                #     self.freeze_id = None
+
                 if not cfg.if_test and cfg.if_save:
                     for label_i in range(cfg.k_label):
                         self._save('ADV', adv_epoch, label_i)
@@ -130,7 +140,9 @@ class CatGANInstructor(BasicInstructor):
             g_loss = 0
             all_d_out_real = []
             all_d_out_fake = []
-            for (real_samples, fake_samples) in zip(dis_real_samples, dis_gen_samples):
+            for i, (real_samples, fake_samples) in enumerate(zip(dis_real_samples, dis_gen_samples)):
+                # if self.freeze_id is not None and i == self.freeze_id:
+                #     continue
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
                 g_loss += self.dis_criterion(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
