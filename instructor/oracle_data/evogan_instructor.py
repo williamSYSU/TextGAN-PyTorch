@@ -204,12 +204,12 @@ class EvoGANInstructor(BasicInstructor):
                 # Variation
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
                 # single loss
-                # self.variation(evo_g_step, criterionG)
+                self.variation(evo_g_step, criterionG)
 
                 # double loss with random weight
-                choice = random.sample(range(0, 3), 2)
-                cri_list = [self.G_critertion[choice[0]], self.G_critertion[choice[1]]]
-                self.variation(evo_g_step, cri_list)
+                # choice = random.sample(range(0, len(self.G_critertion)), 2)
+                # cri_list = [self.G_critertion[choice[0]], self.G_critertion[choice[1]]]
+                # self.variation(evo_g_step, cri_list)
 
                 # all loss with random weight
                 # self.variation(evo_g_step, self.G_critertion)
