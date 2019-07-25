@@ -13,21 +13,21 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'relgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
 # =====EvoGAN=====
-n_parent = 1
+n_parent = 2
 eval_b_num = 5  # >= n_parent*ADV_d_step
 lambda_fq = 1.0
 lambda_fd = 0.0
@@ -39,23 +39,23 @@ use_all_real_fake = False
 use_population = False
 
 # =====Oracle or Real, type=====
-if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15
+if_real_data = True  # if use real data
+dataset = 'mr_sl20_cat1'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan lsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'rsgan'  # standard, rsgan, nll
+mu_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+eval_type = 'nll'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
-vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr15_cat0: 4981
+vocab_size = 7304  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 5000  # 10000, mr15: 2000, mr15_cat0: 1500
+samples_num = 2000  # 10000, mr15: 1500, mr20: 2000
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 300
-ADV_train_epoch = 10000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
@@ -92,7 +92,7 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 3  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64

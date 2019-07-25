@@ -18,7 +18,7 @@ from tqdm import tqdm
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from metrics.bleu import BLEU
-from models.CatGAN_D import CatGAN_C, CatGAN_D
+from models.CatGAN_D import CatGAN_D
 from models.CatGAN_G import CatGAN_G
 from models.Oracle import Oracle
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
