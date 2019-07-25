@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+import config as cfg
+from instructor.oracle_data.instructor import BasicInstructor
 from utils.data_loader import GenDataIter
 
 
@@ -59,15 +61,11 @@ def create_logger(name, silent=False, to_disk=False, log_file=None):
 
 def create_oracle():
     """Create a new Oracle model and Oracle's samples"""
-    import config as cfg
     from models.Oracle import Oracle
-    from instructor.oracle_data.instructor import BasicInstructor
-
     print('Creating Oracle...')
     oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
                     cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-    if cfg.CUDA:
-        oracle = oracle.cuda()
+    oracle = oracle.cuda()
 
     torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
 
@@ -89,7 +87,7 @@ def get_fixed_temperature(temper, i, N, adapt):
     N = 5000
 
     if adapt == 'no':
-        temper_var_np = 1.0  # no increase, origin: temper
+        temper_var_np = temper  # no increase
     elif adapt == 'lin':
         temper_var_np = 1 + i / (N - 1) * (temper - 1)  # linear increase
     elif adapt == 'exp':
