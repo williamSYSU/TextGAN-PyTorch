@@ -79,7 +79,7 @@ def create_oracle():
     oracle_data = GenDataIter(big_samples)
     mle_criterion = nn.NLLLoss()
     groud_truth = BasicInstructor.eval_gen(oracle, oracle_data.loader, mle_criterion)
-    print('NLL_Oracle Groud Truth: %.4f' % groud_truth)
+    print('Oracle Groud Truth: %.4f' % groud_truth)
 
 
 def get_fixed_temperature(temper, i, N, adapt):
