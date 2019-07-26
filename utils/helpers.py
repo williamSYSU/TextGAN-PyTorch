@@ -6,8 +6,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import config as cfg
-from instructor.oracle_data.instructor import BasicInstructor
 from utils.data_loader import GenDataIter
 
 
@@ -61,7 +59,10 @@ def create_logger(name, silent=False, to_disk=False, log_file=None):
 
 def create_oracle():
     """Create a new Oracle model and Oracle's samples"""
+    import config as cfg
     from models.Oracle import Oracle
+    from instructor.oracle_data.instructor import BasicInstructor
+
     print('Creating Oracle...')
     oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
                     cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
