@@ -245,6 +245,12 @@ class EvoGANInstructor(BasicInstructor):
         best_fake_samples = []
         selected_mutation = []
 
+        with torch.no_grad():
+            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            if cfg.CUDA:
+                real_samples = real_samples.cuda()
+            self.d_out_real = self.dis(real_samples)
+
         # evaluate all parents
         for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
             self.load_gen(parent, parent_opt)
@@ -364,7 +370,7 @@ class EvoGANInstructor(BasicInstructor):
             Fq = d_loss.item()
             Fd = 0
         elif eval_type == 'nll':
-            self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.eval_b_num * cfg.batch_size))
+            self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
             Fq = -self.eval_gen(self.oracle,
                                 self.gen_data.loader,
                                 self.mle_criterion)  # NLL_Oracle
@@ -398,12 +404,16 @@ class EvoGANInstructor(BasicInstructor):
                  for _ in range(cfg.eval_b_num)], dim=0)
             if cfg.CUDA:
                 self.eval_real_samples = self.eval_real_samples.cuda()
-            self.eval_d_out_real = self.dis(self.eval_real_samples)
+
+            if cfg.eval_type == 'rsgan':
+                self.eval_d_out_real = self.dis(self.eval_real_samples)
 
     def prepare_eval_fake_data(self):
         with torch.no_grad():
             self.eval_fake_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size,
-                                                     cfg.eval_b_num * cfg.batch_size, one_hot=True)
+                                                     cfg.max_bn * cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 self.eval_fake_samples = self.eval_fake_samples.cuda()
-            self.eval_d_out_fake = self.dis(self.eval_fake_samples)
+
+            if cfg.eval_type == 'rsgan':
+                self.eval_d_out_fake = self.dis(self.eval_fake_samples)

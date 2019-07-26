@@ -18,19 +18,19 @@ rootdir = '../'
 run_model = 'evogan'
 device = 1
 
-loss_type = 'rsgan'
+loss_type = ['rsgan', 'rsgan', 'nsgan', 'nsgan']
 eval_type = 'nll'
 
 MLE_train_epoch = 150
 lambda_fq = 1.0
 lambda_fd = 0.0
 
-ora_pretrain = [0, 1, 1]
-gen_pretrain = [0, 1, 1]
-mu_type = ['rsgan', 'rsgan', 'rsgan nsgan']
-ADV_train_epoch = [0, 3000, 3000]
+ora_pretrain = [0, 1, 1, 1]
+gen_pretrain = [0, 1, 1, 1]
+mu_type = ['rsgan', 'rsgan', 'nsgan', 'rsgan nsgan']
+ADV_train_epoch = [0, 3000, 3000, 3000]
 
-for i in range(15):
+for i in range(20):
     job_id = i % 3
     args = [
         '--device', device,
@@ -39,7 +39,7 @@ for i in range(15):
         '--gen_pretrain', gen_pretrain[job_id],
         '--lambda_fq', lambda_fq,
         '--lambda_fd', lambda_fd,
-        '--loss_type', loss_type,
+        '--loss_type', loss_type[job_id],
         '--mu_type', mu_type[job_id],
         '--eval_type', eval_type,
         '--mle_epoch', MLE_train_epoch,
