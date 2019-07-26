@@ -58,8 +58,6 @@ class EvoGANInstructor(BasicInstructor):
         self.D_critertion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
-        self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
-        self.oracle_data = GenDataIter(self.oracle_samples)
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def init_model(self):
