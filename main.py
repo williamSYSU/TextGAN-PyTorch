@@ -122,6 +122,7 @@ if __name__ == '__main__':
         from instructor.oracle_data.bargan_instructor import BarGANInstructor
         from instructor.oracle_data.evogan_instructor import EvoGANInstructor
         from instructor.oracle_data.evocatgan_instructor import EvoCatGANInstructor
+        from instructor.oracle_data.sentigan_instructor import SentiGANInstructor
     instruction_dict = {
         'seqgan': SeqGANInstructor,
         'leakgan': LeakGANInstructor,
@@ -132,6 +133,7 @@ if __name__ == '__main__':
         'bargan': BarGANInstructor,
         'evogan': EvoGANInstructor,
         'evocatgan': EvoCatGANInstructor,
+        'sentigan': SentiGANInstructor,
     }
 
     inst = instruction_dict[cfg.run_model](opt)
