@@ -120,6 +120,7 @@ class SeqGANInstructor(BasicInstructor):
             adv_loss = self.gen.batchPGLoss(inp, target, rewards)
             self.optimize(self.gen_adv_opt, adv_loss)
             total_g_loss += adv_loss.item()
+        rollout_func.update_params()
 
         # ===Test===
         self.log.info('[ADV-GEN]: g_loss = %.4f, %s' % (total_g_loss, self.cal_metrics(fmt_str=True)))
