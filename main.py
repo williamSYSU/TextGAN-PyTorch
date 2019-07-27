@@ -28,7 +28,6 @@ def program_config(parser):
     parser.add_argument('--eval_b_num', default=cfg.eval_b_num, type=int)
     parser.add_argument('--lambda_fq', default=cfg.lambda_fq, type=float)
     parser.add_argument('--lambda_fd', default=cfg.lambda_fd, type=float)
-    parser.add_argument('--lambda_fc', default=cfg.lambda_fc, type=float)
     parser.add_argument('--d_out_mean', default=cfg.d_out_mean, type=int)
     parser.add_argument('--freeze_dis', default=cfg.freeze_dis, type=int)
     parser.add_argument('--freeze_clas', default=cfg.freeze_clas, type=int)

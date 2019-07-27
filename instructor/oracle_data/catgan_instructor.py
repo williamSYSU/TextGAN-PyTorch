@@ -73,6 +73,24 @@ class CatGANInstructor(BasicInstructor):
                               for i in range(cfg.k_label)]
         # self.freeze_id = None
 
+    def init_model(self):
+        if cfg.oracle_pretrain:
+            for i in range(cfg.k_label):
+                oracle_path = cfg.multi_oracle_state_dict_path.format(i)
+                if not os.path.exists(oracle_path):
+                    create_multi_oracle(cfg.k_label)
+                self.oracle_list[i].load_state_dict(torch.load(oracle_path, map_location='cuda:%d' % cfg.device))
+
+        if cfg.gen_pretrain:
+            self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
+            self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path, map_location='cuda:%d' % cfg.device))
+
+        if cfg.CUDA:
+            for i in range(cfg.k_label):
+                self.oracle_list[i] = self.oracle_list[i].cuda()
+            self.gen = self.gen.cuda()
+            self.dis = self.dis.cuda()
+
     def _run(self):
         # ===Pre-train Generator===
         if not cfg.gen_pretrain:
@@ -143,7 +161,7 @@ class CatGANInstructor(BasicInstructor):
     def adv_train_generator(self, g_step):
         total_loss = []
         for step in range(g_step):
-            dis_real_samples, dis_gen_samples = self.prepare_dis_data('G')
+            dis_real_samples, dis_gen_samples = self.prepare_train_data('G')
 
             # =====Train=====
             g_loss = 0
@@ -154,7 +172,6 @@ class CatGANInstructor(BasicInstructor):
                 #     continue
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
-                g_loss += self.dis_criterion(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
                 g_loss += self.G_criterion(d_out_real, d_out_fake)
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
@@ -164,7 +181,6 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
                 all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
                 all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-                # g_loss += self.dis_criterion(all_d_out_fake - all_d_out_real, torch.ones_like(all_d_out_fake))
                 g_loss += self.G_criterion(all_d_out_real, all_d_out_fake)
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
@@ -179,7 +195,7 @@ class CatGANInstructor(BasicInstructor):
     def adv_train_discriminator(self, d_step, phase='PRE'):
         total_loss = []
         for step in range(d_step):
-            dis_real_samples, dis_gen_samples = self.prepare_dis_data('D')
+            dis_real_samples, dis_gen_samples = self.prepare_train_data('D')
 
             # =====Train=====
             d_loss = 0
@@ -190,7 +206,6 @@ class CatGANInstructor(BasicInstructor):
                 d_out_fake = self.dis(fake_samples)
 
                 # vanilla
-                # d_loss += self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_fake))
                 d_loss += self.D_criterion(d_out_real, d_out_fake)
 
                 # real --> real
@@ -224,24 +239,6 @@ class CatGANInstructor(BasicInstructor):
         if d_step == 0:
             return 0
         return np.mean(total_loss)
-
-    def init_model(self):
-        if cfg.oracle_pretrain:
-            for i in range(cfg.k_label):
-                oracle_path = cfg.multi_oracle_state_dict_path.format(i)
-                if not os.path.exists(oracle_path):
-                    create_multi_oracle(cfg.k_label)
-                self.oracle_list[i].load_state_dict(torch.load(oracle_path, map_location='cuda:%d' % cfg.device))
-
-        if cfg.gen_pretrain:
-            self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
-            self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path, map_location='cuda:%d' % cfg.device))
-
-        if cfg.CUDA:
-            for i in range(cfg.k_label):
-                self.oracle_list[i] = self.oracle_list[i].cuda()
-            self.gen = self.gen.cuda()
-            self.dis = self.dis.cuda()
 
     def update_temperature(self, i, N):
         self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
@@ -322,7 +319,7 @@ class CatGANInstructor(BasicInstructor):
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
         write_tensor(save_sample_path, samples)
 
-    def prepare_dis_data(self, which):
+    def prepare_train_data(self, which):
         assert which == 'D' or which == 'G', 'only support for D and G!!'
         real_samples_list = [
             F.one_hot(self.oracle_data_list[i].random_batch()['target'][:cfg.batch_size],

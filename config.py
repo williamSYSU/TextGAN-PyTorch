@@ -18,7 +18,7 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
@@ -32,18 +32,17 @@ eval_b_num = 10  # >= n_parent*ADV_d_step
 max_bn = 8 if eval_b_num > 8 else eval_b_num
 lambda_fq = 1.0
 lambda_fd = 0.0
-lambda_fc = 1.0
 d_out_mean = True
 freeze_dis = False
 freeze_clas = False
-use_all_real_fake = False
+use_all_real_fake = True
 use_population = True
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'nll'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
@@ -88,7 +87,7 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 256  # RelGAN-256
+head_size = 512  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
@@ -160,7 +159,7 @@ def init_param(opt):
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
         pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, lambda_fc, freeze_dis, freeze_clas, use_all_real_fake, use_population
+        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -180,7 +179,6 @@ def init_param(opt):
     eval_b_num = opt.eval_b_num
     lambda_fq = opt.lambda_fq
     lambda_fd = opt.lambda_fd
-    lambda_fc = opt.lambda_fc
     d_out_mean = opt.d_out_mean
     freeze_dis = opt.freeze_dis
     freeze_clas = opt.freeze_clas

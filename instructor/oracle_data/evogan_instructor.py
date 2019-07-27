@@ -117,6 +117,8 @@ class EvoGANInstructor(BasicInstructor):
                 score, fit_score, select_mu = self.evolve_generator_population(cfg.ADV_g_step)
             d_loss = self.evolve_discriminator(cfg.ADV_d_step)
 
+            # self.update_temperature(adv_epoch, cfg.ADV_train_epoch)   # TODO: update parents temperature
+
             progress.set_description('mu: %s, d_loss = %.4f' % (' '.join(select_mu), d_loss))
 
             # TEST
@@ -346,7 +348,7 @@ class EvoGANInstructor(BasicInstructor):
         """Evaluation all child, update child score. Note that the eval data should be the same"""
         if eval_type == 'standard':
             Fq = self.eval_d_out_fake.mean().cpu().item()
-            # d_loss = self.D_critertion(self.eval_d_out_fake, self.eval_d_out_real)
+            # d_loss = self.D_criterion(self.eval_d_out_fake, self.eval_d_out_real)
 
             # Gradient based
             # gradients = torch.autograd.grad(outputs=d_loss, inputs=self.dis.parameters(),

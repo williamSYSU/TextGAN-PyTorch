@@ -16,11 +16,11 @@ executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
 
 run_model = 'catgan'
-device = 0
+device = 1
 
 ora_pretrain = [0, 1, 1]
 gen_pretrain = [0, 1, 1]
-use_all_real_fake = [int(True), int(False), int(True)]
+loss_type = ['rsgan', 'rsgan', 'nsgan']
 ADV_train_epoch = [0, 2000, 2000]
 
 for i in range(21):
@@ -30,8 +30,8 @@ for i in range(21):
         '--run_model', run_model,
         '--ora_pretrain', ora_pretrain[job_id],
         '--gen_pretrain', gen_pretrain[job_id],
+        '--loss_type', loss_type[job_id],
         '--adv_epoch', ADV_train_epoch[job_id],
-        '--use_all_real_fake', use_all_real_fake[job_id],
     ]
 
     args = list(map(str, args))
