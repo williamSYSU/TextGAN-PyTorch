@@ -109,5 +109,5 @@ python3 run_relgan.py 0 0
 - [x] Add Experiment Results
 - [x] Fix bugs in `LeakGAN` model
 - [x] Add instructors of `SeqGAN` and `LeakGAN` in `instrutor/real_data`
-- [ ] Fix logging bugs for `save_root`
-- [ ] Fix issues of $NLL_{oracle}$ in `SeqGAN` model
+- [x] Fix logging bugs for `save_root`
+- [x] Fix issues of $NLL_{oracle}$ in `SeqGAN` model
