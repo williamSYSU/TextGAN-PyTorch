@@ -24,7 +24,7 @@ use_all_real_fake = [int(True), int(False), int(True)]
 ADV_train_epoch = [0, 2000, 2000]
 
 for i in range(21):
-    job_id = i % 3
+    job_id = i % len(ora_pretrain)
     args = [
         '--device', device,
         '--run_model', run_model,

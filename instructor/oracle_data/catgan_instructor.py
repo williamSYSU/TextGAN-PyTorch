@@ -23,6 +23,7 @@ from models.SlotCatGAN_G import SlotCatGAN_G
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
+from utils.gan_loss import GANLoss
 from utils.helpers import get_fixed_temperature
 from utils.text_process import write_tensor
 
@@ -54,6 +55,8 @@ class CatGANInstructor(BasicInstructor):
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = nn.BCEWithLogitsLoss()
+        self.G_criterion = GANLoss(cfg.loss_type, 'G', cfg.d_type, CUDA=cfg.CUDA)
+        self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
         if not cfg.oracle_pretrain:
@@ -61,7 +64,7 @@ class CatGANInstructor(BasicInstructor):
             for i in range(cfg.k_label):
                 oracle_path = cfg.multi_oracle_state_dict_path.format(i)
                 self.oracle_list[i].load_state_dict(torch.load(oracle_path, map_location='cuda:%d' % cfg.device))
-                
+
         self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
                                     for i in range(cfg.k_label)]
         self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
@@ -152,6 +155,7 @@ class CatGANInstructor(BasicInstructor):
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
                 g_loss += self.dis_criterion(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
+                g_loss += self.G_criterion(d_out_real, d_out_fake)
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
@@ -160,7 +164,8 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
                 all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
                 all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-                g_loss += self.dis_criterion(all_d_out_fake - all_d_out_real, torch.ones_like(all_d_out_fake))
+                # g_loss += self.dis_criterion(all_d_out_fake - all_d_out_real, torch.ones_like(all_d_out_fake))
+                g_loss += self.G_criterion(all_d_out_real, all_d_out_fake)
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss.append(g_loss.item())
@@ -185,7 +190,8 @@ class CatGANInstructor(BasicInstructor):
                 d_out_fake = self.dis(fake_samples)
 
                 # vanilla
-                d_loss += self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_fake))
+                # d_loss += self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_fake))
+                d_loss += self.D_criterion(d_out_real, d_out_fake)
 
                 # real --> real
                 # d_out_real_reshape = d_out_real.view(cfg.batch_size, -1)
@@ -207,7 +213,8 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
                 all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
                 all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-                d_loss += self.dis_criterion(all_d_out_real - all_d_out_fake, torch.ones_like(all_d_out_real))
+                # d_loss += self.dis_criterion(all_d_out_real - all_d_out_fake, torch.ones_like(all_d_out_real))
+                d_loss += self.D_criterion(all_d_out_real, all_d_out_fake)
 
             self.optimize(self.dis_opt, d_loss, self.gen)
             total_loss.append(d_loss.item())
