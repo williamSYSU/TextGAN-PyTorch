@@ -80,7 +80,7 @@ cat_test_data = 'dataset/testdata//{}_cat{}_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1
-rollout_num = 4  # 4
+rollout_num = 16  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
 goal_size = 16  # LeakGAN-16
@@ -91,10 +91,10 @@ num_heads = 2  # RelGAN-2
 head_size = 256  # RelGAN-256
 
 # =====Discriminator=====
-d_step = 5  # SeqGAN-50, LeakGAN-5
+d_step = 10  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 4  # SeqGAN,LeakGAN,RelGAN-5
-ADV_d_epoch = 2  # SeqGAN,LeakGAN-3
+ADV_d_step = 1  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
 dis_hidden_dim = 64
@@ -120,7 +120,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 3
+device = 2
 # print('device: ', device)
 torch.cuda.set_device(device)
 
