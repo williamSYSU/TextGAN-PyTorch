@@ -56,7 +56,7 @@ temperature = 1
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
 MLE_train_epoch = 120  # SeqGAN-120, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 300
-ADV_train_epoch = 1000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
@@ -93,8 +93,8 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 10  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 1  # SeqGAN,LeakGAN,RelGAN-5
-ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
+ADV_d_step = 4  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_epoch = 2  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
 dis_hidden_dim = 64
@@ -120,7 +120,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-device = 2
+# device = 2
 # print('device: ', device)
 torch.cuda.set_device(device)
 
