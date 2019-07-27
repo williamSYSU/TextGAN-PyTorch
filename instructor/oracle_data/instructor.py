@@ -34,6 +34,7 @@ class BasicInstructor:
         # DataLoader
         if not os.path.exists(cfg.oracle_samples_path.format(cfg.samples_num)) or not cfg.oracle_pretrain:
             create_oracle()
+            self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
         self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
         self.oracle_data = GenDataIter(self.oracle_samples)
 
