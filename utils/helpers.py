@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 
 import config as cfg
+from instructor.oracle_data.instructor import BasicInstructor
+from utils.data_loader import GenDataIter
 
 
 class Signal:
@@ -67,12 +69,17 @@ def create_oracle():
 
     torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
 
+    big_samples = oracle.sample(cfg.samples_num, 4 * cfg.batch_size)
     # large
-    torch.save(oracle.sample(cfg.samples_num, 4 * cfg.batch_size),
-               cfg.oracle_samples_path.format(cfg.samples_num))
+    torch.save(big_samples, cfg.oracle_samples_path.format(cfg.samples_num))
     # small
     torch.save(oracle.sample(cfg.samples_num // 2, 4 * cfg.batch_size),
                cfg.oracle_samples_path.format(cfg.samples_num // 2))
+
+    oracle_data = GenDataIter(big_samples)
+    mle_criterion = nn.NLLLoss()
+    groud_truth = BasicInstructor.eval_gen(oracle, oracle_data.loader, mle_criterion)
+    print('NLL_Oracle Groud Truth: %.4f' % groud_truth)
 
 
 def get_fixed_temperature(temper, i, N, adapt):

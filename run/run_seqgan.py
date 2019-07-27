@@ -36,7 +36,7 @@ CUDA = int(True)
 if_real_data = [int(False), int(True)]
 data_shuffle = int(False)
 use_truncated_normal = int(False)
-oracle_pretrain = int(True)
+oracle_pretrain = int(False)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
 
@@ -65,10 +65,10 @@ gen_embed_dim = 32
 gen_hidden_dim = 32
 
 # =====Discriminator=====
-d_step = 50
+d_step = 5
 d_epoch = 3
-ADV_d_step = 5
-ADV_d_epoch = 3
+ADV_d_step = 4
+ADV_d_epoch = 2
 dis_embed_dim = 64
 dis_hidden_dim = 64
 

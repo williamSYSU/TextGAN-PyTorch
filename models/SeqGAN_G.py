@@ -8,6 +8,8 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 from models.generator import LSTMGenerator
+import torch
+import torch.nn.functional as F
 
 
 class SeqGAN_G(LSTMGenerator):
@@ -28,16 +30,11 @@ class SeqGAN_G(LSTMGenerator):
         """
 
         batch_size, seq_len = inp.size()
-        inp = inp.permute(1, 0)  # seq_len x batch_size
-        target = target.permute(1, 0)  # seq_len x batch_size
         hidden = self.init_hidden(batch_size)
 
-        loss = 0
-        for i in range(seq_len):
-            out, hidden = self.forward(inp[i], hidden, need_hidden=True)  # origin: F.log_softmax, no_log=False
+        out = self.forward(inp, hidden).view(batch_size, self.max_seq_len, self.vocab_size)
+        target_onehot = F.one_hot(target, self.vocab_size).float()  # batch_size * seq_len * vocab_size
+        pred = torch.sum(out * target_onehot, dim=-1)  # batch_size * seq_len
+        loss = -torch.sum(pred * reward)
 
-            # TODO: should hidden be detached from graph (.detach())?
-            for j in range(batch_size):
-                loss += -out[j][target.data[i][j]] * reward[j]  # origin: log(P(y_t|Y_1:Y_{t-1})) * Q
-
-        return loss / (seq_len * batch_size)
+        return loss

@@ -146,7 +146,7 @@ class ROLLOUT:
                 rewards[idx] = reward
                 idx += 1
 
-        rewards = torch.mean(rewards, dim=0)
+        rewards = torch.mean(rewards.view(batch_size, self.max_seq_len, rollout_num), dim=-1)
         return rewards
 
     def get_reward_leakgan(self, sentences, rollout_num, dis, current_k):
