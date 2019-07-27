@@ -15,35 +15,23 @@ import os
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
 
-run_model = 'evogan'
-device = 1
+run_model = 'catgan'
+device = 0
 
-loss_type = ['rsgan', 'rsgan', 'nsgan', 'nsgan']
-eval_type = 'nll'
+ora_pretrain = [0, 1, 1]
+gen_pretrain = [0, 1, 1]
+use_all_real_fake = [int(True), int(False), int(True)]
+ADV_train_epoch = [0, 2000, 2000]
 
-MLE_train_epoch = 150
-lambda_fq = 1.0
-lambda_fd = 0.0
-
-ora_pretrain = [0, 1, 1, 1]
-gen_pretrain = [0, 1, 1, 1]
-mu_type = ['rsgan', 'rsgan', 'nsgan', 'rsgan nsgan']
-ADV_train_epoch = [0, 3000, 3000, 3000]
-
-for i in range(20):
+for i in range(21):
     job_id = i % 3
     args = [
         '--device', device,
         '--run_model', run_model,
         '--ora_pretrain', ora_pretrain[job_id],
         '--gen_pretrain', gen_pretrain[job_id],
-        '--lambda_fq', lambda_fq,
-        '--lambda_fd', lambda_fd,
-        '--loss_type', loss_type[job_id],
-        '--mu_type', mu_type[job_id],
-        '--eval_type', eval_type,
-        '--mle_epoch', MLE_train_epoch,
         '--adv_epoch', ADV_train_epoch[job_id],
+        '--use_all_real_fake', use_all_real_fake[job_id],
     ]
 
     args = list(map(str, args))

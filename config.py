@@ -18,16 +18,16 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
 # =====EvoGAN=====
-n_parent = 3
+n_parent = 1
 eval_b_num = 10  # >= n_parent*ADV_d_step
 max_bn = 8 if eval_b_num > 8 else eval_b_num
 lambda_fq = 1.0
@@ -43,7 +43,7 @@ use_population = True
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'nll'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
@@ -53,8 +53,8 @@ temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
-MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
+samples_num = 5000  # 10000, mr15: 1500, mr20: 2000
+MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 300
 ADV_train_epoch = 10000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
@@ -93,7 +93,7 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_step = 3  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64

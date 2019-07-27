@@ -56,6 +56,12 @@ class CatGANInstructor(BasicInstructor):
         self.dis_criterion = nn.BCEWithLogitsLoss()
 
         # DataLoader
+        if not cfg.oracle_pretrain:
+            create_multi_oracle(cfg.k_label)
+            for i in range(cfg.k_label):
+                oracle_path = cfg.multi_oracle_state_dict_path.format(i)
+                self.oracle_list[i].load_state_dict(torch.load(oracle_path, map_location='cuda:%d' % cfg.device))
+                
         self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
                                     for i in range(cfg.k_label)]
         self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
