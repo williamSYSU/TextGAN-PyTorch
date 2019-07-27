@@ -207,7 +207,7 @@ def init_param(opt):
     pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
 
     # Create Directory
-    dir_list = ['save', 'savefig', 'log', 'pretrain', 'save/log', 'dataset',
+    dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
                 'pretrain/oracle_data', 'pretrain/real_data']
     if not if_test:
         dir_list.extend([save_root, save_samples_root, save_model_root])
