@@ -110,7 +110,7 @@ class SeqGANInstructor(BasicInstructor):
         The gen is trained using policy gradients, using the reward from the discriminator.
         Training is done for num_batches batches.
         """
-        rollout_func = rollout.ROLLOUT(self.gen, 0.8, cfg.CUDA)
+        rollout_func = rollout.ROLLOUT(self.gen, cfg.CUDA)
         total_g_loss = 0
         for step in range(g_step):
             inp, target = self.gen_data.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
@@ -120,7 +120,6 @@ class SeqGANInstructor(BasicInstructor):
             adv_loss = self.gen.batchPGLoss(inp, target, rewards)
             self.optimize(self.gen_adv_opt, adv_loss)
             total_g_loss += adv_loss.item()
-        rollout_func.update_params()
 
         # ===Test===
         self.log.info('[ADV-GEN]: g_loss = %.4f, %s' % (total_g_loss, self.cal_metrics(fmt_str=True)))

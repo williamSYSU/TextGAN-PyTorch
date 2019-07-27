@@ -168,7 +168,7 @@ class SentiGANInstructor(BasicInstructor):
         Training is done for num_batches batches.
         """
         for i in range(cfg.k_label):
-            rollout_func = rollout.ROLLOUT(self.gen, 0.8, cfg.CUDA)
+            rollout_func = rollout.ROLLOUT(self.gen_list[i], cfg.CUDA)
             total_g_loss = 0
             for step in range(g_step):
                 inp, target = self.gen_data_list[i].prepare(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size),
@@ -179,7 +179,6 @@ class SentiGANInstructor(BasicInstructor):
                 adv_loss = self.gen_list[i].batchPGLoss(inp, target, rewards)
                 self.optimize(self.gen_opt_list[i], adv_loss)
                 total_g_loss += adv_loss.item()
-            rollout_func.update_params()
 
         # ===Test===
         self.log.info('[ADV-GEN]: %s', self.comb_metrics(fmt_str=True))
