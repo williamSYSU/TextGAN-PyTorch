@@ -78,6 +78,7 @@ if __name__ == '__main__':
     parser = program_config(parser)
     opt = parser.parse_args()
     cfg.init_param(opt)
+    opt.save_root = cfg.save_root
 
     # =====Dict=====
     if cfg.if_real_data:
