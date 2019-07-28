@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -27,7 +27,7 @@ k_label = 2  # num of labels
 use_truncated_normal = True
 
 # =====EvoGAN=====
-n_parent = 2
+n_parent = 1
 eval_b_num = 10  # >= n_parent*ADV_d_step
 max_bn = 8 if eval_b_num > 8 else eval_b_num
 lambda_fq = 1.0
@@ -42,9 +42,9 @@ use_population = False
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'nll'  # standard, rsgan, nll
+loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+eval_type = 'nll-f1'  # standard, rsgan, nll, nll-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
 
@@ -119,7 +119,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 0
+device = 0
 # print('device: ', device)
 torch.cuda.set_device(device)
 
