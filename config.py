@@ -119,7 +119,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-device = 0
+# device = 0
 # print('device: ', device)
 torch.cuda.set_device(device)
 
