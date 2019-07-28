@@ -71,7 +71,7 @@ clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
 pre_log_step = 20
-adv_log_step = 40
+adv_log_step = 1
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -93,8 +93,8 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 10  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 4  # SeqGAN,LeakGAN,RelGAN-5
-ADV_d_epoch = 2  # SeqGAN,LeakGAN-3
+ADV_d_step = 1  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
 dis_hidden_dim = 64
