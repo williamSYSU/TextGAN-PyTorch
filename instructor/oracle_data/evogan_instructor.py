@@ -128,8 +128,8 @@ class EvoGANInstructor(BasicInstructor):
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 
-                self.log.info('[ADV] epoch %d: g_fit: %s, d_loss: %.4f, %s' % (
-                    adv_epoch, str(fit_score[best_id]), d_loss, self.cal_metrics(fmt_str=True)))
+                self.log.info('[ADV] epoch %d: temp: %.4f, d_loss: %.4f, %s' % (
+                    adv_epoch, self.gen.temperature.item(), d_loss, self.cal_metrics(fmt_str=True)))
 
                 if cfg.if_save and not cfg.if_test:
                     self._save('ADV', adv_epoch)
