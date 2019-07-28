@@ -141,7 +141,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # self.adv_train_discriminator(1)
         # self.evolve_generator(1)
-        # self.variation(1, self.G_critertion[0])
+        # self.variation(1, self.G_criterion[0])
         # self.evolve_discriminator(1)
         # self.evolve_generator_population(1)
         pass
@@ -181,6 +181,7 @@ class EvoGANInstructor(BasicInstructor):
         selected_mutation = []
         count = 0
 
+        # all child share the same real data output from Discriminator
         with torch.no_grad():
             real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
             if cfg.CUDA:
@@ -195,12 +196,12 @@ class EvoGANInstructor(BasicInstructor):
                 self.variation(evo_g_step, criterionG)
 
                 # double loss with random weight
-                # choice = random.sample(range(0, len(self.G_critertion)), 2)
-                # cri_list = [self.G_critertion[choice[0]], self.G_critertion[choice[1]]]
+                # choice = random.sample(range(0, len(self.G_criterion)), 2)
+                # cri_list = [self.G_criterion[choice[0]], self.G_criterion[choice[1]]]
                 # self.variation(evo_g_step, cri_list)
 
                 # all loss with random weight
-                # self.variation(evo_g_step, self.G_critertion)
+                # self.variation(evo_g_step, self.G_criterion)
 
                 # Evaluation
                 self.prepare_eval_fake_data()  # evaluation fake data
@@ -247,6 +248,7 @@ class EvoGANInstructor(BasicInstructor):
         best_fake_samples = []
         selected_mutation = []
 
+        # all child share the same real data output from Discriminator
         with torch.no_grad():
             real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
             if cfg.CUDA:
@@ -407,15 +409,15 @@ class EvoGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 self.eval_real_samples = self.eval_real_samples.cuda()
 
-            if cfg.eval_type == 'rsgan':
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
                 self.eval_d_out_real = self.dis(self.eval_real_samples)
 
     def prepare_eval_fake_data(self):
         with torch.no_grad():
             self.eval_fake_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size,
-                                                     cfg.max_bn * cfg.batch_size, one_hot=True)
+                                                     cfg.eval_b_num * cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 self.eval_fake_samples = self.eval_fake_samples.cuda()
 
-            if cfg.eval_type == 'rsgan':
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
                 self.eval_d_out_fake = self.dis(self.eval_fake_samples)

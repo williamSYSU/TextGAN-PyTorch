@@ -18,16 +18,16 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'evocatgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
 # =====EvoGAN=====
-n_parent = 1
+n_parent = 2
 eval_b_num = 10  # >= n_parent*ADV_d_step
 max_bn = 8 if eval_b_num > 8 else eval_b_num
 lambda_fq = 1.0
@@ -35,15 +35,15 @@ lambda_fd = 0.0
 d_out_mean = True
 freeze_dis = False
 freeze_clas = False
-use_all_real_fake = True
-use_population = True
+use_all_real_fake = False
+use_population = False
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'rsgan nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'nll'  # standard, rsgan, nll
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
@@ -87,7 +87,7 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 512  # RelGAN-256
+head_size = 256  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5

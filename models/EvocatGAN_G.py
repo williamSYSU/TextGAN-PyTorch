@@ -29,7 +29,7 @@ class EvoCatGAN_G(LSTMGenerator):
         self.temperature = 1.0  # init value is 1.0
 
         # Category matrix
-        # self.cat_mat = nn.Parameter(torch.rand(self.k_label, embedding_dim), requires_grad=False)
+        # self.cat_mat = nn.Parameter(torch.rand(self.k_label, embedding_dim), requires_grad=True)
         self.cat_mat = nn.Parameter(torch.eye(k_label), requires_grad=False)
 
         # RMC
@@ -102,7 +102,7 @@ class EvoCatGAN_G(LSTMGenerator):
 
         return pred, hidden, next_token
 
-    def sample(self, num_samples, batch_size, one_hot=False, need_samples=False, label_i=None,
+    def sample(self, num_samples, batch_size, one_hot=False, label_i=None,
                start_letter=cfg.start_letter):
         """
         Sample from RelGAN Generator
@@ -137,8 +137,6 @@ class EvoCatGAN_G(LSTMGenerator):
         samples = samples[:num_samples]  # num_samples * seq_len
 
         if one_hot:
-            if need_samples:
-                return samples, all_preds
             return all_preds  # batch_size * seq_len * vocab_size
         return samples
 

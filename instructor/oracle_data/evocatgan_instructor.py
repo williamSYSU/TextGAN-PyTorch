@@ -21,7 +21,7 @@ import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.CatGAN_D import CatGAN_D
 from models.CatGAN_G import CatGAN_G
-from models.EvocatGAN_D import EvoCatGAN_C
+from models.EvocatGAN_D import EvoCatGAN_D
 from models.EvocatGAN_G import EvoCatGAN_G
 from models.Oracle import Oracle
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
@@ -44,12 +44,14 @@ class EvoCatGANInstructor(BasicInstructor):
         self.oracle_list = [Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                                    cfg.padding_idx, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
 
-        self.gen = CatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
-                            cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        # self.gen = SlotCatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
-        #                     cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        self.dis = CatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
-                            cfg.padding_idx, gpu=cfg.CUDA)
+        self.gen = EvoCatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
+                               cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
+        self.parents = [EvoCatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
+                                    cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx,
+                                    gpu=cfg.CUDA).state_dict()
+                        for _ in range(cfg.n_parent)]  # list of Generator state_dict
+        self.dis = EvoCatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
+                               cfg.padding_idx, gpu=cfg.CUDA)
 
         self.init_model()
 
@@ -65,7 +67,7 @@ class EvoCatGANInstructor(BasicInstructor):
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.cross_entro_cri = nn.CrossEntropyLoss()
-        self.G_critertion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
+        self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
         self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
@@ -156,7 +158,7 @@ class EvoCatGANInstructor(BasicInstructor):
         self.log.debug('>>> Begin test...')
 
         self._run()
-        # self.variation(1, self.G_critertion[0])
+        # self.variation(1, self.G_criterion[0])
         # self.evolve_generator(1)
         # self.evolve_discriminator(1)
 
@@ -186,22 +188,27 @@ class EvoCatGANInstructor(BasicInstructor):
         best_fit = []
         best_child = []
         best_child_opt = []
-        best_fake_samples_pred = []
+        best_fake_samples = []
         selected_mutation = []
         count = 0
 
-        # TODO: self.d_out_real
+        # all child share the same real data output from Discriminator
+        with torch.no_grad():
+            real_samples = [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
+                            for i in range(cfg.k_label)]
+            if cfg.CUDA:
+                real_samples = [real_samples[i].cuda() for i in range(cfg.k_label)]
+            self.d_out_real = [self.dis(real_samples[i]) for i in range(cfg.k_label)]  # d_out_real for each label
 
         for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
-            for j, criterionG in enumerate(self.G_critertion):
+            for j, criterionG in enumerate(self.G_criterion):
                 # ===Variation===
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
-                # single loss
                 self.variation(evo_g_step, criterionG)
 
                 # ===Evaluation===
                 self.prepare_eval_fake_data()  # evaluation fake data
-                Fq, Fd, score, eval_fake_samples_pred = self.evaluation(cfg.eval_type)
+                Fq, Fd, score = self.evaluation(cfg.eval_type)
 
                 # ===Selection===
                 if count < cfg.n_parent:
@@ -209,7 +216,7 @@ class EvoCatGANInstructor(BasicInstructor):
                     best_fit.append([Fq, Fd, score])
                     best_child.append(copy.deepcopy(self.gen.state_dict()))
                     best_child_opt.append(copy.deepcopy(self.gen_adv_opt.state_dict()))
-                    best_fake_samples_pred.append(eval_fake_samples_pred)
+                    best_fake_samples.append(self.eval_fake_samples)
                     selected_mutation.append(criterionG.loss_mode)
                 else:  # larger than previous child, replace it
                     fit_com = score - best_score
@@ -219,16 +226,15 @@ class EvoCatGANInstructor(BasicInstructor):
                         best_fit[id_replace] = [Fq, Fd, score]
                         best_child[id_replace] = copy.deepcopy(self.gen.state_dict())
                         best_child_opt[id_replace] = copy.deepcopy(self.gen_adv_opt.state_dict())
-                        best_fake_samples_pred[id_replace] = eval_fake_samples_pred
+                        best_fake_samples[id_replace] = self.eval_fake_samples
                         selected_mutation[id_replace] = criterionG.loss_mode
                 count += 1
 
         self.parents = copy.deepcopy(best_child)
         self.parent_adv_opts = copy.deepcopy(best_child_opt)
-        self.best_fake_samples_pred = best_fake_samples_pred
+        self.best_fake_samples = best_fake_samples
         return best_score, np.array(best_fit), selected_mutation
 
-    # TODO
     def evolve_generator_population(self, evo_g_step):
         """
         1. randomly choose a parent from population;
@@ -245,17 +251,19 @@ class EvoCatGANInstructor(BasicInstructor):
         best_fake_samples = []
         selected_mutation = []
 
+        # all child share the same real data output from Discriminator
         with torch.no_grad():
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            real_samples = [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
+                            for i in range(cfg.k_label)]
             if cfg.CUDA:
-                real_samples = real_samples.cuda()
-            self.d_out_real = self.dis(real_samples)
+                real_samples = [real_samples[i].cuda() for i in range(cfg.k_label)]
+            self.d_out_real = [self.dis(real_samples[i]) for i in range(cfg.k_label)]  # d_out_real for each label
 
         # evaluate all parents
         for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
             self.load_gen(parent, parent_opt)
             self.prepare_eval_fake_data()
-            Fq, Fd, score, _ = self.evaluation(cfg.eval_type)
+            Fq, Fd, score = self.evaluation(cfg.eval_type)
 
             best_score[i] = score
             best_fit.append([Fq, Fd, score])
@@ -265,7 +273,7 @@ class EvoCatGANInstructor(BasicInstructor):
 
         # randomly choose a parent, variation
         target_idx = random.randint(0, len(self.parents) - 1)
-        for j, criterionG in enumerate(self.G_critertion):
+        for j, criterionG in enumerate(self.G_criterion):
             self.load_gen(self.parents[target_idx], self.parent_adv_opts[target_idx])  # load generator
 
             # Variation
@@ -273,7 +281,7 @@ class EvoCatGANInstructor(BasicInstructor):
 
             # Evaluation
             self.prepare_eval_fake_data()  # evaluation fake data
-            Fq, Fd, score, _ = self.evaluation(cfg.eval_type)
+            Fq, Fd, score = self.evaluation(cfg.eval_type)
 
             # Selection
             fit_com = score - best_score
@@ -288,17 +296,17 @@ class EvoCatGANInstructor(BasicInstructor):
 
         self.parents = copy.deepcopy(best_child)
         self.parent_adv_opts = copy.deepcopy(best_child_opt)
-        self.best_fake_samples = torch.cat(best_fake_samples, dim=0)
+        self.best_fake_samples = best_fake_samples
         return best_score, np.array(best_fit), selected_mutation
 
     def evolve_discriminator(self, evo_d_step):
         global dc_loss, dd_loss, d_loss
         total_loss = []
 
-        all_gen_samples_list = list(map(self.merge, *self.best_fake_samples_pred))
-        all_gen_samples_list = self.shuffle_eval_samples(all_gen_samples_list)
+        all_gen_samples_list = list(map(self.merge, *self.best_fake_samples))  # merge each label of data
+        self.all_gen_samples_list = self.shuffle_eval_samples(all_gen_samples_list)  # shuffle data
         for step in range(evo_d_step):
-            dis_real_samples, dis_gen_samples = self.prepare_train_data('D')
+            dis_real_samples, dis_gen_samples = self.prepare_train_data('D', step)
 
             d_loss = 0
             all_d_out_real = []
@@ -306,22 +314,7 @@ class EvoCatGANInstructor(BasicInstructor):
             for (real_samples, fake_samples) in zip(dis_real_samples, dis_gen_samples):  # for each label samples
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
-
-                # vanilla
                 d_loss += self.D_criterion(d_out_real, d_out_fake)
-
-                # real --> real
-                # d_out_real_reshape = d_out_real.view(cfg.batch_size, -1)
-                # d_out_fake_reshape = d_out_fake.view(cfg.batch_size, -1)
-                # cut_size = cfg.batch_size // 2
-                # target_size = cfg.batch_size * cfg.num_rep // 2
-                # d_loss += self.dis_criterion(
-                #     d_out_real_reshape[:cut_size].view(-1) - d_out_real_reshape[cut_size:].view(-1),
-                #     torch.zeros(target_size).cuda())
-                # d_loss += self.dis_criterion(
-                #     d_out_fake_reshape[:cut_size].view(-1) - d_out_fake_reshape[cut_size:].view(-1),
-                #     torch.zeros(target_size).cuda())
-
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
@@ -339,80 +332,57 @@ class EvoCatGANInstructor(BasicInstructor):
             return 0
         return np.mean(total_loss)
 
-    # TODO
     def variation(self, g_step, criterionG):
         """Optimize one child (Generator)"""
-        total_g_loss = []
-        total_gd_loss = []
-        total_gc_loss = []
-        total_gc_acc = []
+        total_loss = []
         for step in range(g_step):
-            dis_real_samples, dis_gen_samples, clas_inp, clas_target = self.prepare_dis_clas_data('G')
+            dis_real_samples, dis_gen_samples = self.prepare_train_data('G')
 
             # =====Train=====
-            # Discriminator loss, input real and fake data
-            self.dis.dis_or_clas = 'dis'  # !!!!!
-            d_out_real = self.dis(dis_real_samples)
-            d_out_fake = self.dis(dis_gen_samples)
-            gd_loss = criterionG(d_out_real, d_out_fake)
-            self.dis.dis_or_clas = None
+            g_loss = 0
+            all_d_out_real = []
+            all_d_out_fake = []
+            # for i, (real_samples, fake_samples) in enumerate(zip(dis_real_samples, dis_gen_samples)):
+            for i, (d_out_real, fake_samples) in enumerate(zip(self.d_out_real, dis_gen_samples)):  # share real
+                # d_out_real = self.dis(real_samples)
+                d_out_fake = self.dis(fake_samples)
+                g_loss += criterionG(d_out_real, d_out_fake)
+                all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
+                all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
-            # Classifier loss, only input fake data
-            self.clas.dis_or_clas = 'clas'  # !!!!!
-            pred = self.clas(clas_inp)
-            gc_loss = self.clas_criterion(pred, clas_target)
-            gc_acc = torch.sum((pred.argmax(dim=-1) == clas_target)).item() / clas_inp.size(0)
-            self.clas.dis_or_clas = None
-            # gc_loss = torch.Tensor([0])
-            # gc_acc = torch.Tensor([0])
-
-            # Total loss
-            g_loss = gd_loss + gc_loss
-            # g_loss = gd_loss
+            if cfg.use_all_real_fake:
+                all_d_out_real = torch.cat(all_d_out_real, dim=0)
+                all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
+                all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
+                all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
+                g_loss += criterionG(all_d_out_real, all_d_out_fake)
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
-            total_g_loss.append(g_loss.item())
-            total_gd_loss.append(gd_loss.item())
-            total_gc_loss.append(gc_loss.item())
-            total_gc_acc.append(gc_acc)
-
-            # self.log.debug('In G: g_loss = %.4f' % g_loss.item())
+            total_loss.append(g_loss.item())
 
         if g_step == 0:
-            return 0, 0, 0, 0
-        return np.mean(total_g_loss), np.mean(total_gd_loss), np.mean(total_gc_loss), np.mean(total_gc_acc)
+            return 0
+        return np.mean(total_loss)
 
-    # TODO
     def evaluation(self, eval_type):
         """Evaluation all child, update child score. Note that the eval data should be the same"""
-        with torch.no_grad():
-            eval_fake_samples = []
-            eval_fake_samples_pred = []
+        if 'nll' in eval_type:
+            nll_oracle = []
+            nll_self = []
             for label_i in range(cfg.k_label):
-                fake_samples, fake_samples_pred = self.gen.sample(cfg.eval_b_num * cfg.batch_size,
-                                                                  cfg.eval_b_num * cfg.batch_size,
-                                                                  one_hot=True, label_i=label_i)
-                eval_fake_samples.append(fake_samples)
-                eval_fake_samples_pred.append(fake_samples_pred)
+                self.gen_data_list[label_i].reset(
+                    self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size, label_i=label_i))
 
-            if eval_type == 'nll':
-                nll_oracle = []
-                nll_gen = []
-                nll_self = []
-                for label_i in range(cfg.k_label):
-                    self.gen_data_list[label_i].reset(eval_fake_samples[label_i])
+                if cfg.lambda_fq != 0:
+                    nll_oracle.append(-self.eval_gen(self.oracle_list[label_i],
+                                                     self.gen_data_list[label_i].loader,
+                                                     self.mle_criterion, label_i))  # NLL_Oracle
+                if cfg.lambda_fd != 0:
+                    nll_self.append(self.eval_gen(self.gen,
+                                                  self.gen_data_list[label_i].loader,
+                                                  self.mle_criterion, label_i))  # NLL_self
 
-                    if cfg.lambda_fq != 0:
-                        nll_oracle.append(-self.eval_gen(self.oracle_list[label_i],
-                                                         self.gen_data_list[label_i].loader,
-                                                         self.mle_criterion, label_i))  # NLL_Oracle
-                    if cfg.lambda_fd != 0:
-                        # nll_gen.append(-self.eval_gen(self.gen,
-                        #                               self.oracle_data_list[label_i].loader,
-                        #                               self.mle_criterion, label_i))  # NLL_gen
-                        nll_self.append(self.eval_gen(self.gen,
-                                                      self.gen_data_list[label_i].loader,
-                                                      self.mle_criterion, label_i))  # NLL_self
+            if 'f1' in eval_type:
                 if cfg.k_label == 1:
                     Fq = nll_oracle[0] if len(nll_oracle) > 0 else 0
                     Fd = nll_self[0] if len(nll_self) > 0 else 0
@@ -421,15 +391,14 @@ class EvoCatGANInstructor(BasicInstructor):
                     Fd = nll_self[0] * nll_self[1] / (nll_self[0] + nll_self[1]) if len(nll_self) > 0 else 0
                 else:
                     raise NotImplementedError("k_label = %d is not supported" % cfg.k_label)
+            else:  # sum
+                Fq = sum(nll_oracle)
+                Fd = sum(nll_self)
+        else:
+            raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
-            else:
-                raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
-
-            score = cfg.lambda_fq * Fq + cfg.lambda_fd * Fd
-            Fq = round(Fq, 3)
-            Fd = round(Fd, 3)
-            score = round(score, 3)
-            return Fq, Fd, score, eval_fake_samples_pred
+        score = cfg.lambda_fq * Fq + cfg.lambda_fd * Fd
+        return Fq, Fd, score
 
     def update_temperature(self, i, N):
         self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
@@ -514,56 +483,23 @@ class EvoCatGANInstructor(BasicInstructor):
     def merge(*args):
         return torch.cat(args, dim=0)
 
-    def prepare_dis_clas_data(self, which, all_gen_samples_list=None, step=None):
-        real_samples_list = [
-            F.one_hot(self.oracle_data_list[i].random_batch()['target'][:cfg.batch_size // cfg.k_label],
-                      cfg.vocab_size).float().cuda()
-            for i in range(cfg.k_label)]
-        if which == 'D':
-            assert all_gen_samples_list is not None and step is not None, 'samples and step have to be given!'
-            gen_samples_list = [
-                all_gen_samples_list[i][
-                step * (cfg.batch_size // cfg.k_label):(step + 1) * (cfg.batch_size // cfg.k_label)]
-                for i in range(cfg.k_label)]
-        elif which == 'G':
-            gen_samples_list = [
-                self.gen.sample(cfg.batch_size // cfg.k_label, cfg.batch_size // cfg.k_label, one_hot=True, label_i=i)
-                for i in range(cfg.k_label)]
-        else:
-            raise NotImplementedError('Only support for D and G!')
-
-        # prepare dis data
-        dis_real_samples = torch.cat(real_samples_list, dim=0)
-        dis_gen_samples = torch.cat(gen_samples_list, dim=0)
-
-        # prepare clas data
-        clas_samples_list = [torch.cat((real, fake), dim=0) for (real, fake) in
-                             zip(real_samples_list, gen_samples_list)]
-        clas_inp, clas_target = CatClasDataIter.prepare(clas_samples_list, detach=True if which == 'D' else False,
-                                                        gpu=cfg.CUDA)
-        clas_inp = clas_inp[:cfg.batch_size]
-        clas_target = clas_target[:cfg.batch_size]
-
-        return dis_real_samples, dis_gen_samples, clas_inp, clas_target
-
     def shuffle_eval_samples(self, all_eval_samples):
         temp = []
         for i in range(cfg.k_label):
             temp.append(all_eval_samples[i][torch.randperm(all_eval_samples[i].size(0))])
         return temp
 
-    def prepare_train_data(self, which):
+    def prepare_train_data(self, which, step=None):
+        """Prepare train data for both Generator and Discriminator, each samples_list contains k_label batches of data"""
         assert which == 'D' or which == 'G', 'only support for D and G!!'
         real_samples_list = [
             F.one_hot(self.oracle_data_list[i].random_batch()['target'][:cfg.batch_size],
                       cfg.vocab_size).float().cuda()
             for i in range(cfg.k_label)]
         if which == 'D':
-            with torch.no_grad():
-                gen_samples_list = [
-                    self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True,
-                                    label_i=i)
-                    for i in range(cfg.k_label)]
+            assert step is not None, 'missing step'
+            gen_samples_list = [self.all_gen_samples_list[i][step * cfg.batch_size:(step + 1) * cfg.batch_size]
+                                for i in range(cfg.k_label)]  # get a batch from each label
         else:  # 'G'
             gen_samples_list = [
                 self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
@@ -571,25 +507,26 @@ class EvoCatGANInstructor(BasicInstructor):
 
         return real_samples_list, gen_samples_list
 
-    # TODO
     def prepare_eval_real_data(self):
+        """Prepare evaluation real data, contains k_label batches of data"""
         with torch.no_grad():
-            self.eval_real_samples = torch.cat(
-                [F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
-                 for _ in range(cfg.eval_b_num)], dim=0)
+            self.eval_real_samples = [torch.cat(
+                [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
+                 for _ in range(cfg.eval_b_num)], dim=0) for i in range(cfg.k_label)]
             if cfg.CUDA:
-                self.eval_real_samples = self.eval_real_samples.cuda()
+                self.eval_real_samples = [self.eval_real_samples[i].cuda() for i in range(cfg.k_label)]
 
-            if cfg.eval_type == 'rsgan':
-                self.eval_d_out_real = self.dis(self.eval_real_samples)
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
+                self.eval_d_out_real = [self.dis(self.eval_real_samples[i]) for i in range(cfg.k_label)]
 
-    # TODO
     def prepare_eval_fake_data(self):
+        """Prepare evaluation fake data, contains k_label batches of data"""
         with torch.no_grad():
-            self.eval_fake_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size,
-                                                     cfg.max_bn * cfg.batch_size, one_hot=True)
+            self.eval_fake_samples = [self.gen.sample(cfg.eval_b_num * cfg.batch_size,
+                                                      cfg.eval_b_num * cfg.batch_size, one_hot=True, label_i=i)
+                                      for i in range(cfg.k_label)]
             if cfg.CUDA:
-                self.eval_fake_samples = self.eval_fake_samples.cuda()
+                self.eval_fake_samples = [self.eval_fake_samples[i].cuda() for i in range(cfg.k_label)]
 
-            if cfg.eval_type == 'rsgan':
-                self.eval_d_out_fake = self.dis(self.eval_fake_samples)
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
+                self.eval_d_out_fake = [self.dis(self.eval_fake_samples[i]) for i in range(cfg.k_label)]
