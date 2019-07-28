@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -28,7 +28,7 @@ use_truncated_normal = True
 
 # =====EvoGAN=====
 n_parent = 1
-eval_b_num = 10  # >= n_parent*ADV_d_step
+eval_b_num = 8  # >= n_parent*ADV_d_step
 max_bn = 8 if eval_b_num > 8 else eval_b_num
 lambda_fq = 1.0
 lambda_fd = 0.0
@@ -42,7 +42,7 @@ use_population = False
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'nll-f1'  # standard, rsgan, nll, nll-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
