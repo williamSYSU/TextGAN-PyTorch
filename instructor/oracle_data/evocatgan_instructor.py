@@ -302,7 +302,6 @@ class EvoCatGANInstructor(BasicInstructor):
     def evolve_discriminator(self, evo_d_step):
         global dc_loss, dd_loss, d_loss
         total_loss = []
-        torch.cuda.empty_cache()
 
         all_gen_samples_list = list(map(self.merge, *self.best_fake_samples))  # merge each label of data
         self.all_gen_samples_list = self.shuffle_eval_samples(all_gen_samples_list)  # shuffle data
