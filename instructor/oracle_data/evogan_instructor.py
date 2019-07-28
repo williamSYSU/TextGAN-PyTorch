@@ -119,8 +119,9 @@ class EvoGANInstructor(BasicInstructor):
 
             # self.update_temperature(adv_epoch, cfg.ADV_train_epoch)   # TODO: update parents temperature
 
-            progress.set_description(
-                'mu: %s, d_loss = %.4f, temp = %.4f' % (' '.join(select_mu), d_loss, self.gen.temperature))
+            best_id = int(np.argmax(score))
+            progress.set_description('mu: %s, d_loss = %.4f, temp = %.4f' % (
+                ' '.join(select_mu), d_loss, self.parents[best_id]['temperature'].item()))
 
             # TEST
             if adv_epoch % cfg.adv_log_step == 0:
@@ -188,7 +189,7 @@ class EvoGANInstructor(BasicInstructor):
                 for temp in all_temp:
                     # Variation
                     self.load_gen(parent, parent_opt)  # load state dict to self.gen
-                    self.gen.temperature = temp  # update Generator temperature
+                    self.gen.temperature.data = temp  # update Generator temperature
 
                     self.variation(evo_g_step, criterionG)
 
@@ -353,9 +354,6 @@ class EvoGANInstructor(BasicInstructor):
         score = cfg.lambda_fq * Fq + cfg.lambda_fd * Fd
         return Fq, Fd, score
 
-    def update_temperature(self, i, N):
-        self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
-
     @staticmethod
     def optimize(opt, loss, model=None, retain_graph=False):
         """Add clip_grad_norm_"""
@@ -403,4 +401,4 @@ class EvoGANInstructor(BasicInstructor):
                 get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
                                       random.choice(mu_temp_type)))
 
-        return all_temp  # three temp
+        return torch.Tensor(all_temp)  # three temp

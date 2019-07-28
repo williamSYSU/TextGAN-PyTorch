@@ -55,7 +55,7 @@ temperature = 2
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
-MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
+MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 300
 ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
