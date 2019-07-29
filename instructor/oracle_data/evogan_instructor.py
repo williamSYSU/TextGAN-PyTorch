@@ -350,27 +350,9 @@ class EvoGANInstructor(BasicInstructor):
         """Evaluation all child, update child score. Note that the eval data should be the same"""
         if eval_type == 'standard':
             Fq = self.eval_d_out_fake.mean().cpu().item()
-            # d_loss = self.D_criterion(self.eval_d_out_fake, self.eval_d_out_real)
-
-            # Gradient based
-            # gradients = torch.autograd.grad(outputs=d_loss, inputs=self.dis.parameters(),
-            #                                 grad_outputs=torch.ones(d_loss.size()).to(cfg.device),
-            #                                 create_graph=True, retain_graph=True, only_inputs=True)
-            # with torch.no_grad():
-            #     for i, grad in enumerate(gradients):
-            #         grad = grad.view(-1)
-            #         allgrad = grad if i == 0 else torch.cat([allgrad, grad], dim=0)
-            # Fd = -torch.log(torch.norm(allgrad)).data.cpu().item()
-
-            # NLL_self
-            # self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.eval_b_num * cfg.batch_size))
-            # Fd = self.eval_gen(self.gen,
-            #                    self.gen_data.loader,
-            #                    self.mle_criterion)  # NLL_Self
             Fd = 0
         elif eval_type == 'rsgan':
             g_loss, d_loss = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'rsgan')
-
             Fq = d_loss.item()
             Fd = 0
         elif eval_type == 'nll':
@@ -381,6 +363,10 @@ class EvoGANInstructor(BasicInstructor):
             Fd = self.eval_gen(self.gen,
                                self.gen_data.loader,
                                self.mle_criterion)  # NLL_Self
+        elif eval_type == 'Ra':
+            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
+            Fq = g_loss.item()
+            Fd = 0
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
@@ -409,7 +395,7 @@ class EvoGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 self.eval_real_samples = self.eval_real_samples.cuda()
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
                 self.eval_d_out_real = self.dis(self.eval_real_samples)
 
     def prepare_eval_fake_data(self):
@@ -419,5 +405,5 @@ class EvoGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 self.eval_fake_samples = self.eval_fake_samples.cuda()
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
                 self.eval_d_out_fake = self.dis(self.eval_fake_samples)
