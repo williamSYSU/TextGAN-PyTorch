@@ -125,9 +125,10 @@ else:
 torch.cuda.set_device(device)
 
 # =====Save Model and samples=====
-save_root = 'save/{}_{}_{}_dt{}_lt{}_mt{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type, loss_type,
+save_root = 'save/{}_{}_{}_dt-{}_lt-{}_mt-{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type,
+                                                                       loss_type,
                                                                     ''.join([m[0] for m in mu_type.split()]), eval_type,
-                                                                    temperature, strftime("%m%d-%H%M_%S", localtime()))
+                                                                       temperature, strftime("%m%d-%H%M_%S", localtime()))
 save_samples_root = save_root + 'samples/'
 save_model_root = save_root + 'models/'
 
@@ -238,12 +239,12 @@ def init_param(opt):
     torch.cuda.set_device(device)
 
     # Save path
-    save_root = 'save/{}_{}_{}_dt{}_lt{}_mt{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type,
-                                                                        loss_type,
+    save_root = 'save/{}_{}_{}_dt-{}_lt-{}_mt-{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type,
+                                                                           loss_type,
                                                                         ''.join([m[0] for m in mu_type.split()]),
-                                                                        eval_type,
-                                                                        temperature,
-                                                                        strftime("%m%d-%H%M_%S", localtime()))
+                                                                           eval_type,
+                                                                           temperature,
+                                                                           strftime("%m%d-%H%M_%S", localtime()))
 
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'
