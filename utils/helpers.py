@@ -88,7 +88,7 @@ def get_fixed_temperature(temper, i, N, adapt):
     N = 5000
 
     if adapt == 'no':
-        temper_var_np = temper  # no increase
+        temper_var_np = 1.0  # no increase, origin: temper
     elif adapt == 'lin':
         temper_var_np = 1 + i / (N - 1) * (temper - 1)  # linear increase
     elif adapt == 'exp':

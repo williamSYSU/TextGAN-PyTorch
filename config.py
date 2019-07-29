@@ -43,15 +43,15 @@ if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'nll'  # standard, rsgan, nll, nll-f1
+mu_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'lin exp log sigmoid quad sqrt'
-evo_temp_step = 5
-temperature = 2
+evo_temp_step = 200
+temperature = 10
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000

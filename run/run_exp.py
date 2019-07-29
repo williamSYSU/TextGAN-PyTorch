@@ -19,12 +19,13 @@ num_group = 5
 run_model = 'evogan'
 device = 1
 
-ora_pretrain = [0, 1, 1, 1]
-gen_pretrain = [0, 1, 1, 1]
-loss_type = ['rsgan', 'nsgan', 'rsgan', 'nsgan']
-mu_type = ['rsgan', 'nsgan', 'nsgan rsgan', 'nsgan rsgan']
-ADV_train_epoch = [0, 2000, 2000, 2000]
-tips = '[Compare experiment] EvoGAN: test EvoGAN+EvoTemp, with different loss_type and mu_type (nsgan vs rsgan)'
+ora_pretrain = [0, 1, 1]
+gen_pretrain = [0, 1, 1]
+loss_type = ['rsgan', 'nsgan', 'nsgan']
+mu_type = ['rsgan', 'nsgan rsgan', 'nsgan rsgan']
+eval_type = ['nll', 'nll', 'Ra']
+ADV_train_epoch = [0, 2000, 2000]
+tips = '[Compare experiment] EvoGAN+EvoTemp: compare eval_type (nll vs Ra)'
 
 for i in range(num_group * len(ora_pretrain)):
     job_id = i % len(ora_pretrain)
@@ -35,6 +36,7 @@ for i in range(num_group * len(ora_pretrain)):
         '--gen_pretrain', gen_pretrain[job_id],
         '--loss_type', loss_type[job_id],
         '--mu_type', mu_type[job_id],
+        '--eval_type', eval_type[job_id],
         '--adv_epoch', ADV_train_epoch[job_id],
         '--tips', tips,
     ]
