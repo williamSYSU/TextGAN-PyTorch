@@ -394,6 +394,13 @@ class EvoCatGANInstructor(BasicInstructor):
             else:  # sum
                 Fq = sum(nll_oracle)
                 Fd = sum(nll_self)
+        elif eval_type == 'Ra':
+            g_loss = 0
+            for i in range(cfg.k_label):
+                g_loss += torch.sum(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).pow(2)
+
+            Fq = g_loss.item()
+            Fd = 0
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
@@ -516,7 +523,7 @@ class EvoCatGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 self.eval_real_samples = [self.eval_real_samples[i].cuda() for i in range(cfg.k_label)]
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
                 self.eval_d_out_real = [self.dis(self.eval_real_samples[i]) for i in range(cfg.k_label)]
 
     def prepare_eval_fake_data(self):
@@ -528,5 +535,5 @@ class EvoCatGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 self.eval_fake_samples = [self.eval_fake_samples[i].cuda() for i in range(cfg.k_label)]
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
                 self.eval_d_out_fake = [self.dis(self.eval_fake_samples[i]) for i in range(cfg.k_label)]
