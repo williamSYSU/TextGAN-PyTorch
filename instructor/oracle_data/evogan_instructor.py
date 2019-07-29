@@ -375,7 +375,7 @@ class EvoGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 self.eval_real_samples = self.eval_real_samples.cuda()
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
                 self.eval_d_out_real = self.dis(self.eval_real_samples)
 
     def prepare_eval_fake_data(self):
@@ -385,7 +385,7 @@ class EvoGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 self.eval_fake_samples = self.eval_fake_samples.cuda()
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'nsgan':
+            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
                 self.eval_d_out_fake = self.dis(self.eval_fake_samples)
 
     @staticmethod
