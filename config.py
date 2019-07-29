@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -22,7 +22,7 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'relgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 use_truncated_normal = True
 
@@ -31,7 +31,7 @@ n_parent = 1
 eval_b_num = 8  # >= n_parent*ADV_d_step
 max_bn = 8 if eval_b_num > 8 else eval_b_num
 lambda_fq = 1.0
-lambda_fd = 0.0
+lambda_fd = 0.5
 d_out_mean = True
 freeze_dis = False
 freeze_clas = False
@@ -42,8 +42,8 @@ use_population = False
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304

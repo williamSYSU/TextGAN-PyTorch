@@ -346,8 +346,8 @@ class EvoGANInstructor(BasicInstructor):
             else:
                 Fd = 0
         elif eval_type == 'Ra':
-            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
-            Fq = -g_loss.item()
+            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real))
+            Fq = g_loss.item()
 
             self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
             if cfg.lambda_fd != 0:
