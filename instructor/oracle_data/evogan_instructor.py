@@ -364,9 +364,16 @@ class EvoGANInstructor(BasicInstructor):
                                self.gen_data.loader,
                                self.mle_criterion)  # NLL_Self
         elif eval_type == 'Ra':
-            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
+            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real))
             Fq = g_loss.item()
-            Fd = 0
+
+            if cfg.lambda_fd != 0:
+                self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
+                Fd = self.eval_gen(self.gen,
+                                   self.gen_data.loader,
+                                   self.mle_criterion)  # NLL_Self
+            else:
+                Fd = 0
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 

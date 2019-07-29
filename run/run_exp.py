@@ -15,16 +15,16 @@ import os
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
 
-num_group = 5
-run_model = 'evocatgan'
+num_group = 1
+run_model = 'evogan'
 device = 1
 
-ora_pretrain = [0, 1, 1, 1]
-gen_pretrain = [0, 1, 1, 1]
-loss_type = ['nsgan', 'nsgan', 'nsgan', 'nsgan']
-mu_type = ['nsgan', 'nsgan', 'nsgan rsgan', 'nsgan rsgan']
-eval_type = ['nll', 'nll', 'nll', 'nll-f1']
-ADV_train_epoch = [0, 1500, 1500, 1500]
+ora_pretrain = [1, 1, 1]
+gen_pretrain = [0, 1, 1]
+loss_type = ['rsgan', 'rsgan', 'nsgan']
+mu_type = ['rsgan', 'rsgan', 'nsgan rsgan']
+eval_type = ['nll', 'Ra', 'Ra']
+ADV_train_epoch = [0, 2000, 2000]
 
 for i in range(num_group * len(ora_pretrain)):
     job_id = i % len(ora_pretrain)
