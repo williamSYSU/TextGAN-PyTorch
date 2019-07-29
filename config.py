@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -50,8 +50,8 @@ vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'lin exp log sigmoid quad sqrt'
-evo_temp_step = 200
-temperature = 10
+evo_temp_step = 3
+temperature = 2
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000

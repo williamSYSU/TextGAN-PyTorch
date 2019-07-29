@@ -189,15 +189,11 @@ class EvoGANInstructor(BasicInstructor):
                     self.load_gen(parent, parent_opt)  # load state dict to self.gen
                     self.gen.temperature.data = temp  # update Generator temperature
 
-                    self.log.debug('After update: temp = %.4f', self.gen.temperature.item())
                     self.variation(evo_g_step, criterionG)
-                    self.log.debug('After variation: temp = %.4f', self.gen.temperature.item())
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    self.log.debug('After prepare: temp = %.4f', self.gen.temperature.item())
                     Fq, Fd, score = self.evaluation(cfg.eval_type)
-                    self.log.debug('After evaluation: temp = %.4f', self.gen.temperature.item())
 
                     # Selection
                     if count < cfg.n_parent:
@@ -351,7 +347,7 @@ class EvoGANInstructor(BasicInstructor):
                 Fd = 0
         elif eval_type == 'Ra':
             g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
-            Fq = g_loss.item()
+            Fq = -g_loss.item()
             Fd = 0
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
@@ -397,13 +393,13 @@ class EvoGANInstructor(BasicInstructor):
 
         # all_temp.append(get_fixed_temperature(1.0, 0, 0, 'no'))  # temp=1.0
         all_temp.append(get_fixed_temperature(cfg.temperature, cur_step, cfg.ADV_train_epoch,
-                                              random.choice(mu_temp_type)))  # temp=1.0
+                                              random.choice(mu_temp_type)))
         all_temp.append(
             get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
                                   random.choice(mu_temp_type)))
-        # if cur_step > cfg.evo_temp_step:
-        #     all_temp.append(
-        #         get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
-        #                               random.choice(mu_temp_type)))
+        if cur_step > cfg.evo_temp_step:
+            all_temp.append(
+                get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
+                                      random.choice(mu_temp_type)))
 
         return torch.Tensor(all_temp)  # three temp
