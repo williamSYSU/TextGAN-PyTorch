@@ -117,8 +117,6 @@ class EvoGANInstructor(BasicInstructor):
                 score, fit_score, select_mu = self.evolve_generator_population(cfg.ADV_g_step)
             d_loss = self.evolve_discriminator(cfg.ADV_d_step)
 
-            # self.update_temperature(adv_epoch, cfg.ADV_train_epoch)   # TODO: update parents temperature
-
             progress.set_description('mu: %s, d_loss = %.4f' % (' '.join(select_mu), d_loss))
 
             # TEST
@@ -136,6 +134,7 @@ class EvoGANInstructor(BasicInstructor):
         print('>>> Begin test...')
 
         self._run()
+        # self.oracle_data.reset(self.oracle.sample(100000, 8 * cfg.batch_size))
         # gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion)
         # print(gt)
 
@@ -144,6 +143,7 @@ class EvoGANInstructor(BasicInstructor):
         # self.variation(1, self.G_criterion[0])
         # self.evolve_discriminator(1)
         # self.evolve_generator_population(1)
+
         pass
 
     def pretrain_generator(self, epochs):

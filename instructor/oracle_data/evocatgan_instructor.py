@@ -471,9 +471,9 @@ class EvoCatGANInstructor(BasicInstructor):
         oracle_nll, gen_nll, self_nll = [], [], []
         for label_i in range(cfg.k_label):
             o_nll, g_nll, s_nll = self.cal_metrics(label_i)
-            oracle_nll.append(float('%.4f' % o_nll))
-            gen_nll.append(float('%.4f' % g_nll))
-            self_nll.append(float('%.4f' % s_nll))
+            oracle_nll.append(round(o_nll, 4))
+            gen_nll.append(round(g_nll, 4))
+            self_nll.append(round(s_nll, 4))
 
         if fmt_str:
             return 'oracle_NLL = %s, gen_NLL = %s, self_NLL = %s,' % (oracle_nll, gen_nll, self_nll)
