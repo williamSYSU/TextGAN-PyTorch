@@ -348,6 +348,10 @@ class EvoGANInstructor(BasicInstructor):
                                    self.mle_criterion)  # NLL_Self
             else:
                 Fd = 0
+        elif eval_type == 'Ra':
+            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
+            Fq = -g_loss.item()
+            Fd = 0
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
