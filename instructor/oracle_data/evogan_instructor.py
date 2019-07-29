@@ -348,7 +348,14 @@ class EvoGANInstructor(BasicInstructor):
         elif eval_type == 'Ra':
             g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
             Fq = -g_loss.item()
-            Fd = 0
+
+            self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
+            if cfg.lambda_fd != 0:
+                Fd = self.eval_gen(self.gen,
+                                   self.gen_data.loader,
+                                   self.mle_criterion)  # NLL_Self
+            else:
+                Fd = 0
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
@@ -397,9 +404,9 @@ class EvoGANInstructor(BasicInstructor):
         all_temp.append(
             get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
                                   random.choice(mu_temp_type)))
-        if cur_step > cfg.evo_temp_step:
-            all_temp.append(
-                get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
-                                      random.choice(mu_temp_type)))
+        # if cur_step > cfg.evo_temp_step:
+        #     all_temp.append(
+        #         get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
+        #                               random.choice(mu_temp_type)))
 
         return torch.Tensor(all_temp)  # three temp
