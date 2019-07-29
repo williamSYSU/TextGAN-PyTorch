@@ -189,11 +189,15 @@ class EvoGANInstructor(BasicInstructor):
                     self.load_gen(parent, parent_opt)  # load state dict to self.gen
                     self.gen.temperature.data = temp  # update Generator temperature
 
+                    self.log.debug('After update: temp = %.4f', self.gen.temperature.item())
                     self.variation(evo_g_step, criterionG)
+                    self.log.debug('After variation: temp = %.4f', self.gen.temperature.item())
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
+                    self.log.debug('After prepare: temp = %.4f', self.gen.temperature.item())
                     Fq, Fd, score = self.evaluation(cfg.eval_type)
+                    self.log.debug('After evaluation: temp = %.4f', self.gen.temperature.item())
 
                     # Selection
                     if count < cfg.n_parent:
@@ -317,7 +321,6 @@ class EvoGANInstructor(BasicInstructor):
             g_loss = criterionG(self.d_out_real, d_out_fake)
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss += g_loss.item()
-
         return total_loss / g_step if g_step != 0 else 0
 
     def evaluation(self, eval_type):
@@ -392,10 +395,12 @@ class EvoGANInstructor(BasicInstructor):
         mu_temp_type = cfg.mu_temp.split()
         all_temp = list()
 
-        all_temp.append(get_fixed_temperature(1.0, 0, 0, 'no'))  # temp=1.0
-        # all_temp.append(
-        #     get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
-        #                           random.choice(mu_temp_type)))
+        # all_temp.append(get_fixed_temperature(1.0, 0, 0, 'no'))  # temp=1.0
+        all_temp.append(get_fixed_temperature(cfg.temperature, cur_step, cfg.ADV_train_epoch,
+                                              random.choice(mu_temp_type)))  # temp=1.0
+        all_temp.append(
+            get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
+                                  random.choice(mu_temp_type)))
         # if cur_step > cfg.evo_temp_step:
         #     all_temp.append(
         #         get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
