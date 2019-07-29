@@ -24,7 +24,7 @@ class EvoGAN_G(LSTMGenerator):
         super(EvoGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
         self.name = 'evogan'
 
-        self.temperature = 1.0  # init value is 1.0
+        self.temperature = nn.Parameter(torch.Tensor([1.0]), requires_grad=False)  # init value is 1.0
 
         # RMC
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
