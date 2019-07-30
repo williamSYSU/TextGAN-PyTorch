@@ -123,6 +123,10 @@ class EvoCatGANInstructor(BasicInstructor):
             self.gen_adv_opt.zero_grad()
 
     def _run(self):
+        # ===Pre-train Classifier with real data===
+        self.log.info('Start training Classifier...')
+        self.train_classifier(cfg.PRE_clas_epoch)
+
         # ===Pre-train Generator===
         if not cfg.gen_pretrain:
             for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_mle_opts)):
@@ -133,10 +137,6 @@ class EvoCatGANInstructor(BasicInstructor):
                 if cfg.if_save and not cfg.if_test:
                     torch.save(self.gen.state_dict(), cfg.pretrained_gen_path + '%d' % i)
                     self.log.info('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-
-        # ===Pre-train Classifier with real data===
-        self.log.info('Start training Classifier...')
-        self.train_classifier(cfg.PRE_clas_epoch)
 
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
@@ -156,8 +156,8 @@ class EvoCatGANInstructor(BasicInstructor):
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 
-                self.log.info('[ADV] epoch %d: g_fit: %s, d_loss: %.4f, %s' % (
-                    adv_epoch, str(fit_score[best_id]), d_loss, self.comb_metrics(fmt_str=True)))
+                self.log.info('[ADV] epoch %d: score: %.4f, d_loss: %.4f, %s' % (
+                    adv_epoch, score[best_id], d_loss, self.comb_metrics(fmt_str=True)))
 
                 if cfg.if_save and not cfg.if_test:
                     for label_i in range(cfg.k_label):

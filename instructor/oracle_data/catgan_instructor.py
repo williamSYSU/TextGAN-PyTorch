@@ -101,6 +101,10 @@ class CatGANInstructor(BasicInstructor):
             self.clas = self.clas.cuda()
 
     def _run(self):
+        # ===Pre-train Classifier with real data===
+        self.log.info('Start training Classifier...')
+        self.train_classifier(cfg.PRE_clas_epoch)
+
         # ===Pre-train Generator===
         if not cfg.gen_pretrain:
             self.log.info('Starting Generator MLE Training...')
@@ -108,10 +112,6 @@ class CatGANInstructor(BasicInstructor):
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
                 print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
-
-        # ===Pre-train Classifier with real data===
-        self.log.info('Start training Classifier...')
-        self.train_classifier(cfg.PRE_clas_epoch)
 
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
