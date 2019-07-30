@@ -18,7 +18,7 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
@@ -71,7 +71,7 @@ clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
 pre_log_step = 10
-adv_log_step = 20
+adv_log_step = 40
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -147,7 +147,7 @@ signal_file = 'run_signal.txt'
 
 tips = ''
 
-if samples_num == 5000 and 'cat' not in run_model:
+if samples_num == 5000 and 'c' not in run_model:
     raise AssertionError('warning: samples_num={}, run_model={}'.format(samples_num, run_model))
 
 

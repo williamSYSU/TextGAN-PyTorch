@@ -37,12 +37,15 @@ class CSGANInstructor(BasicInstructor):
         self.dis = CSGAN_D(cfg.k_label, cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
         self.clas = CSGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
                             cfg.padding_idx, gpu=cfg.CUDA)
+        self.eval_clas = CSGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
+                                 cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
 
         # Optimizer
         self.gen_opt_list = [optim.Adam(gen.parameters(), lr=cfg.gen_lr) for gen in self.gen_list]
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
         self.clas_opt = optim.Adam(self.clas.parameters(), lr=cfg.clas_lr)
+        self.eval_clas_opt = optim.Adam(self.eval_clas.parameters(), lr=cfg.clas_lr)
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
@@ -57,6 +60,12 @@ class CSGANInstructor(BasicInstructor):
                               for i in range(cfg.k_label)]
         self.dis_data = CatClasDataIter(self.oracle_samples_list)  # fake init (reset during training)
         self.clas_data = CatClasDataIter(self.oracle_samples_list)  # init classifier train data
+        self.eval_clas_data = CatClasDataIter(self.oracle_samples_list)  # init classifier train data
+        self.clas_data.reset(self.oracle_samples_list)
+        self.eval_clas_data.reset(self.oracle_samples_list)
+
+        # Others
+        self.freeze_dis = False
 
     def init_model(self):
         if cfg.oracle_pretrain:
@@ -84,21 +93,21 @@ class CSGANInstructor(BasicInstructor):
                 self.gen_list[i] = self.gen_list[i].cuda()
             self.dis = self.dis.cuda()
             self.clas = self.clas.cuda()
+            self.eval_clas = self.eval_clas.cuda()
 
     def _run(self):
-        # =====PRE-TRAINING=====
-        # TRAIN GENERATOR
+        # ===Pre-train Evaluation Classifier with real data===
+        self.log.info('Start training Evaluation Classifier...')
+        self.train_classifier(cfg.PRE_clas_epoch, self.eval_clas, self.eval_clas_data.loader, self.eval_clas_opt)
+
+        # =====PRE-TRAINING GENERATOR=====
         if not cfg.gen_pretrain:
             self.log.info('Starting Generator MLE Training...')
             self.pretrain_generator(cfg.MLE_train_epoch)
             if cfg.if_save and not cfg.if_test:
                 for i in range(cfg.k_label):
                     torch.save(self.gen_list[i].state_dict(), cfg.pretrained_gen_path + '%d' % i)
-                    print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-
-        # ===Pre-train Classifier with real data===
-        self.log.info('Start training Classifier...')
-        self.train_classifier(cfg.PRE_clas_epoch)
+                    self.log.info('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path + '%d' % i))
 
         # =====TRAIN DISCRIMINATOR======
         if not cfg.dis_pretrain:
@@ -106,7 +115,11 @@ class CSGANInstructor(BasicInstructor):
             self.train_discriminator(cfg.d_step, cfg.d_epoch)
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
-                print('Save pretrain_generator discriminator: {}'.format(cfg.pretrained_dis_path))
+                self.log.info('Save pretrain_generator discriminator: {}'.format(cfg.pretrained_dis_path))
+
+        # ===Pre-train Classifier with real data and fake data===
+        self.log.info('Start training Classifier...')
+        self.train_classifier(cfg.PRE_clas_epoch, self.clas, self.clas_data.loader, self.clas_opt)
 
         # =====ADVERSARIAL TRAINING=====
         self.log.info('Starting Adversarial Training...')
@@ -117,7 +130,7 @@ class CSGANInstructor(BasicInstructor):
             self.sig.update()
             if self.sig.adv_sig:
                 self.adv_train_generator(cfg.ADV_g_step)  # Generator
-                self.train_discriminator(cfg.ADV_d_step, cfg.ADV_d_epoch, 'ADV')  # Discriminator
+                self.train_descriptor(cfg.ADV_d_step)
 
                 if adv_epoch % cfg.adv_log_step == 0:
                     if cfg.if_save and not cfg.if_test:
@@ -130,12 +143,15 @@ class CSGANInstructor(BasicInstructor):
         print('>>> Begin test...')
 
         self._run()
+        # self.train_classifier(5, self.eval_clas, self.eval_clas_data.loader, self.eval_clas_opt)
+        # self.train_descriptor(5)
         pass
 
     def pretrain_generator(self, epochs):
         """
         Max Likelihood Pre-training for the generator
         """
+        global epoch
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
@@ -158,11 +174,10 @@ class CSGANInstructor(BasicInstructor):
             for i in range(cfg.k_label):
                 self._save('MLE', epoch)
 
-    def train_classifier(self, epochs):
-        self.clas_data.reset(self.oracle_samples_list)  # TODO: bug: have to reset
+    def train_classifier(self, epochs, clas, clas_data_loader, clas_opt, phrase='MLE'):
         for epoch in range(epochs):
-            c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
-            self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', epoch, c_loss, c_acc)
+            c_loss, c_acc = self.train_dis_epoch(clas, clas_data_loader, self.clas_criterion, clas_opt)
+            self.log.info('[%s-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', phrase, epoch, c_loss, c_acc)
 
         if not cfg.if_test and cfg.if_save:
             torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
@@ -188,6 +203,18 @@ class CSGANInstructor(BasicInstructor):
         # =====Test=====
         self.log.info('[ADV-GEN]: %s', self.comb_metrics(fmt_str=True))
 
+    def train_descriptor(self, d_steps):
+        for step in range(d_steps):
+            self.train_discriminator(1, 1, 'ADV')
+
+            perm = torch.randperm(cfg.samples_num // cfg.k_label)
+            clas_samples_list = [torch.cat((self.oracle_samples_list[i][perm],
+                                            self.gen_list[i].sample(cfg.samples_num // cfg.k_label,
+                                                                    8 * cfg.batch_size)), dim=0)
+                                 for i in range(cfg.k_label)]
+            self.clas_data.reset(clas_samples_list)
+            self.train_classifier(3, self.clas, self.clas_data.loader, self.clas_opt, 'ADV')
+
     def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
         """
         Training the discriminator on real_data_samples (positive) and generated samples from gen (negative).
@@ -198,20 +225,25 @@ class CSGANInstructor(BasicInstructor):
 
         for step in range(d_step):
             # prepare loader for training
-            real_samples = []
-            fake_samples = []
-            for i in range(cfg.k_label):
-                real_samples.append(self.oracle_samples_list[i])
-                fake_samples.append(self.gen_list[i].sample(cfg.samples_num // cfg.k_label, 8 * cfg.batch_size))
+            perm = torch.randperm(cfg.samples_num // cfg.k_label)
+            real_samples = torch.cat([self.oracle_samples_list[i][perm] for i in range(cfg.k_label)], dim=0)
+            fake_samples = torch.cat([self.gen_list[i].sample(cfg.samples_num // cfg.k_label, 8 * cfg.batch_size)
+                                      for i in range(cfg.k_label)], dim=0)
 
-            dis_samples_list = [torch.cat(fake_samples, dim=0)] + real_samples
-            self.dis_data.reset(dis_samples_list)
+            self.dis_data.reset([fake_samples, real_samples])
 
             for epoch in range(d_epoch):
                 # =====Train=====
-                d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
-                                                         self.dis_opt)
-
+                if not self.freeze_dis:
+                    d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
+                                                             self.dis_opt)
+                if train_acc > 0.9:
+                    if not self.freeze_dis:
+                        self.log.info('> Freezing Discriminator...')
+                    self.freeze_dis = True  # freeze discriminator
+                    break
+                else:
+                    self.freeze_dis = False
             # =====Test=====
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f' % (
                 phrase, step, d_loss, train_acc))
@@ -236,8 +268,8 @@ class CSGANInstructor(BasicInstructor):
                                  self.mle_criterion)
 
         # Evaluation Classifier accuracy
-        self.clas_data.reset([eval_samples], label_i)
-        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
+        self.eval_clas_data.reset([eval_samples], label_i)
+        _, c_acc = self.eval_dis(self.eval_clas, self.eval_clas_data.loader, self.clas_criterion)
 
         return oracle_nll, gen_nll, self_nll, c_acc
 
