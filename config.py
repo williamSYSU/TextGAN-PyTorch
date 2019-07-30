@@ -24,20 +24,20 @@ clas_pretrain = False
 
 run_model = 'sentigan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan
 k_label = 1  # num of labels
-use_truncated_normal = True
+gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
+dis_init = 'uniform'  # normal, uniform, truncated_normal
 
 # =====EvoGAN=====
-n_parent = 3
-eval_b_num = 10  # >= n_parent*ADV_d_step
+n_parent = 1
+eval_b_num = 8  # >= n_parent*ADV_d_step
 max_bn = 8 if eval_b_num > 8 else eval_b_num
 lambda_fq = 1.0
 lambda_fd = 0.0
-lambda_fc = 1.0
 d_out_mean = True
 freeze_dis = False
 freeze_clas = False
 use_all_real_fake = False
-use_population = True
+use_population = False
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
@@ -120,7 +120,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 2
+# device = 0
 # print('device: ', device)
 torch.cuda.set_device(device)
 
@@ -162,7 +162,7 @@ def init_param(opt):
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
         pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, lambda_fc, freeze_dis, freeze_clas, use_all_real_fake, use_population
+        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -176,13 +176,13 @@ def init_param(opt):
     CUDA = True if opt.cuda == 1 else False
     device = opt.device
     data_shuffle = opt.shuffle
-    use_truncated_normal = True if opt.use_truncated_normal == 1 else False
+    gen_init = opt.gen_init
+    dis_init = opt.dis_init
 
     n_parent = opt.n_parent
     eval_b_num = opt.eval_b_num
     lambda_fq = opt.lambda_fq
     lambda_fd = opt.lambda_fd
-    lambda_fc = opt.lambda_fc
     d_out_mean = opt.d_out_mean
     freeze_dis = opt.freeze_dis
     freeze_clas = opt.freeze_clas
