@@ -15,19 +15,21 @@ import os
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
 
-num_group = 3  # run num groups of exp
+num_group = 4  # run num groups of exp
 run_model = 'evogan'
-device = 1
+device = 3
 
 # === Compare Param ===
 MLE_train_epoch = 150
+n_parent = [1, 2, 4, 8]
 ora_pretrain = int(True)
-gen_pretrain = [0, 1, 1]
-loss_type = ['nsgan', 'nsgan', 'nsgan']
-mu_type = ['nsgan', 'nsgan rsgan', 'nsgan rsgan']
-eval_type = ['nll', 'nll', 'Ra']
-ADV_train_epoch = [0, 2500, 2500]
-tips = '[Compare Exp]: 对比eval_type（nll vs Ra）。loss_type = {}, mu_type = {}, eval_type = {}'
+gen_pretrain = int(True)
+loss_type = ['nsgan', 'nsgan', 'nsgan', 'nsgan']
+mu_type = ['nsgan rsgan', 'nsgan rsgan', 'nsgan rsgan', 'nsgan rsgan']
+eval_type = 'Ra'
+ADV_train_epoch = 2500
+tips = '[Compare Exp] EvoGAN (seq_len=20), compare n_parent. [Current] n_parent = {}. [Param] eval_type = Ra, loss_type = nsgan, mu_type = nsgan rsgan'
+# tips = '[Compare Exp] EvoGAN (seq_len=20), compare evo and no_evo, set eval_type = Ra. [Current] loss_type = {}, mu_type = {}'
 
 # === Basic Param ===
 if_test = int(False)
@@ -52,25 +54,24 @@ adv_log_step = 20
 use_all_real_fake = int(False)
 use_population = int(False)
 d_out_mean = int(True)
-n_parent = 1
 lambda_fq = 1.0
 lambda_fd = 0.0
 eval_b_num = 8
 
-for i in range(num_group * len(gen_pretrain)):
-    job_id = i % len(gen_pretrain)
+for i in range(num_group * len(loss_type)):
+    job_id = i % len(loss_type)
     args = [
         # Compare Param
         '--device', device,
         '--run_model', run_model,
         '--mle_epoch', MLE_train_epoch,
         '--ora_pretrain', ora_pretrain,
-        '--gen_pretrain', gen_pretrain[job_id],
+        '--gen_pretrain', gen_pretrain,
         '--loss_type', loss_type[job_id],
         '--mu_type', mu_type[job_id],
-        '--eval_type', eval_type[job_id],
-        '--adv_epoch', ADV_train_epoch[job_id],
-        '--tips', tips.format(loss_type[job_id], mu_type[job_id], eval_type[job_id]),
+        '--eval_type', eval_type,
+        '--adv_epoch', ADV_train_epoch,
+        '--tips', tips.format(n_parent[job_id]),
         # Basic Param
         '--if_test', if_test,
         '--if_real_data', if_real_data,
@@ -93,7 +94,7 @@ for i in range(num_group * len(gen_pretrain)):
         '--use_all_real_fake', use_all_real_fake,
         '--use_population', use_population,
         '--d_out_mean', d_out_mean,
-        '--n_parent', n_parent,
+        '--n_parent', n_parent[job_id],
         '--lambda_fq', lambda_fq,
         '--lambda_fd', lambda_fd,
         '--eval_b_num', eval_b_num,

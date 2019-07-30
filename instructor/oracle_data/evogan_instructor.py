@@ -72,8 +72,11 @@ class EvoGANInstructor(BasicInstructor):
         if cfg.gen_pretrain:
             for i in range(cfg.n_parent):
                 if not cfg.use_population:
-                    self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-                    self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % i, map_location='cpu')
+                    self.log.info(
+                        'All parents are pretrained with same weights. Load MLE pretrained generator gen: {}'.format(
+                            cfg.pretrained_gen_path + '%d' % i))
+                    # self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % i, map_location='cpu')
+                    self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
                 else:
                     self.log.info('Use population, all parents are pretrained with same weights.')
                     self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % 0))
