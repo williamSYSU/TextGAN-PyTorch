@@ -18,11 +18,11 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
