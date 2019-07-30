@@ -23,7 +23,8 @@ gen_pretrain = False
 dis_pretrain = False
 
 run_model = 'relgan'  # seqgan, leakgan, relgan
-use_truncated_normal = True
+gen_init = 'normal'  # normal, uniform, truncated_normal
+dis_init = 'uniform'  # normal, uniform, truncated_normal
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
@@ -132,7 +133,7 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset
+        pretrained_dis_path, pretrain_root, if_test, dataset, gen_init, dis_init
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -143,7 +144,8 @@ def init_param(opt):
     CUDA = True if opt.cuda == 1 else False
     device = opt.device
     data_shuffle = opt.shuffle
-    use_truncated_normal = True if opt.use_truncated_normal == 1 else False
+    gen_init = opt.gen_init
+    dis_init = opt.dis_init
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size
