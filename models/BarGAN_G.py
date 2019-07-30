@@ -6,7 +6,6 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +13,6 @@ import torch.nn.functional as F
 import config as cfg
 from models.generator import LSTMGenerator
 from models.relational_rnn_general import RelationalMemory
-from utils.helpers import truncated_normal_
 
 
 class BarGAN_G(LSTMGenerator):
@@ -172,12 +170,3 @@ class BarGAN_G(LSTMGenerator):
         memory = self.lstm.initial_state(batch_size)
         memory = self.lstm.repackage_hidden(memory)  # detch memory at first
         return memory.cuda() if self.gpu else memory
-
-    def init_params(self):
-        for param in self.parameters():
-            if param.requires_grad and len(param.shape) > 0:
-                stddev = 1 / math.sqrt(param.shape[0])
-                if cfg.use_truncated_normal:
-                    truncated_normal_(param, std=stddev)
-                else:
-                    torch.nn.init.normal_(param, std=stddev)

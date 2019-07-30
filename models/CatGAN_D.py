@@ -7,7 +7,6 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -74,15 +73,6 @@ class CatGAN_D(CNNDiscriminator):
 
         return logits
 
-    def init_params(self):
-        for param in self.parameters():
-            if param.requires_grad:
-                # need to be initialized with uniform
-                torch.nn.init.uniform_(param, -0.05, 0.05)
-
-                # stddev = 1 / math.sqrt(param.shape[0])
-                # torch.nn.init.normal_(param, std=stddev)
-
 
 clas_filter_sizes = [2]
 clas_num_filters = [300]
@@ -139,12 +129,3 @@ class CatGAN_C(CNNDiscriminator):
         # logits = self.out2logits(self.dropout(pred)).squeeze(1)  # batch_size * k_label
 
         return logits
-
-    def init_params(self):
-        for param in self.parameters():
-            if param.requires_grad:
-                # need to be initialized with uniform
-                torch.nn.init.uniform_(param, -0.05, 0.05)
-
-                # stddev = 1 / math.sqrt(param.shape[0])
-                # torch.nn.init.normal_(param, std=stddev)

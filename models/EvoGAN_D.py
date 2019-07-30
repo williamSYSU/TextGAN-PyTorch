@@ -71,12 +71,3 @@ class EvoGAN_D(CNNDiscriminator):
         # logits = self.feature2out(self.dropout(pred))  # batch_size * 1, Cross Entropy
 
         return logits
-
-    def init_params(self):
-        for param in self.parameters():
-            if param.requires_grad:
-                # need to be initialized with uniform
-                torch.nn.init.uniform_(param, -0.05, 0.05)
-
-                # stddev = 1 / math.sqrt(param.shape[0])
-                # torch.nn.init.normal_(param, std=stddev)
