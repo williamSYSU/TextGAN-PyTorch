@@ -20,14 +20,14 @@ run_model = 'evogan'
 device = 1
 
 # === Compare Param ===
-MLE_train_epoch = 200
-ora_pretrain = int(False)
+MLE_train_epoch = 150
+ora_pretrain = int(True)
 gen_pretrain = [0, 1, 1]
 loss_type = ['nsgan', 'nsgan', 'nsgan']
 mu_type = ['nsgan', 'nsgan rsgan', 'nsgan rsgan']
 eval_type = ['nll', 'nll', 'Ra']
-ADV_train_epoch = [0, 2000, 2000]
-tips = '[Compare Exp]: 对比eval_type（nll vs Ra）'
+ADV_train_epoch = [0, 2500, 2500]
+tips = '[Compare Exp]: 对比eval_type（nll vs Ra）。loss_type = {}, mu_type = {}, eval_type = {}'
 
 # === Basic Param ===
 if_test = int(False)
@@ -45,6 +45,8 @@ temperature = 1
 mem_slots = 1
 num_heads = 2
 head_size = 256
+pre_log_step = 10
+adv_log_step = 20
 
 # === EvoGAN Param ===
 use_all_real_fake = int(False)
@@ -55,8 +57,8 @@ lambda_fq = 1.0
 lambda_fd = 0.0
 eval_b_num = 8
 
-for i in range(num_group * len(ora_pretrain)):
-    job_id = i % len(ora_pretrain)
+for i in range(num_group * len(gen_pretrain)):
+    job_id = i % len(gen_pretrain)
     args = [
         # Compare Param
         '--device', device,
@@ -68,11 +70,11 @@ for i in range(num_group * len(ora_pretrain)):
         '--mu_type', mu_type[job_id],
         '--eval_type', eval_type[job_id],
         '--adv_epoch', ADV_train_epoch[job_id],
-        '--tips', tips,
+        '--tips', tips.format(loss_type[job_id], mu_type[job_id], eval_type[job_id]),
         # Basic Param
         '--if_test', if_test,
         '--if_real_data', if_real_data,
-        '--data_shuffle', data_shuffle,
+        '--shuffle', data_shuffle,
         '--gen_init', gen_init,
         '--dis_init', dis_init,
         '--model_type', model_type,
@@ -85,6 +87,8 @@ for i in range(num_group * len(ora_pretrain)):
         '--mem_slots', mem_slots,
         '--num_heads', num_heads,
         '--head_size', head_size,
+        '--pre_log_step', pre_log_step,
+        '--adv_log_step', adv_log_step,
         # EvoGAN Param
         '--use_all_real_fake', use_all_real_fake,
         '--use_population', use_population,

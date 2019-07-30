@@ -18,7 +18,7 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
@@ -44,7 +44,7 @@ if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+mu_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
@@ -56,7 +56,7 @@ temperature = 1
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
 MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 5
-ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 0  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 max_seq_len = 20  # 20
@@ -70,8 +70,8 @@ dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
 clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
-pre_log_step = 20
-adv_log_step = 40
+pre_log_step = 10
+adv_log_step = 20
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -88,7 +88,7 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 256  # RelGAN-256
+head_size = 512  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
@@ -101,7 +101,7 @@ dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 
 # =====log=====
-log_filename = strftime("log/log_%m%d_%H%M", localtime())
+log_filename = strftime("log/log_%m%d_%H%M_%S", localtime())
 if os.path.exists(log_filename + '.txt'):
     i = 2
     while True:
@@ -120,7 +120,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 0
+# device = 2
 # print('device: ', device)
 torch.cuda.set_device(device)
 
