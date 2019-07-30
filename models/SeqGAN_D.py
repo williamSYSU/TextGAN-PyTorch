@@ -6,7 +6,6 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-import torch
 
 from models.discriminator import CNNDiscriminator
 
@@ -18,9 +17,3 @@ class SeqGAN_D(CNNDiscriminator):
     def __init__(self, embed_dim, vocab_size, padding_idx, gpu=False, dropout=0.25):
         super(SeqGAN_D, self).__init__(embed_dim, vocab_size, dis_filter_sizes, dis_num_filters, padding_idx, gpu,
                                        dropout)
-
-    def init_params(self):
-        for param in self.parameters():
-            if param.requires_grad:
-                # need to be initialized with uniform
-                torch.nn.init.uniform_(param, -0.05, 0.05)

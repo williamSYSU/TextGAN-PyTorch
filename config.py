@@ -24,7 +24,8 @@ clas_pretrain = False
 
 run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
-use_truncated_normal = True
+gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
+dis_init = 'uniform'  # normal, uniform, truncated_normal
 
 # =====EvoGAN=====
 n_parent = 1
@@ -175,7 +176,8 @@ def init_param(opt):
     CUDA = True if opt.cuda == 1 else False
     device = opt.device
     data_shuffle = opt.shuffle
-    use_truncated_normal = True if opt.use_truncated_normal == 1 else False
+    gen_init = opt.gen_init
+    dis_init = opt.dis_init
 
     n_parent = opt.n_parent
     eval_b_num = opt.eval_b_num
