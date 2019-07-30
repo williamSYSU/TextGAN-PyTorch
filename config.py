@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -22,8 +22,8 @@ gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'sentigan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan
-k_label = 1  # num of labels
+run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
 
@@ -45,7 +45,7 @@ dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'nll'  # standard, rsgan, nll
+eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
 
@@ -54,8 +54,8 @@ temperature = 1
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
-MLE_train_epoch = 120  # SeqGAN-120, LeakGAN-8, RelGAN-150
-PRE_clas_epoch = 300
+MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
+PRE_clas_epoch = 5
 ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
@@ -70,8 +70,8 @@ dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
 clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
-pre_log_step = 20
-adv_log_step = 1
+pre_log_step = 10
+adv_log_step = 20
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -80,7 +80,7 @@ cat_test_data = 'dataset/testdata//{}_cat{}_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1
-rollout_num = 16  # 4
+rollout_num = 4  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
 goal_size = 16  # LeakGAN-16
@@ -91,17 +91,17 @@ num_heads = 2  # RelGAN-2
 head_size = 256  # RelGAN-256
 
 # =====Discriminator=====
-d_step = 10  # SeqGAN-50, LeakGAN-5
+d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 1  # SeqGAN,LeakGAN,RelGAN-5
-ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
+ADV_d_step = 3  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 
 # =====log=====
-log_filename = strftime("log/log_%m%d_%H%M", localtime())
+log_filename = strftime("log/log_%m%d_%H%M_%S", localtime())
 if os.path.exists(log_filename + '.txt'):
     i = 2
     while True:
@@ -120,7 +120,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 0
+# device = 2
 # print('device: ', device)
 torch.cuda.set_device(device)
 
@@ -160,9 +160,9 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
+        pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population
+        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model

@@ -19,7 +19,6 @@ from instructor.oracle_data.instructor import BasicInstructor
 from models.CatGAN_D import CatGAN_D, CatGAN_C
 from models.CatGAN_G import CatGAN_G
 from models.Oracle import Oracle
-from models.SlotCatGAN_G import SlotCatGAN_G
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
@@ -146,7 +145,7 @@ class CatGANInstructor(BasicInstructor):
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        self._run()
+        # self._run()
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
@@ -154,14 +153,14 @@ class CatGANInstructor(BasicInstructor):
         # print(self.gen.temperature)
         # samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=0)
         # self.clas_data.reset([samples, torch.zeros(1)])
-        # print('ground truth 0: ',
-        #       self.eval_gen(self.oracle_list[0], self.oracle_data_list[0].loader, self.mle_criterion, label_i=0))
-        # print('ground truth 1: ',
-        #       self.eval_gen(self.oracle_list[1], self.oracle_data_list[1].loader, self.mle_criterion, label_i=0))
-        #
-        # print(self.comb_metrics(fmt_str=True))
-        # self.train_classifier(cfg.PRE_clas_epoch)
-        # print(self.comb_metrics(fmt_str=True))
+        print('ground truth 0: ',
+              self.eval_gen(self.oracle_list[0], self.oracle_data_list[0].loader, self.mle_criterion, label_i=0))
+        print('ground truth 1: ',
+              self.eval_gen(self.oracle_list[1], self.oracle_data_list[1].loader, self.mle_criterion, label_i=0))
+
+        print(self.comb_metrics(fmt_str=True))
+        self.train_classifier(cfg.PRE_clas_epoch)
+        print(self.comb_metrics(fmt_str=True))
         pass
 
     def pretrain_generator(self, epochs):

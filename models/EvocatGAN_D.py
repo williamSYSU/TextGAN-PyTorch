@@ -11,10 +11,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.discriminator import CNNDiscriminator
+from models.discriminator import CNNDiscriminator, CNNClassifier
 
 dis_filter_sizes = [2, 3, 4, 5]
 dis_num_filters = [300, 300, 300, 300]
+clas_filter_sizes = [2]
+clas_num_filters = [300]
 
 
 # Discriminator
@@ -72,3 +74,10 @@ class EvoCatGAN_D(CNNDiscriminator):
         # logits = self.feature2out(self.dropout(pred))  # batch_size * 1, Cross Entropy
 
         return logits
+
+
+# Classifier
+class EvoCatGAN_C(CNNClassifier):
+    def __init__(self, k_label, embed_dim, max_seq_len, num_rep, vocab_size, padding_idx, gpu=False, dropout=0.25):
+        super(EvoCatGAN_C, self).__init__(k_label, embed_dim, max_seq_len, num_rep, vocab_size, clas_filter_sizes,
+                                          clas_num_filters, padding_idx, gpu, dropout)
