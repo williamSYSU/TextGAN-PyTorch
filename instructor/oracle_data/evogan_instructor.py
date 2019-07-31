@@ -6,25 +6,23 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
+import copy
+import numpy as np
 import os
 import random
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
-import copy
-import numpy as np
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.EvoGAN_D import EvoGAN_D
 from models.EvoGAN_G import EvoGAN_G
-from utils.data_loader import GenDataIter, DisDataIter
-from utils.helpers import get_fixed_temperature, get_losses, create_oracle
+from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss
-from utils.text_process import write_tensor
+from utils.helpers import get_fixed_temperature, get_losses, create_oracle
 
 
 class EvoGANInstructor(BasicInstructor):
@@ -346,7 +344,7 @@ class EvoGANInstructor(BasicInstructor):
             else:
                 Fd = 0
         elif eval_type == 'Ra':
-            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real))
+            g_loss = torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
             Fq = g_loss.item()
 
             self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))

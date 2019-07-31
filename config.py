@@ -24,14 +24,15 @@ clas_pretrain = False
 
 run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
-use_truncated_normal = True
+gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
+dis_init = 'uniform'  # normal, uniform, truncated_normal
 
 # =====EvoGAN=====
 n_parent = 1
 eval_b_num = 8  # >= n_parent*ADV_d_step
 max_bn = 8 if eval_b_num > 8 else eval_b_num
 lambda_fq = 1.0
-lambda_fd = 0.5
+lambda_fd = 0.0
 d_out_mean = True
 freeze_dis = False
 freeze_clas = False
@@ -42,8 +43,8 @@ use_population = False
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
@@ -56,7 +57,7 @@ temperature = 2
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
-PRE_clas_epoch = 300
+PRE_clas_epoch = 5
 ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
@@ -71,7 +72,7 @@ dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
 clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
-pre_log_step = 20
+pre_log_step = 10
 adv_log_step = 40
 
 train_data = 'dataset/' + dataset + '.txt'
@@ -102,7 +103,7 @@ dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 
 # =====log=====
-log_filename = strftime("log/log_%m%d_%H%M", localtime())
+log_filename = strftime("log/log_%m%d_%H%M_%S", localtime())
 if os.path.exists(log_filename + '.txt'):
     i = 2
     while True:
@@ -121,7 +122,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 2
+device = 0
 # print('device: ', device)
 torch.cuda.set_device(device)
 
@@ -148,8 +149,10 @@ signal_file = 'run_signal.txt'
 
 tips = ''
 
-if samples_num == 5000 and 'cat' not in run_model:
+if samples_num == 5000 and 'c' not in run_model:
     raise AssertionError('warning: samples_num={}, run_model={}'.format(samples_num, run_model))
+if head_size == 512 and 'c' not in run_model:
+    raise AssertionError('warning: head_size={}, run_model={}'.format(head_size, run_model))
 
 
 # Init settings according to parser
@@ -161,9 +164,9 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, use_truncated_normal, dataset, PRE_clas_epoch, \
+        pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population
+        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -177,7 +180,8 @@ def init_param(opt):
     CUDA = True if opt.cuda == 1 else False
     device = opt.device
     data_shuffle = opt.shuffle
-    use_truncated_normal = True if opt.use_truncated_normal == 1 else False
+    gen_init = opt.gen_init
+    dis_init = opt.dis_init
 
     n_parent = opt.n_parent
     eval_b_num = opt.eval_b_num
