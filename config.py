@@ -18,11 +18,11 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
+run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -54,7 +54,7 @@ temperature = 1
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
-MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
+MLE_train_epoch = 200  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 5
 ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
@@ -88,7 +88,7 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 256  # RelGAN-256
+head_size = 512  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
@@ -149,6 +149,8 @@ tips = ''
 
 if samples_num == 5000 and 'c' not in run_model:
     raise AssertionError('warning: samples_num={}, run_model={}'.format(samples_num, run_model))
+if head_size == 512 and 'c' not in run_model:
+    raise AssertionError('warning: head_size={}, run_model={}'.format(head_size, run_model))
 
 
 # Init settings according to parser
