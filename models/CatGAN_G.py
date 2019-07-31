@@ -59,7 +59,7 @@ class CatGAN_G(LSTMGenerator):
         label_onehot = F.one_hot(label, self.k_label).float()  # batch_size * k_label
         label_onehot_ex = label_onehot.unsqueeze(1).expand(-1, inp.size(1), -1)  # batch_size * len * k_label
         label_vec = torch.bmm(label_onehot_ex, self.cat_mat.expand(inp.size(0), -1, -1))  # batch_size * len * embed_dim
-        emb = torch.cat((emb, label_vec), dim=-1)  # batch_sie * len * (2 * embed_dim)
+        emb = torch.cat((emb, label_vec), dim=-1)  # batch_sie * len * (k_label + embed_dim)
 
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
         out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
@@ -90,7 +90,7 @@ class CatGAN_G(LSTMGenerator):
         label_onehot = F.one_hot(label, self.k_label).float()  # batch_size * k_label
         label_onehot_ex = label_onehot.unsqueeze(1).expand(-1, 1, -1)  # batch_size * 1 * k_label
         label_vec = torch.bmm(label_onehot_ex, self.cat_mat.expand(inp.size(0), -1, -1))  # batch_size * 1 * embed_dim
-        emb = torch.cat((emb, label_vec), dim=-1)  # batch_sie * len * (2 * embed_dim)
+        emb = torch.cat((emb, label_vec), dim=-1)  # batch_sie * len * (k_label + embed_dim)
 
         out, hidden = self.lstm(emb, hidden)
         gumbel_t = self.add_gumbel(self.lstm2out(out.squeeze(1)))
