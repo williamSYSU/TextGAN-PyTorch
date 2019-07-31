@@ -43,9 +43,9 @@ use_population = False
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
+loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+eval_type = 'nll'  # standard, rsgan, nll, nll-f1, Ra
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
 
@@ -122,7 +122,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-device = 0
+# device = 0
 # print('device: ', device)
 torch.cuda.set_device(device)
 
