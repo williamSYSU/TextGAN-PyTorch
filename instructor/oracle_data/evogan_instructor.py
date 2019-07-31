@@ -417,9 +417,9 @@ class EvoGANInstructor(BasicInstructor):
         all_temp.append(
             get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
                                   random.choice(mu_temp_type)))
-        # if cur_step > cfg.evo_temp_step:
-        #     all_temp.append(
-        #         get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
-        #                               random.choice(mu_temp_type)))
+        if cur_step > cfg.evo_temp_step:
+            all_temp.append(
+                get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
+                                      random.choice(mu_temp_type)))
 
         return torch.Tensor(all_temp)  # three temp

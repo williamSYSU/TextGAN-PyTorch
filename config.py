@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -50,7 +50,8 @@ d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
-mu_temp = 'lin exp log sigmoid quad sqrt'
+# mu_temp = 'lin exp log sigmoid quad sqrt'
+mu_temp = 'exp'
 evo_temp_step = 1
 temperature = 2
 
@@ -122,7 +123,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 0
+# device = 3
 # print('device: ', device)
 torch.cuda.set_device(device)
 
