@@ -133,7 +133,22 @@ class EvoGANInstructor(BasicInstructor):
     def _test(self):
         print('>>> Begin test...')
 
-        self._run()
+        # self._run()
+
+        self.oracle.max_seq_len = 40
+        self.oracle_data.max_seq_len = 40
+        self.oracle.load_state_dict(
+            torch.load('/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm.pt'))
+        big_s = self.oracle.sample(10000, 8 * cfg.batch_size)
+        small_s = self.oracle.sample(5000, 8 * cfg.batch_size)
+        torch.save(big_s,
+                   '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_10000_seq40.pt')
+        torch.save(small_s,
+                   '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_5000_seq40.pt')
+        self.oracle_data.reset(big_s)
+        gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion)
+        print('ground truth: %.4f' % gt)
+
         pass
 
     def pretrain_generator(self, epochs):
