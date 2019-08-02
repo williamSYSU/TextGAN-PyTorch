@@ -18,7 +18,7 @@ CUDA = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
@@ -43,8 +43,8 @@ use_population = False
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
@@ -59,7 +59,7 @@ PRE_clas_epoch = 5
 ADV_train_epoch = 2500  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
-max_seq_len = 20  # 20
+max_seq_len = 40  # 20
 start_letter = 1
 padding_idx = 0
 start_token = 'BOS'
@@ -162,9 +162,10 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, \
+        pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, oracle_samples_path, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init
+        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
+        multi_oracle_samples_path
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -253,6 +254,10 @@ def init_param(opt):
 
     train_data = 'dataset/' + dataset + '.txt'
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
+
+    if max_seq_len == 40:
+        oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}_seq40.pt'
+        multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}_seq40.pt'
 
     pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
     pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)

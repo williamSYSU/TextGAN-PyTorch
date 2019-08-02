@@ -52,8 +52,8 @@ class EvoGANInstructor(BasicInstructor):
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.cross_entro_cri = nn.CrossEntropyLoss()
-        self.G_critertion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
-        self.D_critertion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
+        self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
+        self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
@@ -144,6 +144,12 @@ class EvoGANInstructor(BasicInstructor):
         # self.variation(1, self.G_criterion[0])
         # self.evolve_discriminator(1)
         # self.evolve_generator_population(1)
+        # self.oracle.max_seq_len = 40
+        # self.oracle_data.max_seq_len = 40
+        # big = self.oracle.sample(10000, 8 * 64)
+        # small = self.oracle.sample(5000, 8 * 64)
+        # torch.save(big, '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data/oracle_lstm_samples_10000_seq40.pt')
+        # torch.save(small, '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data/oracle_lstm_samples_5000_seq40.pt')
 
         pass
 
@@ -190,7 +196,7 @@ class EvoGANInstructor(BasicInstructor):
             self.d_out_real = self.dis(real_samples)
 
         for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
-            for j, criterionG in enumerate(self.G_critertion):
+            for j, criterionG in enumerate(self.G_criterion):
                 # Variation
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
                 # single loss
@@ -270,7 +276,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # randomly choose a parent, variation
         target_idx = random.randint(0, len(self.parents) - 1)
-        for j, criterionG in enumerate(self.G_critertion):
+        for j, criterionG in enumerate(self.G_criterion):
             self.load_gen(self.parents[target_idx], self.parent_adv_opts[target_idx])  # load generator
 
             # Variation
@@ -307,7 +313,7 @@ class EvoGANInstructor(BasicInstructor):
             # =====Train=====
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
-            d_loss = self.D_critertion(d_out_real, d_out_fake)
+            d_loss = self.D_criterion(d_out_real, d_out_fake)
 
             self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss += d_loss.item()
