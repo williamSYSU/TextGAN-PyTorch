@@ -52,8 +52,8 @@ class EvoGANInstructor(BasicInstructor):
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.cross_entro_cri = nn.CrossEntropyLoss()
-        self.G_critertion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
-        self.D_critertion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
+        self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
+        self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
@@ -71,13 +71,8 @@ class EvoGANInstructor(BasicInstructor):
 
         if cfg.gen_pretrain:
             for i in range(cfg.n_parent):
-                if not cfg.use_population:
-                    self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-                    self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % i, map_location='cpu')
-                else:
-                    self.log.info('Use population, all parents are pretrained with same weights.')
-                    self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % 0))
-                    self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
+                self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
+                self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
 
         if cfg.CUDA:
             self.oracle = self.oracle.cuda()
@@ -109,10 +104,10 @@ class EvoGANInstructor(BasicInstructor):
         self.log.info('Starting Adversarial Training...')
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
-            if not cfg.use_population:
-                score, fit_score, select_mu = self.evolve_generator(adv_epoch, cfg.ADV_g_step)
-            else:
-                score, fit_score, select_mu = self.evolve_generator_population(cfg.ADV_g_step)
+            if cfg.temperature == 1:
+                score, fit_score, select_mu = self.evolve_generator(cfg.ADV_g_step)
+            else:  # evolve with temperature
+                score, fit_score, select_mu = self.evolve_generator_with_temp(adv_epoch, cfg.ADV_g_step)
             d_loss = self.evolve_discriminator(cfg.ADV_d_step)
 
             best_id = int(np.argmax(score))
@@ -133,21 +128,21 @@ class EvoGANInstructor(BasicInstructor):
     def _test(self):
         print('>>> Begin test...')
 
-        # self._run()
+        self._run()
 
-        self.oracle.max_seq_len = 40
-        self.oracle_data.max_seq_len = 40
-        self.oracle.load_state_dict(
-            torch.load('/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm.pt'))
-        big_s = self.oracle.sample(10000, 8 * cfg.batch_size)
-        small_s = self.oracle.sample(5000, 8 * cfg.batch_size)
-        torch.save(big_s,
-                   '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_10000_seq40.pt')
-        torch.save(small_s,
-                   '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_5000_seq40.pt')
-        self.oracle_data.reset(big_s)
-        gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion)
-        print('ground truth: %.4f' % gt)
+        # self.oracle.max_seq_len = 40
+        # self.oracle_data.max_seq_len = 40
+        # self.oracle.load_state_dict(
+        #     torch.load('/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm.pt'))
+        # big_s = self.oracle.sample(10000, 8 * cfg.batch_size)
+        # small_s = self.oracle.sample(5000, 8 * cfg.batch_size)
+        # torch.save(big_s,
+        #            '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_10000_seq40.pt')
+        # torch.save(small_s,
+        #            '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_5000_seq40.pt')
+        # self.oracle_data.reset(big_s)
+        # gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion)
+        # print('ground truth: %.4f' % gt)
 
         pass
 
@@ -174,7 +169,7 @@ class EvoGANInstructor(BasicInstructor):
         if cfg.if_save and not cfg.if_test:
             self._save('MLE', epoch)
 
-    def evolve_generator(self, cur_adv_step, evo_g_step):
+    def evolve_generator(self, evo_g_step):
         # evaluation real data
         self.prepare_eval_real_data()
 
@@ -186,7 +181,7 @@ class EvoGANInstructor(BasicInstructor):
         selected_mutation = []
         count = 0
 
-        # all child share the same real data output from Discriminator
+        # all children share the same real data output from Discriminator
         with torch.no_grad():
             real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
             if cfg.CUDA:
@@ -194,9 +189,79 @@ class EvoGANInstructor(BasicInstructor):
             self.d_out_real = self.dis(real_samples)
 
         for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
-            for j, criterionG in enumerate(self.G_critertion):
+            for j, criterionG in enumerate(self.G_criterion):
+                # Variation
+                self.load_gen(parent, parent_opt)  # load state dict to self.gen
+                # single loss
+                self.variation(evo_g_step, criterionG)
+
+                # mixture variation: double loss with random weight
+                # choice = random.sample(range(0, len(self.G_criterion)), 2)
+                # cri_list = [self.G_criterion[choice[0]], self.G_criterion[choice[1]]]
+                # self.variation(evo_g_step, cri_list)
+
+                # all loss with random weight
+                # self.variation(evo_g_step, self.G_criterion)
+
+                # Evaluation
+                self.prepare_eval_fake_data()  # evaluation fake data
+                Fq, Fd, score = self.evaluation(cfg.eval_type)
+
+                # Selection
+                if count < cfg.n_parent:
+                    best_score[count] = score
+                    best_fit.append([Fq, Fd, score])
+                    best_child.append(copy.deepcopy(self.gen.state_dict()))
+                    best_child_opt.append(copy.deepcopy(self.gen_adv_opt.state_dict()))
+                    best_fake_samples.append(self.eval_fake_samples)
+                    selected_mutation.append(criterionG.loss_mode)
+                else:  # larger than previous child, replace it
+                    fit_com = score - best_score
+                    if max(fit_com) > 0:
+                        id_replace = np.where(fit_com == max(fit_com))[0][0]
+                        best_score[id_replace] = score
+                        best_fit[id_replace] = [Fq, Fd, score]
+                        best_child[id_replace] = copy.deepcopy(self.gen.state_dict())
+                        best_child_opt[id_replace] = copy.deepcopy(self.gen_adv_opt.state_dict())
+                        best_fake_samples[id_replace] = self.eval_fake_samples
+                        selected_mutation[id_replace] = criterionG.loss_mode
+                count += 1
+
+        self.parents = copy.deepcopy(best_child)
+        self.parent_adv_opts = copy.deepcopy(best_child_opt)
+        self.best_fake_samples = torch.cat(best_fake_samples, dim=0)
+        return best_score, np.array(best_fit), selected_mutation
+
+    def evolve_generator_with_temp(self, cur_adv_step, evo_g_step):
+        # evaluation real data
+        self.prepare_eval_real_data()
+
+        best_score = np.zeros(cfg.n_parent)
+        best_fit = []
+        best_child = []
+        best_child_opt = []
+        best_fake_samples = []
+        selected_mutation = []
+        count = 0
+
+        # all children share the same real data output from Discriminator
+        with torch.no_grad():
+            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            if cfg.CUDA:
+                real_samples = real_samples.cuda()
+            self.d_out_real = self.dis(real_samples)
+
+        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
+            for j, criterionG in enumerate(self.G_criterion):
                 all_temp = self.get_evo_temp(cur_adv_step)  # get evo temp
 
+                temp_score = float('-inf')
+                temp_fit = None
+                temp_child = None
+                temp_child_opt = None
+                temp_fake_samples = None
+
+                # Selection based on temperature, use eval_type=nll
                 for temp in all_temp:
                     # Variation
                     self.load_gen(parent, parent_opt)  # load state dict to self.gen
@@ -206,33 +271,42 @@ class EvoGANInstructor(BasicInstructor):
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    Fq, Fd, score = self.evaluation(cfg.eval_type)
+                    _, _, t_score = self.evaluation('nll')  # for temp evolutionary
+                    loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
 
-                    # Selection
-                    if count < cfg.n_parent:
-                        best_score[count] = score
-                        best_fit.append([Fq, Fd, score])
-                        best_child.append(copy.deepcopy(self.gen.state_dict()))
-                        best_child_opt.append(copy.deepcopy(self.gen_adv_opt.state_dict()))
-                        best_fake_samples.append(self.eval_fake_samples)
-                        selected_mutation.append(criterionG.loss_mode)
-                    else:  # larger than previous child, replace it
-                        fit_com = score - best_score
-                        if max(fit_com) > 0:
-                            id_replace = np.where(fit_com == max(fit_com))[0][0]
-                            best_score[id_replace] = score
-                            best_fit[id_replace] = [Fq, Fd, score]
-                            best_child[id_replace] = copy.deepcopy(self.gen.state_dict())
-                            best_child_opt[id_replace] = copy.deepcopy(self.gen_adv_opt.state_dict())
-                            best_fake_samples[id_replace] = self.eval_fake_samples
-                            selected_mutation[id_replace] = criterionG.loss_mode
-                    count += 1
+                    if t_score > temp_score:
+                        temp_score = loss_score
+                        temp_fit = [loss_Fq, loss_Fd, loss_score]
+                        temp_child = copy.deepcopy(self.gen.state_dict())
+                        temp_child_opt = copy.deepcopy(self.gen_adv_opt.state_dict())
+                        temp_fake_samples = copy.deepcopy(self.eval_fake_samples)
+
+                # Selection based on mu_type, use eval_type=cfg.eval_type
+                if count < cfg.n_parent:
+                    best_score[count] = temp_score
+                    best_fit.append(temp_fit)
+                    best_child.append(temp_child)
+                    best_child_opt.append(temp_child_opt)
+                    best_fake_samples.append(temp_fake_samples)
+                    selected_mutation.append(criterionG.loss_mode)
+                else:  # larger than previous child, replace it
+                    fit_com = temp_score - best_score
+                    if max(fit_com) > 0:
+                        id_replace = np.where(fit_com == max(fit_com))[0][0]
+                        best_score[id_replace] = temp_score
+                        best_fit[id_replace] = temp_fit
+                        best_child[id_replace] = temp_child
+                        best_child_opt[id_replace] = temp_child_opt
+                        best_fake_samples[id_replace] = temp_fake_samples
+                        selected_mutation[id_replace] = criterionG.loss_mode
+                count += 1
 
         self.parents = copy.deepcopy(best_child)
         self.parent_adv_opts = copy.deepcopy(best_child_opt)
         self.best_fake_samples = torch.cat(best_fake_samples, dim=0)
         return best_score, np.array(best_fit), selected_mutation
 
+    # TODO: about to abandon
     def evolve_generator_population(self, evo_g_step):
         """
         1. randomly choose a parent from population;
@@ -249,7 +323,7 @@ class EvoGANInstructor(BasicInstructor):
         best_fake_samples = []
         selected_mutation = []
 
-        # all child share the same real data output from Discriminator
+        # all children share the same real data output from Discriminator
         with torch.no_grad():
             real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
             if cfg.CUDA:
@@ -270,7 +344,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # randomly choose a parent, variation
         target_idx = random.randint(0, len(self.parents) - 1)
-        for j, criterionG in enumerate(self.G_critertion):
+        for j, criterionG in enumerate(self.G_criterion):
             self.load_gen(self.parents[target_idx], self.parent_adv_opts[target_idx])  # load generator
 
             # Variation
@@ -307,7 +381,7 @@ class EvoGANInstructor(BasicInstructor):
             # =====Train=====
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
-            d_loss = self.D_critertion(d_out_real, d_out_fake)
+            d_loss = self.D_criterion(d_out_real, d_out_fake)
 
             self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss += d_loss.item()
@@ -327,13 +401,28 @@ class EvoGANInstructor(BasicInstructor):
             # =====Train=====
             # d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
-            g_loss = criterionG(self.d_out_real, d_out_fake)
+            if type(criterionG) == list:  # multiple loss
+                # mixture variation: double loss
+                rand_w = torch.rand(1).cuda()
+                cri_1, cri_2 = criterionG
+                g_loss = rand_w * cri_1(self.d_out_real, d_out_fake) + (1 - rand_w) * cri_2(self.d_out_real, d_out_fake)
+
+                # all loss
+                # rand_w = F.softmax(torch.rand(len(criterionG)).cuda(), dim=0)
+                # all_loss = []
+                # for crit in criterionG:
+                #     all_loss.append(crit(d_out_real, d_out_fake))
+                # g_loss = torch.dot(rand_w, torch.stack(all_loss, dim=0))
+            else:
+                # g_loss = criterionG(d_out_real, d_out_fake)
+                g_loss = criterionG(self.d_out_real, d_out_fake)
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss += g_loss.item()
+
         return total_loss / g_step if g_step != 0 else 0
 
     def evaluation(self, eval_type):
-        """Evaluation all child, update child score. Note that the eval data should be the same"""
+        """Evaluation all children, update child score. Note that the eval data should be the same"""
         if eval_type == 'standard':
             Fq = self.eval_d_out_fake.mean().cpu().item()
             Fd = 0
@@ -359,7 +448,7 @@ class EvoGANInstructor(BasicInstructor):
             else:
                 Fd = 0
         elif eval_type == 'Ra':
-            g_loss = torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
+            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
             Fq = g_loss.item()
 
             self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
@@ -413,7 +502,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # all_temp.append(get_fixed_temperature(1.0, 0, 0, 'no'))  # temp=1.0
         all_temp.append(get_fixed_temperature(cfg.temperature, cur_step, cfg.ADV_train_epoch,
-                                              random.choice(mu_temp_type)))
+                                              random.choice(mu_temp_type)))  # current step
         all_temp.append(
             get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
                                   random.choice(mu_temp_type)))

@@ -145,7 +145,7 @@ class CatGANInstructor(BasicInstructor):
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        # self._run()
+        self._run()
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
@@ -153,14 +153,14 @@ class CatGANInstructor(BasicInstructor):
         # print(self.gen.temperature)
         # samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=0)
         # self.clas_data.reset([samples, torch.zeros(1)])
-        print('ground truth 0: ',
-              self.eval_gen(self.oracle_list[0], self.oracle_data_list[0].loader, self.mle_criterion, label_i=0))
-        print('ground truth 1: ',
-              self.eval_gen(self.oracle_list[1], self.oracle_data_list[1].loader, self.mle_criterion, label_i=0))
-
-        print(self.comb_metrics(fmt_str=True))
-        self.train_classifier(cfg.PRE_clas_epoch)
-        print(self.comb_metrics(fmt_str=True))
+        # print('ground truth 0: ',
+        #       self.eval_gen(self.oracle_list[0], self.oracle_data_list[0].loader, self.mle_criterion, label_i=0))
+        # print('ground truth 1: ',
+        #       self.eval_gen(self.oracle_list[1], self.oracle_data_list[1].loader, self.mle_criterion, label_i=0))
+        #
+        # print(self.comb_metrics(fmt_str=True))
+        # self.train_classifier(cfg.PRE_clas_epoch)
+        # print(self.comb_metrics(fmt_str=True))
         pass
 
     def pretrain_generator(self, epochs):
@@ -182,17 +182,10 @@ class CatGANInstructor(BasicInstructor):
                         self._save('MLE', epoch, label_i)
 
     def train_classifier(self, epochs):
-        # train_samples_list = [self.oracle_samples_list[i][:4000] for i in range(cfg.k_label)]
-        # eval_samples_list = [self.oracle_samples_list[i][4000:] for i in range(cfg.k_label)]
-        # self.clas_data.reset(train_samples_list)
         self.clas_data.reset(self.oracle_samples_list)  # TODO: bug: have to reset
-        # self.eval_clas_data = CatClasDataIter(eval_samples_list)
         for epoch in range(epochs):
             c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
-            # _, eval_acc = self.eval_dis(self.clas, self.eval_clas_data.loader, self.clas_criterion)
-
             self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', epoch, c_loss, c_acc)
-            # self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f, eval_acc = %.4f', epoch, c_loss, c_acc, eval_acc)
 
         if not cfg.if_test and cfg.if_save:
             torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
@@ -280,7 +273,9 @@ class CatGANInstructor(BasicInstructor):
         return np.mean(total_loss)
 
     def update_temperature(self, i, N):
-        self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
+        self.gen.temperature.data = torch.Tensor([get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)])
+        if cfg.CUDA:
+            self.gen.temperature.data = self.gen.temperature.data.cuda()
 
     def train_gen_epoch(self, model, data_loader, criterion, optimizer):
         total_loss = 0

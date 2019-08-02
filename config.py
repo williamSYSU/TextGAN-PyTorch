@@ -22,7 +22,7 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'evocatgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -43,15 +43,14 @@ use_population = False
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'nll'  # standard, rsgan, nll, nll-f1, Ra
+loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
-# mu_temp = 'lin exp log sigmoid quad sqrt'
-mu_temp = 'exp'
+mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
 evo_temp_step = 1
 temperature = 2
 
@@ -91,7 +90,7 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 256  # RelGAN-256
+head_size = 512  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
@@ -130,8 +129,10 @@ torch.cuda.set_device(device)
 # =====Save Model and samples=====
 save_root = 'save/{}_{}_{}_dt-{}_lt-{}_mt-{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type,
                                                                        loss_type,
-                                                                    ''.join([m[0] for m in mu_type.split()]), eval_type,
-                                                                       temperature, strftime("%m%d-%H%M_%S", localtime()))
+                                                                       ''.join([m[0] for m in mu_type.split()]),
+                                                                       eval_type,
+                                                                       temperature,
+                                                                       strftime("%m%d-%H%M_%S", localtime()))
 save_samples_root = save_root + 'samples/'
 save_model_root = save_root + 'models/'
 
@@ -246,7 +247,7 @@ def init_param(opt):
     # Save path
     save_root = 'save/{}_{}_{}_dt-{}_lt-{}_mt-{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type,
                                                                            loss_type,
-                                                                        ''.join([m[0] for m in mu_type.split()]),
+                                                                           ''.join([m[0] for m in mu_type.split()]),
                                                                            eval_type,
                                                                            temperature,
                                                                            strftime("%m%d-%H%M_%S", localtime()))

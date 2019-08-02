@@ -24,7 +24,7 @@ class CatGAN_G(LSTMGenerator):
         self.name = 'catgan'
 
         self.k_label = k_label
-        self.temperature = 1.0  # init value is 1.0
+        self.temperature = nn.Parameter(torch.Tensor([1.0]), requires_grad=False)  # init value is 1.0
 
         # Category matrix
         # self.cat_mat = nn.Parameter(torch.rand(self.k_label, embedding_dim), requires_grad=True)

@@ -94,13 +94,8 @@ class EvoCatGANInstructor(BasicInstructor):
 
         if cfg.gen_pretrain:
             for i in range(cfg.n_parent):
-                if not cfg.use_population:
-                    self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-                    self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % i, map_location='cpu')
-                else:
-                    self.log.info('Use population, all parents are pretrained with same weights.')
-                    self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % 0))
-                    self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
+                self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
+                self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
 
         if cfg.clas_pretrain:
             self.log.info('Load  pretrained classifier: {}'.format(cfg.pretrained_clas_path))
@@ -141,23 +136,23 @@ class EvoCatGANInstructor(BasicInstructor):
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
-            if not cfg.use_population:
+            if cfg.temperature == 1:
                 score, fit_score, select_mu = self.evolve_generator(cfg.ADV_g_step)
-            else:
-                score, fit_score, select_mu = self.evolve_generator_population(cfg.ADV_g_step)
+            else:  # evolve with temperature
+                score, fit_score, select_mu = self.evolve_generator_with_temp(adv_epoch, cfg.ADV_g_step)
             d_loss = self.evolve_discriminator(cfg.ADV_d_step)
 
-            # self.update_temperature(adv_epoch, cfg.ADV_train_epoch)   # TODO: update parents temperature
-
-            progress.set_description('mu: %s, d_loss = %.4f' % (' '.join(select_mu), d_loss))
+            best_id = int(np.argmax(score))
+            progress.set_description('mu: %s, d_loss = %.4f, temp = %.4f' % (
+                ' '.join(select_mu), d_loss, self.parents[best_id]['temperature'].item()))
 
             # =====Test=====
             if adv_epoch % cfg.adv_log_step == 0:
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 
-                self.log.info('[ADV] epoch %d: score: %.4f, d_loss: %.4f, %s' % (
-                    adv_epoch, score[best_id], d_loss, self.comb_metrics(fmt_str=True)))
+                self.log.info('[ADV] epoch %d: temp = %.4f, d_loss: %.4f, %s' % (
+                    adv_epoch, self.gen.temperature.item(), d_loss, self.comb_metrics(fmt_str=True)))
 
                 if cfg.if_save and not cfg.if_test:
                     for label_i in range(cfg.k_label):
@@ -168,7 +163,7 @@ class EvoCatGANInstructor(BasicInstructor):
 
         self._run()
         # self.variation(1, self.G_criterion[0])
-        # self.evolve_generator(1)
+        # self.evolve_generator_with_temp(1)
         # self.evolve_discriminator(1)
 
     def pretrain_generator(self, epochs):
@@ -220,15 +215,15 @@ class EvoCatGANInstructor(BasicInstructor):
 
         for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
             for j, criterionG in enumerate(self.G_criterion):
-                # ===Variation===
+                # Variation
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
                 self.variation(evo_g_step, criterionG)
 
-                # ===Evaluation===
+                # Evaluation
                 self.prepare_eval_fake_data()  # evaluation fake data
                 Fq, Fd, score = self.evaluation(cfg.eval_type)
 
-                # ===Selection===
+                # Selection
                 if count < cfg.n_parent:
                     best_score[count] = score
                     best_fit.append([Fq, Fd, score])
@@ -253,6 +248,81 @@ class EvoCatGANInstructor(BasicInstructor):
         self.best_fake_samples = best_fake_samples
         return best_score, np.array(best_fit), selected_mutation
 
+    def evolve_generator_with_temp(self, cur_adv_step, evo_g_step):
+        # evaluation real data
+        self.prepare_eval_real_data()
+
+        best_score = np.zeros(cfg.n_parent)
+        best_fit = []
+        best_child = []
+        best_child_opt = []
+        best_fake_samples = []
+        selected_mutation = []
+        count = 0
+
+        # all children share the same real data output from Discriminator
+        with torch.no_grad():
+            real_samples = [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
+                            for i in range(cfg.k_label)]
+            if cfg.CUDA:
+                real_samples = [real_samples[i].cuda() for i in range(cfg.k_label)]
+            self.d_out_real = [self.dis(real_samples[i]) for i in range(cfg.k_label)]  # d_out_real for each label
+
+        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
+            for j, criterionG in enumerate(self.G_criterion):
+                all_temp = self.get_evo_temp(cur_adv_step)
+
+                temp_score = float('-inf')
+                temp_fit = None
+                temp_child = None
+                temp_child_opt = None
+                temp_fake_samples = None
+
+                # Selection based on temperature, use eval_type=nll
+                for temp in all_temp:
+                    # Variation
+                    self.load_gen(parent, parent_opt)  # load state dict to self.gen
+                    self.gen.temperature.data = temp
+
+                    self.variation(evo_g_step, criterionG)
+
+                    # Evaluation
+                    self.prepare_eval_fake_data()  # evaluation fake data
+                    _, _, t_score = self.evaluation('nll')  # for temp evolutionary
+                    loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
+
+                    if t_score > temp_score:
+                        temp_score = loss_score
+                        temp_fit = [loss_Fq, loss_Fd, loss_score]
+                        temp_child = copy.deepcopy(self.gen.state_dict())
+                        temp_child_opt = copy.deepcopy(self.gen_adv_opt.state_dict())
+                        temp_fake_samples = copy.deepcopy(self.eval_fake_samples)
+
+                # Selection based on mu_type, use eval_type=cfg.eval_type
+                if count < cfg.n_parent:
+                    best_score[count] = temp_score
+                    best_fit.append(temp_fit)
+                    best_child.append(temp_child)
+                    best_child_opt.append(temp_child_opt)
+                    best_fake_samples.append(temp_fake_samples)
+                    selected_mutation.append(criterionG.loss_mode)
+                else:  # larger than previous child, replace it
+                    fit_com = temp_score - best_score
+                    if max(fit_com) > 0:
+                        id_replace = np.where(fit_com == max(fit_com))[0][0]
+                        best_score[id_replace] = temp_score
+                        best_fit[id_replace] = temp_fit
+                        best_child[id_replace] = temp_child
+                        best_child_opt[id_replace] = temp_child_opt
+                        best_fake_samples[id_replace] = temp_fake_samples
+                        selected_mutation[id_replace] = criterionG.loss_mode
+                count += 1
+
+        self.parents = copy.deepcopy(best_child)
+        self.parent_adv_opts = copy.deepcopy(best_child_opt)
+        self.best_fake_samples = best_fake_samples
+        return best_score, np.array(best_fit), selected_mutation
+
     def evolve_generator_population(self, evo_g_step):
         """
         1. randomly choose a parent from population;
@@ -269,7 +339,7 @@ class EvoCatGANInstructor(BasicInstructor):
         best_fake_samples = []
         selected_mutation = []
 
-        # all child share the same real data output from Discriminator
+        # all children share the same real data output from Discriminator
         with torch.no_grad():
             real_samples = [F.one_hot(self.oracle_data_list[i].random_batch()['target'], cfg.vocab_size).float()
                             for i in range(cfg.k_label)]
@@ -383,7 +453,7 @@ class EvoCatGANInstructor(BasicInstructor):
         return np.mean(total_loss)
 
     def evaluation(self, eval_type):
-        """Evaluation all child, update child score. Note that the eval data should be the same"""
+        """Evaluation all children, update child score. Note that the eval data should be the same"""
         if 'nll' in eval_type:
             nll_oracle = []
             nll_self = []
@@ -415,18 +485,26 @@ class EvoCatGANInstructor(BasicInstructor):
         elif eval_type == 'Ra':
             g_loss = 0
             for i in range(cfg.k_label):
-                g_loss += torch.sum(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).pow(2)
-
+                g_loss += -torch.sum(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).pow(2)
             Fq = g_loss.item()
-            Fd = 0
+
+            if cfg.lambda_fd != 0:
+                nll_self = []
+                for label_i in range(cfg.k_label):
+                    self.gen_data_list[label_i].reset(
+                        self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size, label_i=label_i))
+
+                    nll_self.append(self.eval_gen(self.gen,
+                                                  self.gen_data_list[label_i].loader,
+                                                  self.mle_criterion, label_i))  # NLL_self
+                Fd = sum(nll_self)
+            else:
+                Fd = 0
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
         score = cfg.lambda_fq * Fq + cfg.lambda_fd * Fd
         return Fq, Fd, score
-
-    def update_temperature(self, i, N):
-        self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
 
     def train_gen_epoch(self, model, data_loader, criterion, optimizer):
         total_loss = 0
@@ -563,3 +641,22 @@ class EvoCatGANInstructor(BasicInstructor):
 
             if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
                 self.eval_d_out_fake = [self.dis(self.eval_fake_samples[i]) for i in range(cfg.k_label)]
+
+    @staticmethod
+    def get_evo_temp(cur_step):
+        """randomly get different temperature according to current adversarial step"""
+        mu_temp_type = cfg.mu_temp.split()
+        all_temp = list()
+
+        # all_temp.append(get_fixed_temperature(1.0, 0, 0, 'no'))  # temp=1.0
+        all_temp.append(get_fixed_temperature(cfg.temperature, cur_step, cfg.ADV_train_epoch,
+                                              random.choice(mu_temp_type)))  # current step
+        all_temp.append(
+            get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
+                                  random.choice(mu_temp_type)))
+        if cur_step > cfg.evo_temp_step:
+            all_temp.append(
+                get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
+                                      random.choice(mu_temp_type)))
+
+        return torch.Tensor(all_temp)
