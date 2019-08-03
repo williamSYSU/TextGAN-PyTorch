@@ -227,6 +227,41 @@ class BasicInstructor:
                 oracle_nll, gen_nll, div_nll, clas_acc)
         return oracle_nll, gen_nll, div_nll, clas_acc
 
+    def cal_metrics_with_label(self, label_i=None):
+        assert type(label_i) == int, 'missing label'
+        eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+        self.gen_data_list[label_i].reset(eval_samples)
+        oracle_nll = self.eval_gen(self.oracle_list[label_i],
+                                   self.gen_data_list[label_i].loader,
+                                   self.mle_criterion, label_i)
+        gen_nll = self.eval_gen(self.gen,
+                                self.oracle_data_list[label_i].loader,
+                                self.mle_criterion, label_i)
+        self_nll = self.eval_gen(self.gen,
+                                 self.gen_data_list[label_i].loader,
+                                 self.mle_criterion, label_i)
+        # oracle_nll, gen_nll, self_nll = 0, 0, 0
+
+        # Evaluation Classifier accuracy
+        self.clas_data.reset([eval_samples], label_i)
+        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
+
+        return oracle_nll, gen_nll, self_nll, c_acc
+
+    def comb_metrics(self, fmt_str=False):
+        oracle_nll, gen_nll, self_nll, clas_acc = [], [], [], []
+        for label_i in range(cfg.k_label):
+            o_nll, g_nll, s_nll, acc = self.cal_metrics_with_label(label_i)
+            oracle_nll.append(round(o_nll, 4))
+            gen_nll.append(round(g_nll, 4))
+            self_nll.append(round(s_nll, 4))
+            clas_acc.append(round(acc, 4))
+
+        if fmt_str:
+            return 'oracle_NLL = %s, gen_NLL = %s, self_NLL = %s, clas_acc = %s' % (
+                oracle_nll, gen_nll, self_nll, clas_acc)
+        return oracle_nll, gen_nll, self_nll, clas_acc
+
     def _save(self, phrase, epoch):
         """Save model state dict and generator's samples"""
         if phrase != 'ADV':

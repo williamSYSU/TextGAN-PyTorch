@@ -143,10 +143,6 @@ class RelGANInstructor(BasicInstructor):
 
     def update_temperature(self, i, N):
         self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
-        # if i % 2 == 0:
-        #     self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
-        # else:
-        #     self.gen.temperature = 1.0
 
     @staticmethod
     def optimize(opt, loss, model=None, retain_graph=False):

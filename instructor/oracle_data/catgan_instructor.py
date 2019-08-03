@@ -23,12 +23,10 @@ from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
 from utils.gan_loss import GANLoss
-from utils.helpers import get_fixed_temperature
 from utils.text_process import write_tensor
 
 
 class CatGANInstructor(BasicInstructor):
-    """===Version 3==="""
 
     def __init__(self, opt):
         super(CatGANInstructor, self).__init__(opt)
@@ -89,10 +87,6 @@ class CatGANInstructor(BasicInstructor):
             self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
             self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path, map_location='cuda:%d' % cfg.device))
 
-        if cfg.clas_pretrain:
-            self.log.info('Load  pretrained classifier: {}'.format(cfg.pretrained_clas_path))
-            self.clas.load_state_dict(torch.load(cfg.pretrained_clas_path, map_location='cuda:%d' % cfg.device))
-
         if cfg.CUDA:
             for i in range(cfg.k_label):
                 self.oracle_list[i] = self.oracle_list[i].cuda()
@@ -125,18 +119,8 @@ class CatGANInstructor(BasicInstructor):
             progress.set_description(
                 'g_loss = %.4f, d_loss = %.4f, temp = %.4f' % (g_loss, d_loss, self.gen.temperature))
             if adv_epoch % cfg.adv_log_step == 0:
-                # oracle_nll, gen_nll, self_nll = self.comb_metrics(fmt_str=False)
-                # fmt_metrics = 'oracle_NLL = %s, gen_NLL = %s, self_NLL = %s,' % (oracle_nll, gen_nll, self_nll)
                 self.log.info(
                     '[ADV] epoch %d : %s' % (adv_epoch, self.comb_metrics(fmt_str=True)))
-
-                # balance the oracle_nll
-                # ora_arr = np.array(oracle_nll)
-                # if np.max(np.max(ora_arr) - ora_arr) > 0.2:
-                #     self.freeze_id = np.argmin(ora_arr)
-                #     self.log.info('Freezing category %d...', self.freeze_id)
-                # else:
-                #     self.freeze_id = None
 
                 if not cfg.if_test and cfg.if_save:
                     for label_i in range(cfg.k_label):
@@ -150,17 +134,6 @@ class CatGANInstructor(BasicInstructor):
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
         # self.update_temperature(1000,2000)
-        # print(self.gen.temperature)
-        # samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=0)
-        # self.clas_data.reset([samples, torch.zeros(1)])
-        # print('ground truth 0: ',
-        #       self.eval_gen(self.oracle_list[0], self.oracle_data_list[0].loader, self.mle_criterion, label_i=0))
-        # print('ground truth 1: ',
-        #       self.eval_gen(self.oracle_list[1], self.oracle_data_list[1].loader, self.mle_criterion, label_i=0))
-        #
-        # print(self.comb_metrics(fmt_str=True))
-        # self.train_classifier(cfg.PRE_clas_epoch)
-        # print(self.comb_metrics(fmt_str=True))
         pass
 
     def pretrain_generator(self, epochs):
@@ -218,8 +191,6 @@ class CatGANInstructor(BasicInstructor):
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss.append(g_loss.item())
 
-            # self.log.debug('In G: g_loss = %.4f' % g_loss.item())
-
         if g_step == 0:
             return 0
         return np.mean(total_loss)
@@ -260,10 +231,9 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
                 all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
                 all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-                # d_loss += self.dis_criterion(all_d_out_real - all_d_out_fake, torch.ones_like(all_d_out_real))
                 d_loss += self.D_criterion(all_d_out_real, all_d_out_fake)
 
-            self.optimize(self.dis_opt, d_loss, self.gen)
+            self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss.append(d_loss.item())
 
             if phase == 'PRE':
@@ -271,11 +241,6 @@ class CatGANInstructor(BasicInstructor):
         if d_step == 0:
             return 0
         return np.mean(total_loss)
-
-    def update_temperature(self, i, N):
-        self.gen.temperature.data = torch.Tensor([get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)])
-        if cfg.CUDA:
-            self.gen.temperature.data = self.gen.temperature.data.cuda()
 
     def train_gen_epoch(self, model, data_loader, criterion, optimizer):
         total_loss = 0
@@ -311,49 +276,6 @@ class CatGANInstructor(BasicInstructor):
                 total_loss += loss.item()
         return total_loss / len(data_loader)
 
-    @staticmethod
-    def optimize(opt, loss, model=None, retain_graph=False):
-        opt.zero_grad()
-        loss.backward(retain_graph=retain_graph)
-        if model is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
-        opt.step()
-
-    def cal_metrics(self, label_i=None):
-        assert type(label_i) == int, 'missing label'
-        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i)
-        self.gen_data_list[label_i].reset(eval_samples)
-        oracle_nll = self.eval_gen(self.oracle_list[label_i],
-                                   self.gen_data_list[label_i].loader,
-                                   self.mle_criterion, label_i)
-        gen_nll = self.eval_gen(self.gen,
-                                self.oracle_data_list[label_i].loader,
-                                self.mle_criterion, label_i)
-        self_nll = self.eval_gen(self.gen,
-                                 self.gen_data_list[label_i].loader,
-                                 self.mle_criterion, label_i)
-        # oracle_nll, gen_nll, self_nll = 0, 0, 0
-
-        # Evaluation Classifier accuracy
-        self.clas_data.reset([eval_samples], label_i)
-        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
-
-        return oracle_nll, gen_nll, self_nll, c_acc
-
-    def comb_metrics(self, fmt_str=False):
-        oracle_nll, gen_nll, self_nll, clas_acc = [], [], [], []
-        for label_i in range(cfg.k_label):
-            o_nll, g_nll, s_nll, acc = self.cal_metrics(label_i)
-            oracle_nll.append(round(o_nll, 4))
-            gen_nll.append(round(g_nll, 4))
-            self_nll.append(round(s_nll, 4))
-            clas_acc.append(round(acc, 4))
-
-        if fmt_str:
-            return 'oracle_NLL = %s, gen_NLL = %s, self_NLL = %s, clas_acc = %s' % (
-                oracle_nll, gen_nll, self_nll, clas_acc)
-        return oracle_nll, gen_nll, self_nll, clas_acc
-
     def _save(self, phase, epoch, label_i=None):
         assert type(label_i) == int
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
@@ -364,15 +286,12 @@ class CatGANInstructor(BasicInstructor):
     def prepare_train_data(self, which):
         assert which == 'D' or which == 'G', 'only support for D and G!!'
         real_samples_list = [
-            F.one_hot(self.oracle_data_list[i].random_batch()['target'][:cfg.batch_size],
-                      cfg.vocab_size).float().cuda()
+            F.one_hot(self.oracle_data_list[i].random_batch()['target'][:cfg.batch_size], cfg.vocab_size).float().cuda()
             for i in range(cfg.k_label)]
         if which == 'D':
             with torch.no_grad():
-                gen_samples_list = [
-                    self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True,
-                                    label_i=i)
-                    for i in range(cfg.k_label)]
+                gen_samples_list = [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
+                                    for i in range(cfg.k_label)]
         else:  # 'G'
             gen_samples_list = [
                 self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)

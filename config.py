@@ -13,7 +13,7 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 if_save = True
 data_shuffle = False  # False
@@ -22,7 +22,7 @@ gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evocatgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan
+run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -40,19 +40,19 @@ use_all_real_fake = False
 use_population = False
 
 # =====Oracle or Real, type=====
-if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
+if_real_data = True  # if use real data
+dataset = 'image_coco'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
-eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra
+eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra, bleu3, bleu-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
-vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
+vocab_size = 6613  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
 evo_temp_step = 1
-temperature = 2
+temperature = 100
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
@@ -73,7 +73,7 @@ clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
 pre_log_step = 10
-adv_log_step = 40
+adv_log_step = 20
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -90,7 +90,7 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 512  # RelGAN-256
+head_size = 256  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
@@ -122,7 +122,7 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 3
+# device = 2
 # print('device: ', device)
 torch.cuda.set_device(device)
 
@@ -138,12 +138,10 @@ save_model_root = save_root + 'models/'
 
 oracle_state_dict_path = 'pretrain/oracle_data/oracle_lstm.pt'
 oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}.pt'
-# oracle_state_dict_path = 'pretrain/oracle_data/relgan_oracle_lstm.pt'
-# oracle_samples_path = 'pretrain/oracle_data/relgan_oracle_lstm_samples_{}.pt'
 multi_oracle_state_dict_path = 'pretrain/oracle_data/oracle{}_lstm.pt'
 multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
 
-pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
+pretrain_root = 'pretrain/{}/'.format(dataset if if_real_data else 'oracle_data')
 pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
 pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
 pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
@@ -155,6 +153,8 @@ if samples_num == 5000 and 'c' not in run_model:
     raise AssertionError('warning: samples_num={}, run_model={}'.format(samples_num, run_model))
 if head_size == 512 and 'c' not in run_model:
     raise AssertionError('warning: head_size={}, run_model={}'.format(head_size, run_model))
+if dataset == 'emnlp_new' and max_seq_len != 40 or dataset == 'amazon' and max_seq_len != 40:
+    raise AssertionError('warning: dataset={}, seq_len={}'.format(dataset, max_seq_len))
 
 
 # Init settings according to parser
@@ -166,9 +166,10 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, \
+        pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, oracle_samples_path, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
-        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init
+        lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
+        multi_oracle_samples_path
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -258,14 +259,18 @@ def init_param(opt):
     train_data = 'dataset/' + dataset + '.txt'
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
-    pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
+    if max_seq_len == 40:
+        oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}_seq40.pt'
+        multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}_seq40.pt'
+
+    pretrain_root = 'pretrain/{}/'.format(dataset if if_real_data else 'oracle_data')
     pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
     pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
     pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
-                'pretrain/oracle_data', 'pretrain/real_data']
+                'pretrain/oracle_data', 'pretrain/real_data', 'pretrain/{}'.format(dataset)]
     if not if_test:
         dir_list.extend([save_root, save_samples_root, save_model_root])
     for d in dir_list:

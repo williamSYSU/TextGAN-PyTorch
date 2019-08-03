@@ -8,7 +8,6 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import numpy as np
-import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,14 +17,12 @@ from tqdm import tqdm
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from metrics.bleu import BLEU
-from models.CatGAN_D import CatGAN_D
+from models.CatGAN_D import CatGAN_D, CatGAN_C
 from models.CatGAN_G import CatGAN_G
-from models.Oracle import Oracle
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
-from utils.data_utils import create_multi_oracle
-from utils.helpers import get_fixed_temperature
-from utils.text_process import write_tensor, tensor_to_tokens, write_tokens
+from utils.gan_loss import GANLoss
+from utils.text_process import tensor_to_tokens, write_tokens
 
 
 class CatGANInstructor(BasicInstructor):
@@ -35,13 +32,12 @@ class CatGANInstructor(BasicInstructor):
         super(CatGANInstructor, self).__init__(opt)
 
         # generator, discriminator
-        self.oracle_list = [Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                                   cfg.padding_idx, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
-
         self.gen = CatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
                             cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
         self.dis = CatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
                             cfg.padding_idx, gpu=cfg.CUDA)
+        self.clas = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
+                             cfg.padding_idx, gpu=cfg.CUDA)
 
         self.init_model()
 
@@ -49,34 +45,48 @@ class CatGANInstructor(BasicInstructor):
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
+        self.clas_opt = optim.Adam(self.clas.parameters(), lr=cfg.clas_lr)
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = nn.BCEWithLogitsLoss()
+        self.clas_criterion = nn.CrossEntropyLoss()
+        self.G_criterion = GANLoss(cfg.loss_type, 'G', cfg.d_type, CUDA=cfg.CUDA)
+        self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
-        # self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
-        #                             for i in range(cfg.k_label)]
-        # self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
-        # self.all_oracle_data = CatGenDataIter(self.oracle_samples_list)  # Shuffled all oracle data
-        self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
-                              for i in range(cfg.k_label)]
-
-        self.oracle_data_list = [GenDataIter(cfg.cat_train_data.format(cfg.dataset, i)) for i in range(cfg.k_label)]
+        self.train_data_list = [GenDataIter(cfg.cat_train_data.format(cfg.dataset, i)) for i in range(cfg.k_label)]
         self.test_data_list = [GenDataIter(cfg.cat_test_data.format(cfg.dataset, i)) for i in
                                range(cfg.k_label)]
-        self.oracle_samples_list = [self.oracle_data_list[i].target for i in range(cfg.k_label)]
-        self.all_oracle_data = CatGenDataIter(self.oracle_samples_list)
+        self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
+        self.all_train_data = CatGenDataIter(self.train_samples_list)
+        self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
+                              for i in range(cfg.k_label)]
+        self.clas_data = CatClasDataIter(self.train_samples_list)  # init classifier train data
 
         # Metrics
-        self.bleu3 = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                           real_text=tensor_to_tokens(self.test_data_list[i].target, self.index_word_dict),
-                           gram=3) for i in range(cfg.k_label)]
-        self.self_bleu3 = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                                real_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                                gram=3) for i in range(cfg.k_label)]
+        self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+                          real_text=tensor_to_tokens(self.test_data_list[i].target, self.index_word_dict),
+                          gram=[2, 3, 4, 5]) for i in range(cfg.k_label)]
+        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+                               real_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+                               gram=3) for i in range(cfg.k_label)]
+
+    def init_model(self):
+        if cfg.gen_pretrain:
+            self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
+            self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path, map_location='cuda:%d' % cfg.device))
+
+        if cfg.CUDA:
+            self.gen = self.gen.cuda()
+            self.dis = self.dis.cuda()
+            self.clas = self.clas.cuda()
 
     def _run(self):
+        # ===Pre-train Classifier with real data===
+        self.log.info('Start training Classifier...')
+        self.train_classifier(cfg.PRE_clas_epoch)
+
         # ===Pre-train Generator===
         if not cfg.gen_pretrain:
             self.log.info('Starting Generator MLE Training...')
@@ -118,7 +128,7 @@ class CatGANInstructor(BasicInstructor):
         """
         for epoch in range(epochs):
             # =====Train=====
-            pre_loss = self.train_gen_epoch(self.gen, self.all_oracle_data.loader, self.mle_criterion, self.gen_opt)
+            pre_loss = self.train_gen_epoch(self.gen, self.all_train_data.loader, self.mle_criterion, self.gen_opt)
 
             # =====Test=====
             if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
@@ -130,10 +140,19 @@ class CatGANInstructor(BasicInstructor):
                     for label_i in range(cfg.k_label):
                         self._save('MLE', epoch, label_i)
 
+    def train_classifier(self, epochs):
+        self.clas_data.reset(self.train_samples_list)  # TODO: bug: have to reset
+        for epoch in range(epochs):
+            c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
+            self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', epoch, c_loss, c_acc)
+
+        if not cfg.if_test and cfg.if_save:
+            torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
+
     def adv_train_generator(self, g_step):
         total_loss = []
         for step in range(g_step):
-            dis_real_samples, dis_gen_samples = self.prepare_dis_data('G')
+            dis_real_samples, dis_gen_samples = self.prepare_train_data('G')
 
             # =====Train=====
             g_loss = 0
@@ -142,7 +161,7 @@ class CatGANInstructor(BasicInstructor):
             for (real_samples, fake_samples) in zip(dis_real_samples, dis_gen_samples):
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
-                g_loss += self.dis_criterion(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
+                g_loss += self.G_criterion(d_out_real, d_out_fake)
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
 
@@ -151,12 +170,10 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
                 all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
                 all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-                g_loss += self.dis_criterion(all_d_out_fake - all_d_out_real, torch.ones_like(all_d_out_fake))
+                g_loss += self.G_criterion(all_d_out_real, all_d_out_fake)
 
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss.append(g_loss.item())
-
-            # self.log.debug('In G: g_loss = %.4f' % g_loss.item())
 
         if g_step == 0:
             return 0
@@ -165,7 +182,7 @@ class CatGANInstructor(BasicInstructor):
     def adv_train_discriminator(self, d_step, phase='PRE'):
         total_loss = []
         for step in range(d_step):
-            dis_real_samples, dis_gen_samples = self.prepare_dis_data('D')
+            dis_real_samples, dis_gen_samples = self.prepare_train_data('D')
 
             # =====Train=====
             d_loss = 0
@@ -174,21 +191,7 @@ class CatGANInstructor(BasicInstructor):
             for (real_samples, fake_samples) in zip(dis_real_samples, dis_gen_samples):  # for each label samples
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
-
-                # vanilla
-                d_loss += self.dis_criterion(d_out_real - d_out_fake, torch.ones_like(d_out_fake))
-
-                # real --> real
-                # d_out_real_reshape = d_out_real.view(cfg.batch_size, -1)
-                # d_out_fake_reshape = d_out_fake.view(cfg.batch_size, -1)
-                # cut_size = cfg.batch_size // 2
-                # target_size = cfg.batch_size * cfg.num_rep // 2
-                # d_loss += self.dis_criterion(
-                #     d_out_real_reshape[:cut_size].view(-1) - d_out_real_reshape[cut_size:].view(-1),
-                #     torch.zeros(target_size).cuda())
-                # d_loss += self.dis_criterion(
-                #     d_out_fake_reshape[:cut_size].view(-1) - d_out_fake_reshape[cut_size:].view(-1),
-                #     torch.zeros(target_size).cuda())
+                d_loss += self.D_criterion(d_out_real, d_out_fake)
 
                 all_d_out_real.append(d_out_real.view(cfg.batch_size, -1))
                 all_d_out_fake.append(d_out_fake.view(cfg.batch_size, -1))
@@ -198,9 +201,9 @@ class CatGANInstructor(BasicInstructor):
                 all_d_out_fake = torch.cat(all_d_out_fake, dim=0)
                 all_d_out_real = all_d_out_real[torch.randperm(all_d_out_real.size(0))]
                 all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
-                d_loss += self.dis_criterion(all_d_out_real - all_d_out_fake, torch.ones_like(all_d_out_real))
+                d_loss += self.D_criterion(all_d_out_real, all_d_out_fake)
 
-            self.optimize(self.dis_opt, d_loss, self.gen)
+            self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss.append(d_loss.item())
 
             if phase == 'PRE':
@@ -208,18 +211,6 @@ class CatGANInstructor(BasicInstructor):
         if d_step == 0:
             return 0
         return np.mean(total_loss)
-
-    def init_model(self):
-        if cfg.gen_pretrain:
-            self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
-            self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path, map_location='cuda:%d' % cfg.device))
-
-        if cfg.CUDA:
-            self.gen = self.gen.cuda()
-            self.dis = self.dis.cuda()
-
-    def update_temperature(self, i, N):
-        self.gen.temperature = get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)
 
     def train_gen_epoch(self, model, data_loader, criterion, optimizer):
         total_loss = 0
@@ -255,50 +246,6 @@ class CatGANInstructor(BasicInstructor):
                 total_loss += loss.item()
         return total_loss / len(data_loader)
 
-    @staticmethod
-    def optimize(opt, loss, model=None, retain_graph=False):
-        opt.zero_grad()
-        loss.backward(retain_graph=retain_graph)
-        if model is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
-        opt.step()
-
-    def cal_metrics(self, label_i=None):
-        assert type(label_i) == int, 'missing label'
-        self.gen_data_list[label_i].reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i))
-        new_gen_tokens = tensor_to_tokens(self.gen_data_list[label_i].target, self.index_word_dict)
-        self.bleu3[label_i].test_text = new_gen_tokens
-
-        bleu3_score = self.bleu3[label_i].get_score(ignore=False)
-
-        gen_nll = self.eval_gen(self.gen,
-                                self.oracle_data_list[label_i].loader,
-                                self.mle_criterion, label_i)
-
-        self_nll = self.eval_gen(self.gen,
-                                 self.gen_data_list[label_i].loader,
-                                 self.mle_criterion, label_i)
-
-        self.self_bleu3[label_i].test_text = new_gen_tokens
-        self.self_bleu3[label_i].real_text = tensor_to_tokens(
-            self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i), self.index_word_dict)
-        self_bleu3_score = self.self_bleu3[label_i].get_score(ignore=False)
-
-        return bleu3_score, gen_nll, self_nll, self_bleu3_score
-
-    def comb_metrics(self, fmt_str=False):
-        bleu3, gen_nll, self_nll, self_bleu3 = [], [], [], []
-        for label_i in range(cfg.k_label):
-            bl3, g_nll, s_nll, sbl3 = self.cal_metrics(label_i)
-            bleu3.append(float('%.4f' % bl3))
-            gen_nll.append(float('%.4f' % g_nll))
-            self_nll.append(float('%.4f' % s_nll))
-            self_bleu3.append(float('%.4f' % sbl3))
-
-        if fmt_str:
-            return 'bleu3 = %s, gen_NLL = %s, self_NLL = %s, self_bleu3 = %s' % (bleu3, gen_nll, self_nll, self_bleu3)
-        return bleu3, gen_nll, self_nll, self_bleu3
-
     def _save(self, phase, epoch, label_i=None):
         assert type(label_i) == int
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
@@ -306,18 +253,15 @@ class CatGANInstructor(BasicInstructor):
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
         write_tokens(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))
 
-    def prepare_dis_data(self, which):
+    def prepare_train_data(self, which):
         assert which == 'D' or which == 'G', 'only support for D and G!!'
         real_samples_list = [
-            F.one_hot(self.oracle_data_list[i].random_batch()['target'][:cfg.batch_size],
-                      cfg.vocab_size).float().cuda()
+            F.one_hot(self.train_data_list[i].random_batch()['target'][:cfg.batch_size], cfg.vocab_size).float().cuda()
             for i in range(cfg.k_label)]
         if which == 'D':
             with torch.no_grad():
-                gen_samples_list = [
-                    self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True,
-                                    label_i=i)
-                    for i in range(cfg.k_label)]
+                gen_samples_list = [self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
+                                    for i in range(cfg.k_label)]
         else:  # 'G'
             gen_samples_list = [
                 self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)

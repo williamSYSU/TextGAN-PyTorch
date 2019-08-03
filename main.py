@@ -108,10 +108,12 @@ if __name__ == '__main__':
         from instructor.real_data.jsdgan_instructor import JSDGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
         from instructor.real_data.catgan_instructor import CatGANInstructor
+        from instructor.real_data.evogan_instructor import EvoGANInstructor
+        from instructor.real_data.evocatgan_instructor import EvoCatGANInstructor
 
         BarGANInstructor = None
-        EvoGANInstructor = None
-        EvoCatGANInstructor = None
+        SentiGANInstructor = None
+        CSGANInstructor = None
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor

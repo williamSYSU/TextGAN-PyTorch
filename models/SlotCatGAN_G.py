@@ -21,7 +21,7 @@ class SlotCatGAN_G(LSTMGenerator):
                  padding_idx,
                  gpu=False):
         super(SlotCatGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
-        self.name = 'catgan'
+        self.name = 'slotcatgan'
 
         self.k_label = k_label
         self.temperature = 1.0  # init value is 1.0

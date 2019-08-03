@@ -2,13 +2,12 @@
 # @Author       : William
 # @Project      : TextGAN-william
 # @FileName     : evogan_instructor.py
-# @Time         : Created at 2019-07-09
+# @Time         : Created at 2019-08-02
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 import copy
 import numpy as np
-import os
 import random
 import torch
 import torch.nn as nn
@@ -17,12 +16,14 @@ import torch.optim as optim
 from tqdm import tqdm
 
 import config as cfg
-from instructor.oracle_data.instructor import BasicInstructor
+from instructor.real_data.instructor import BasicInstructor
+from metrics.bleu import BLEU
 from models.EvoGAN_D import EvoGAN_D
 from models.EvoGAN_G import EvoGAN_G
 from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss
-from utils.helpers import get_fixed_temperature, get_losses, create_oracle
+from utils.helpers import get_fixed_temperature, get_losses
+from utils.text_process import tensor_to_tokens
 
 
 class EvoGANInstructor(BasicInstructor):
@@ -58,12 +59,15 @@ class EvoGANInstructor(BasicInstructor):
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
-    def init_model(self):
-        if cfg.oracle_pretrain:
-            if not os.path.exists(cfg.oracle_state_dict_path):
-                create_oracle()
-            self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path, map_location='cuda:%d' % cfg.device))
+        # Metrics
+        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                         real_text=tensor_to_tokens(self.test_data.target, self.index_word_dict),
+                         gram=[2, 3, 4, 5])
+        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              gram=3)
 
+    def init_model(self):
         if cfg.dis_pretrain:
             self.log.info(
                 'Load pretrained discriminator: {}'.format(cfg.pretrained_dis_path))
@@ -75,7 +79,6 @@ class EvoGANInstructor(BasicInstructor):
                 self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
 
         if cfg.CUDA:
-            self.oracle = self.oracle.cuda()
             self.gen = self.gen.cuda()
             self.dis = self.dis.cuda()
 
@@ -129,21 +132,6 @@ class EvoGANInstructor(BasicInstructor):
         print('>>> Begin test...')
 
         self._run()
-
-        # self.oracle.max_seq_len = 40
-        # self.oracle_data.max_seq_len = 40
-        # self.oracle.load_state_dict(
-        #     torch.load('/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm.pt'))
-        # big_s = self.oracle.sample(10000, 8 * cfg.batch_size)
-        # small_s = self.oracle.sample(5000, 8 * cfg.batch_size)
-        # torch.save(big_s,
-        #            '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_10000_seq40.pt')
-        # torch.save(small_s,
-        #            '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_5000_seq40.pt')
-        # self.oracle_data.reset(big_s)
-        # gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion)
-        # print('ground truth: %.4f' % gt)
-
         pass
 
     def pretrain_generator(self, epochs):
@@ -154,7 +142,7 @@ class EvoGANInstructor(BasicInstructor):
             self.sig.update()
             if self.sig.pre_sig:
                 # =====Train=====
-                pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
+                pre_loss = self.train_gen_epoch(self.gen, self.train_data.loader, self.mle_criterion, self.gen_opt)
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
@@ -183,7 +171,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # all children share the same real data output from Discriminator
         with torch.no_grad():
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            real_samples = F.one_hot(self.train_data.random_batch()['target'], cfg.vocab_size).float()
             if cfg.CUDA:
                 real_samples = real_samples.cuda()
             self.d_out_real = self.dis(real_samples)
@@ -194,14 +182,6 @@ class EvoGANInstructor(BasicInstructor):
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
                 # single loss
                 self.variation(evo_g_step, criterionG)
-
-                # mixture variation: double loss with random weight
-                # choice = random.sample(range(0, len(self.G_criterion)), 2)
-                # cri_list = [self.G_criterion[choice[0]], self.G_criterion[choice[1]]]
-                # self.variation(evo_g_step, cri_list)
-
-                # all loss with random weight
-                # self.variation(evo_g_step, self.G_criterion)
 
                 # Evaluation
                 self.prepare_eval_fake_data()  # evaluation fake data
@@ -246,7 +226,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # all children share the same real data output from Discriminator
         with torch.no_grad():
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            real_samples = F.one_hot(self.train_data.random_batch()['target'], cfg.vocab_size).float()
             if cfg.CUDA:
                 real_samples = real_samples.cuda()
             self.d_out_real = self.dis(real_samples)
@@ -271,7 +251,7 @@ class EvoGANInstructor(BasicInstructor):
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    _, _, t_score = self.evaluation('nll')  # for temp evolutionary
+                    _, _, t_score = self.evaluation('-Ra')  # for temp evolutionary # TODO: need to change to bleu3
                     loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
 
                     if t_score > temp_score:
@@ -306,74 +286,10 @@ class EvoGANInstructor(BasicInstructor):
         self.best_fake_samples = torch.cat(best_fake_samples, dim=0)
         return best_score, np.array(best_fit), selected_mutation
 
-    # TODO: about to abandon
-    def evolve_generator_population(self, evo_g_step):
-        """
-        1. randomly choose a parent from population;
-        2. variation;
-        3. evaluate all parents and child, choose the best
-        """
-        # evaluation real data
-        self.prepare_eval_real_data()
-
-        best_score = np.zeros(cfg.n_parent)
-        best_fit = []
-        best_child = []
-        best_child_opt = []
-        best_fake_samples = []
-        selected_mutation = []
-
-        # all children share the same real data output from Discriminator
-        with torch.no_grad():
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
-            if cfg.CUDA:
-                real_samples = real_samples.cuda()
-            self.d_out_real = self.dis(real_samples)
-
-        # evaluate all parents
-        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
-            self.load_gen(parent, parent_opt)
-            self.prepare_eval_fake_data()
-            Fq, Fd, score = self.evaluation(cfg.eval_type)
-
-            best_score[i] = score
-            best_fit.append([Fq, Fd, score])
-            best_child.append(copy.deepcopy(self.gen.state_dict()))
-            best_child_opt.append(copy.deepcopy(self.gen_adv_opt.state_dict()))
-            best_fake_samples.append(self.eval_fake_samples)
-
-        # randomly choose a parent, variation
-        target_idx = random.randint(0, len(self.parents) - 1)
-        for j, criterionG in enumerate(self.G_criterion):
-            self.load_gen(self.parents[target_idx], self.parent_adv_opts[target_idx])  # load generator
-
-            # Variation
-            self.variation(evo_g_step, criterionG)
-
-            # Evaluation
-            self.prepare_eval_fake_data()  # evaluation fake data
-            Fq, Fd, score = self.evaluation(cfg.eval_type)
-
-            # Selection
-            fit_com = score - best_score
-            if max(fit_com) > 0:
-                id_replace = np.where(fit_com == max(fit_com))[0][0]
-                best_score[id_replace] = score
-                best_fit[id_replace] = [Fq, Fd, score]
-                best_child[id_replace] = copy.deepcopy(self.gen.state_dict())
-                best_child_opt[id_replace] = copy.deepcopy(self.gen_adv_opt.state_dict())
-                best_fake_samples[id_replace] = self.eval_fake_samples
-                selected_mutation.append(criterionG.loss_mode)
-
-        self.parents = copy.deepcopy(best_child)
-        self.parent_adv_opts = copy.deepcopy(best_child_opt)
-        self.best_fake_samples = torch.cat(best_fake_samples, dim=0)
-        return best_score, np.array(best_fit), selected_mutation
-
     def evolve_discriminator(self, evo_d_step):
         total_loss = 0
         for step in range(evo_d_step):
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            real_samples = F.one_hot(self.train_data.random_batch()['target'], cfg.vocab_size).float()
             gen_samples = self.best_fake_samples[step * cfg.batch_size:(step + 1) * cfg.batch_size]
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
@@ -392,7 +308,7 @@ class EvoGANInstructor(BasicInstructor):
         """Must call self.load_gen() before variation"""
         total_loss = 0
         for step in range(g_step):
-            # real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            # real_samples = F.one_hot(self.train_data.random_batch()['target'], cfg.vocab_size).float()
             gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 # real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
@@ -401,21 +317,8 @@ class EvoGANInstructor(BasicInstructor):
             # =====Train=====
             # d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
-            if type(criterionG) == list:  # multiple loss
-                # mixture variation: double loss
-                rand_w = torch.rand(1).cuda()
-                cri_1, cri_2 = criterionG
-                g_loss = rand_w * cri_1(self.d_out_real, d_out_fake) + (1 - rand_w) * cri_2(self.d_out_real, d_out_fake)
-
-                # all loss
-                # rand_w = F.softmax(torch.rand(len(criterionG)).cuda(), dim=0)
-                # all_loss = []
-                # for crit in criterionG:
-                #     all_loss.append(crit(d_out_real, d_out_fake))
-                # g_loss = torch.dot(rand_w, torch.stack(all_loss, dim=0))
-            else:
-                # g_loss = criterionG(d_out_real, d_out_fake)
-                g_loss = criterionG(self.d_out_real, d_out_fake)
+            # g_loss = criterionG(d_out_real, d_out_fake)
+            g_loss = criterionG(self.d_out_real, d_out_fake)
             self.optimize(self.gen_adv_opt, g_loss, self.gen)
             total_loss += g_loss.item()
 
@@ -423,41 +326,35 @@ class EvoGANInstructor(BasicInstructor):
 
     def evaluation(self, eval_type):
         """Evaluation all children, update child score. Note that the eval data should be the same"""
+        eval_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size)
+        self.gen_data.reset(eval_samples)
+
+        # Fd
+        if cfg.lambda_fd != 0:
+            Fd = self.eval_gen(self.gen, self.gen_data.loader, self.mle_criterion)  # NLL_Self
+        else:
+            Fd = 0
+
+        # Fq
         if eval_type == 'standard':
             Fq = self.eval_d_out_fake.mean().cpu().item()
-            Fd = 0
         elif eval_type == 'rsgan':
             g_loss, d_loss = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'rsgan')
-
             Fq = d_loss.item()
-            Fd = 0
-        elif eval_type == 'nll':
-            self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
+        elif 'bleu' in eval_type:
+            self.bleu.test_text = tensor_to_tokens(eval_samples, self.index_word_dict)
 
             if cfg.lambda_fq != 0:
-                Fq = -self.eval_gen(self.oracle,
-                                    self.gen_data.loader,
-                                    self.mle_criterion)  # NLL_Oracle
+                Fq = self.bleu.get_score(given_gram=int(eval_type[-1]))
             else:
                 Fq = 0
-
-            if cfg.lambda_fd != 0:
-                Fd = self.eval_gen(self.gen,
-                                   self.gen_data.loader,
-                                   self.mle_criterion)  # NLL_Self
-            else:
-                Fd = 0
-        elif eval_type == 'Ra':
+        elif 'Ra' in eval_type:
             g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
             Fq = g_loss.item()
 
-            self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
-            if cfg.lambda_fd != 0:
-                Fd = self.eval_gen(self.gen,
-                                   self.gen_data.loader,
-                                   self.mle_criterion)  # NLL_Self
-            else:
-                Fd = 0
+            # TODO: need to delete
+            if eval_type == '-Ra':
+                Fq = -Fq
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
@@ -467,7 +364,7 @@ class EvoGANInstructor(BasicInstructor):
     def prepare_eval_real_data(self):
         with torch.no_grad():
             self.eval_real_samples = torch.cat(
-                [F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+                [F.one_hot(self.train_data.random_batch()['target'], cfg.vocab_size).float()
                  for _ in range(cfg.eval_b_num)], dim=0)
             if cfg.CUDA:
                 self.eval_real_samples = self.eval_real_samples.cuda()

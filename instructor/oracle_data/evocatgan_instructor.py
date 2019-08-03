@@ -413,7 +413,7 @@ class EvoCatGANInstructor(BasicInstructor):
                 all_d_out_fake = all_d_out_fake[torch.randperm(all_d_out_fake.size(0))]
                 d_loss += self.D_criterion(all_d_out_real, all_d_out_fake)
 
-            self.optimize(self.dis_opt, d_loss, self.gen)
+            self.optimize(self.dis_opt, d_loss, self.dis)
             total_loss.append(d_loss.item())
 
         if evo_d_step == 0:
@@ -539,49 +539,6 @@ class EvoCatGANInstructor(BasicInstructor):
                 loss = criterion(pred, target.view(-1))
                 total_loss += loss.item()
         return total_loss / len(data_loader)
-
-    @staticmethod
-    def optimize(opt, loss, model=None, retain_graph=False):
-        opt.zero_grad()
-        loss.backward(retain_graph=retain_graph)
-        if model is not None:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
-        opt.step()
-
-    def cal_metrics(self, label_i=None):
-        assert type(label_i) == int, 'missing label'
-
-        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i)
-        self.gen_data_list[label_i].reset(eval_samples)
-        oracle_nll = self.eval_gen(self.oracle_list[label_i],
-                                   self.gen_data_list[label_i].loader,
-                                   self.mle_criterion, label_i)
-        gen_nll = self.eval_gen(self.gen,
-                                self.oracle_data_list[label_i].loader,
-                                self.mle_criterion, label_i)
-        self_nll = self.eval_gen(self.gen,
-                                 self.gen_data_list[label_i].loader,
-                                 self.mle_criterion, label_i)
-
-        # Evaluation Classifier accuracy
-        self.clas_data.reset([eval_samples], label_i)
-        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
-
-        return oracle_nll, gen_nll, self_nll, c_acc
-
-    def comb_metrics(self, fmt_str=False):
-        oracle_nll, gen_nll, self_nll, clas_acc = [], [], [], []
-        for label_i in range(cfg.k_label):
-            o_nll, g_nll, s_nll, acc = self.cal_metrics(label_i)
-            oracle_nll.append(round(o_nll, 4))
-            gen_nll.append(round(g_nll, 4))
-            self_nll.append(round(s_nll, 4))
-            clas_acc.append(round(acc, 4))
-
-        if fmt_str:
-            return 'oracle_NLL = %s, gen_NLL = %s, self_NLL = %s, clas_acc = %s' % (
-                oracle_nll, gen_nll, self_nll, clas_acc)
-        return oracle_nll, gen_nll, self_nll, clas_acc
 
     def _save(self, phase, epoch, label_i=None):
         assert type(label_i) == int
