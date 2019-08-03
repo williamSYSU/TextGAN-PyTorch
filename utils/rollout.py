@@ -125,7 +125,7 @@ class ROLLOUT:
 
         return samples
 
-    def rollout_mc_search_rsgan(self, sentences, given_num, current_k):
+    def rollout_mc_search_csgan(self, sentences, given_num, current_k):
         """
         fill up remain tokens with MC search
         :param sentences: size of batch_size * max_seq_len
