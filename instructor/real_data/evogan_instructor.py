@@ -18,6 +18,7 @@ from tqdm import tqdm
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from metrics.bleu import BLEU
+from metrics.selfbleu import SelfBLEU
 from models.EvoGAN_D import EvoGAN_D
 from models.EvoGAN_G import EvoGAN_G
 from utils.data_loader import GenDataIter
@@ -61,11 +62,9 @@ class EvoGANInstructor(BasicInstructor):
 
         # Metrics
         self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.index_word_dict),
-                         gram=[2, 3, 4, 5])
-        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                              gram=3)
+                         real_text=self.test_data, gram=[3])
+        self.self_bleu = SelfBLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                                  gram=3)
 
     def init_model(self):
         if cfg.dis_pretrain:
@@ -79,6 +78,7 @@ class EvoGANInstructor(BasicInstructor):
                 self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
 
         if cfg.CUDA:
+            # self.gen = torch.nn.DataParallel(self.gen)
             self.gen = self.gen.cuda()
             self.dis = self.dis.cuda()
 

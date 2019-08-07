@@ -15,6 +15,7 @@ import torch
 # =====Program=====
 if_test = True
 CUDA = True
+multi_gpu = False
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
@@ -41,13 +42,15 @@ use_population = False
 
 # =====Oracle or Real, type=====
 if_real_data = True  # if use real data
-dataset = 'image_coco'  # oracle, image_coco, emnlp_news, mr_sl15, mr_sl15_cat0
+dataset = 'image_coco'  # oracle, image_coco, emnlp_news, amazon_app_movie, mr15, br15, cr15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra, bleu3, bleu-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
-vocab_size = 6613  # oracle: 5000, coco: 6613, emnlp: 5255, mr15: 7743, mr20: 11422, mr_sl15_cat(0, 1): 4892, 4743, mr_sl20_cat(0, 1): 7433, 7304
+vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_movie: 6273, mr15: 6289, br15: 105926, cr15: 1927
+max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_movie: 40
+ADV_train_epoch = 1500  # SeqGAN, LeakGAN-200, RelGAN-3000
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
@@ -58,10 +61,8 @@ temperature = 100
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 5
-ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
-max_seq_len = 20  # 20
 start_letter = 1
 padding_idx = 0
 start_token = 'BOS'
@@ -73,12 +74,12 @@ clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
 pre_log_step = 10
-adv_log_step = 20
+adv_log_step = 40
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
-cat_train_data = 'dataset/{}_cat{}.txt'
-cat_test_data = 'dataset/testdata//{}_cat{}_test.txt'
+cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
+cat_test_data = 'dataset/testdata//' + dataset + '_cat{}_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1
@@ -95,7 +96,7 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 3  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
@@ -103,7 +104,8 @@ dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 
 # =====log=====
-log_filename = strftime("log/log_%m%d_%H%M_%S", localtime())
+log_time_str = strftime("%m%d_%H%M_%S", localtime())
+log_filename = strftime("log/log_%s" % log_time_str)
 if os.path.exists(log_filename + '.txt'):
     i = 2
     while True:
@@ -122,9 +124,12 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 2
+# device = 3
 # print('device: ', device)
-torch.cuda.set_device(device)
+if multi_gpu:
+    os.environ['CUDA_VISIBLE_DIVICES'] = '2,3'
+else:
+    torch.cuda.set_device(device)
 
 # =====Save Model and samples=====
 save_root = 'save/{}_{}_{}_dt-{}_lt-{}_mt-{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type,
@@ -132,7 +137,7 @@ save_root = 'save/{}_{}_{}_dt-{}_lt-{}_mt-{}_et-{}_temp{}_T{}/'.format(run_model
                                                                        ''.join([m[0] for m in mu_type.split()]),
                                                                        eval_type,
                                                                        temperature,
-                                                                       strftime("%m%d-%H%M_%S", localtime()))
+                                                                       log_time_str)
 save_samples_root = save_root + 'samples/'
 save_model_root = save_root + 'models/'
 
@@ -149,12 +154,13 @@ signal_file = 'run_signal.txt'
 
 tips = ''
 
-if samples_num == 5000 and 'c' not in run_model:
-    raise AssertionError('warning: samples_num={}, run_model={}'.format(samples_num, run_model))
-if head_size == 512 and 'c' not in run_model:
-    raise AssertionError('warning: head_size={}, run_model={}'.format(head_size, run_model))
-if dataset == 'emnlp_new' and max_seq_len != 40 or dataset == 'amazon' and max_seq_len != 40:
-    raise AssertionError('warning: dataset={}, seq_len={}'.format(dataset, max_seq_len))
+if samples_num == 5000:
+    assert 'c' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num, run_model)
+if head_size == 512:
+    assert 'c' in run_model or if_real_data, 'warning: head_size={}, run_model={}'.format(head_size, run_model)
+if max_seq_len == 40:
+    assert dataset == 'emnlp_news' or 'amazon' in dataset, 'warning: dataset={}, seq_len={}'.format(dataset,
+                                                                                                    max_seq_len)
 
 
 # Init settings according to parser
@@ -169,10 +175,11 @@ def init_param(opt):
         pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, oracle_samples_path, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
         lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
-        multi_oracle_samples_path
+        multi_oracle_samples_path, k_label
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
+    k_label = opt.k_label
     dataset = opt.dataset
     model_type = opt.model_type
     loss_type = opt.loss_type
@@ -251,7 +258,7 @@ def init_param(opt):
                                                                            ''.join([m[0] for m in mu_type.split()]),
                                                                            eval_type,
                                                                            temperature,
-                                                                           strftime("%m%d-%H%M_%S", localtime()))
+                                                                           log_time_str)
 
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'

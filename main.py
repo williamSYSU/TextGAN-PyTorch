@@ -10,6 +10,7 @@ def program_config(parser):
     # Program
     parser.add_argument('--if_test', default=cfg.if_test, type=int)
     parser.add_argument('--run_model', default=cfg.run_model, type=str)
+    parser.add_argument('--k_label', default=cfg.k_label, type=int)
     parser.add_argument('--dataset', default=cfg.dataset, type=str)
     parser.add_argument('--model_type', default=cfg.model_type, type=str)
     parser.add_argument('--loss_type', default=cfg.loss_type, type=str)
@@ -90,13 +91,14 @@ def program_config(parser):
 
 # MAIN
 if __name__ == '__main__':
+
     # Hyper Parameters
     parser = argparse.ArgumentParser()
     parser = program_config(parser)
     opt = parser.parse_args()
 
     if opt.if_real_data:
-        opt.max_seq_len, opt.vocab_size = text_process('dataset/' + opt.dataset + '.txt')
+        opt.max_seq_len, opt.vocab_size = text_process(opt.train_data)
     cfg.init_param(opt)
     opt.save_root = cfg.save_root
 
@@ -104,8 +106,6 @@ if __name__ == '__main__':
     if cfg.if_real_data:
         from instructor.real_data.seqgan_instructor import SeqGANInstructor
         from instructor.real_data.leakgan_instructor import LeakGANInstructor
-        from instructor.real_data.maligan_instructor import MaliGANInstructor
-        from instructor.real_data.jsdgan_instructor import JSDGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
         from instructor.real_data.catgan_instructor import CatGANInstructor
         from instructor.real_data.evogan_instructor import EvoGANInstructor
@@ -117,8 +117,6 @@ if __name__ == '__main__':
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
-        from instructor.oracle_data.maligan_instructor import MaliGANInstructor
-        from instructor.oracle_data.jsdgan_instructor import JSDGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
         from instructor.oracle_data.catgan_instructor import CatGANInstructor
         from instructor.oracle_data.bargan_instructor import BarGANInstructor
@@ -127,10 +125,8 @@ if __name__ == '__main__':
         from instructor.oracle_data.sentigan_instructor import SentiGANInstructor
         from instructor.oracle_data.csgan_instructor import CSGANInstructor
     instruction_dict = {
-        'seqgan': SeqGANInstructor,
         'leakgan': LeakGANInstructor,
-        'maligan': MaliGANInstructor,
-        'jsdgan': JSDGANInstructor,
+        'seqgan': SeqGANInstructor,
         'relgan': RelGANInstructor,
         'catgan': CatGANInstructor,
         'bargan': BarGANInstructor,

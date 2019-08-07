@@ -17,6 +17,7 @@ from tqdm import tqdm
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from metrics.bleu import BLEU
+from metrics.selfbleu import SelfBLEU
 from models.CatGAN_D import CatGAN_D, CatGAN_C
 from models.CatGAN_G import CatGAN_G
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
@@ -26,7 +27,6 @@ from utils.text_process import tensor_to_tokens, write_tokens
 
 
 class CatGANInstructor(BasicInstructor):
-    """===Version 3==="""
 
     def __init__(self, opt):
         super(CatGANInstructor, self).__init__(opt)
@@ -55,8 +55,8 @@ class CatGANInstructor(BasicInstructor):
         self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
-        self.train_data_list = [GenDataIter(cfg.cat_train_data.format(cfg.dataset, i)) for i in range(cfg.k_label)]
-        self.test_data_list = [GenDataIter(cfg.cat_test_data.format(cfg.dataset, i)) for i in
+        self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
+        self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i)) for i in
                                range(cfg.k_label)]
         self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
         self.all_train_data = CatGenDataIter(self.train_samples_list)
@@ -68,9 +68,8 @@ class CatGANInstructor(BasicInstructor):
         self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
                           real_text=tensor_to_tokens(self.test_data_list[i].target, self.index_word_dict),
                           gram=[2, 3, 4, 5]) for i in range(cfg.k_label)]
-        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                               real_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                               gram=3) for i in range(cfg.k_label)]
+        self.self_bleu = [SelfBLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                                   gram=3) for i in range(cfg.k_label)]
 
     def init_model(self):
         if cfg.gen_pretrain:
