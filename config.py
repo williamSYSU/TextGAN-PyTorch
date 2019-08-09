@@ -13,17 +13,17 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 multi_gpu = False
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
+run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -42,7 +42,7 @@ use_population = False
 
 # =====Oracle or Real, type=====
 if_real_data = True  # if use real data
-dataset = 'image_coco'  # oracle, image_coco, emnlp_news, amazon_app_movie, mr15, br15, cr15
+dataset = 'amazon_app_movie'  # oracle, image_coco, emnlp_news, amazon_app_movie, mr15, br15, cr15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
@@ -55,7 +55,7 @@ ADV_train_epoch = 1500  # SeqGAN, LeakGAN-200, RelGAN-3000
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
 evo_temp_step = 1
-temperature = 100
+temperature = 1000
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
@@ -91,7 +91,7 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 256  # RelGAN-256
+head_size = 512  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5

@@ -18,14 +18,13 @@ from tqdm import tqdm
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from metrics.bleu import BLEU
-from metrics.selfbleu import SelfBLEU
 from models.EvocatGAN_D import EvoCatGAN_D, EvoCatGAN_C
 from models.EvocatGAN_G import EvoCatGAN_G
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss
 from utils.helpers import get_fixed_temperature
-from utils.text_process import write_tensor, tensor_to_tokens
+from utils.text_process import write_tensor, tensor_to_tokens, get_tokenlized
 
 
 class EvoCatGANInstructor(BasicInstructor):
@@ -65,8 +64,7 @@ class EvoCatGANInstructor(BasicInstructor):
 
         # DataLoader
         self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
-        self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i)) for i in
-                               range(cfg.k_label)]
+        self.test_data_list = [get_tokenlized(cfg.cat_test_data.format(i)) for i in range(cfg.k_label)]
         self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
         self.all_train_data = CatGenDataIter(self.train_samples_list)
         self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
@@ -75,10 +73,10 @@ class EvoCatGANInstructor(BasicInstructor):
 
         # Metrics
         self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                          real_text=tensor_to_tokens(self.test_data_list[i].target, self.index_word_dict),
-                          gram=[2, 3, 4, 5]) for i in range(cfg.k_label)]
-        self.self_bleu = [SelfBLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                                   gram=3) for i in range(cfg.k_label)]
+                          real_text=self.test_data_list[i], gram=[2, 3, 4, 5]) for i in range(cfg.k_label)]
+        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                               real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                               gram=3) for i in range(cfg.k_label)]
 
     def init_model(self):
         if cfg.gen_pretrain:
