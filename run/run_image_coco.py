@@ -26,8 +26,8 @@ run_model = 'evogan'  # evogan
 # === Compare Param ===
 MLE_train_epoch = 150
 gen_pretrain = [1]
-loss_type = 'nsgan'
-mu_type = 'nsgan rsgan'
+loss_type = 'ragan'
+mu_type = 'ragan rsgan'
 eval_type = 'Ra'
 ADV_train_epoch = [1000]
 

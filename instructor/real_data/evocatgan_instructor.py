@@ -70,12 +70,13 @@ class EvoCatGANInstructor(BasicInstructor):
         self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
                               for i in range(cfg.k_label)]
         self.clas_data = CatClasDataIter(self.train_samples_list)  # init classifier train data
+        self.eval_clas_data = CatClasDataIter(self.train_samples_list)
 
         # Metrics
         self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
                           real_text=self.test_data_list[i], gram=[2, 3, 4, 5]) for i in range(cfg.k_label)]
-        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                               real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+                               real_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
                                gram=3) for i in range(cfg.k_label)]
 
     def init_model(self):
@@ -142,10 +143,13 @@ class EvoCatGANInstructor(BasicInstructor):
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        self._run()
+        # self._run()
         # self.variation(1, self.G_criterion[0])
         # self.evolve_generator_with_temp(1)
         # self.evolve_discriminator(1)
+        self.train_classifier(20)
+        self.pretrain_generator(60)
+        pass
 
     def pretrain_generator(self, epochs):
         """
@@ -166,13 +170,17 @@ class EvoCatGANInstructor(BasicInstructor):
                         self._save('MLE', epoch, label_i)
 
     def train_classifier(self, epochs):
+        # eval_s = [self.train_samples_list[i][:200] for i in range(cfg.k_label)]
+        # train_s = [self.train_samples_list[i][200:] for i in range(cfg.k_label)]
         self.clas_data.reset(self.train_samples_list)  # TODO: bug: have to reset
+        # self.clas_data.reset(train_s)  # TODO: bug: have to reset
+        # self.eval_clas_data.reset(eval_s)
         for epoch in range(epochs):
             c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
             self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', epoch, c_loss, c_acc)
 
-        if not cfg.if_test and cfg.if_save:
-            torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
+            # _, eval_acc = self.eval_dis(self.clas, self.eval_clas_data.loader, self.clas_criterion)
+            # self.log.debug('eval_acc = %.4f' % eval_acc)
 
     def evolve_generator(self, evo_g_step):
         # evaluation real data
@@ -442,7 +450,7 @@ class EvoCatGANInstructor(BasicInstructor):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
-        write_tensor(save_sample_path, samples)
+        write_tensor(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))
 
     @staticmethod
     def merge(*args):

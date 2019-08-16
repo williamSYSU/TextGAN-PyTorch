@@ -6,24 +6,24 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
-
+import time
 from time import strftime, localtime
 
 import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
-multi_gpu = False
+multi_gpu = True
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = False
+gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
+run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -41,21 +41,21 @@ use_all_real_fake = False
 use_population = False
 
 # =====Oracle or Real, type=====
-if_real_data = True  # if use real data
-dataset = 'amazon_app_movie'  # oracle, image_coco, emnlp_news, amazon_app_movie, mr15, br15, cr15
+if_real_data = False  # if use real data
+dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_movie, amazon_app_book, mr15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'nsgan'  # rsgan lsgan nsgan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'nsgan rsgan'  # rsgan lsgan nsgan vanilla wgan hinge
+loss_type = 'ragan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'rsgan ragan'  # rsgan lsgan ragan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra, bleu3, bleu-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
-vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_movie: 6273, mr15: 6289, br15: 105926, cr15: 1927
+vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_movie: 6273, amazon_app_book: 6418, mr15: 6289
 max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_movie: 40
-ADV_train_epoch = 1500  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
 evo_temp_step = 1
-temperature = 1000
+temperature = 1
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
@@ -74,7 +74,7 @@ clas_lr = 1e-4  # CatGAN
 clip_norm = 5.0
 
 pre_log_step = 10
-adv_log_step = 40
+adv_log_step = 20
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
@@ -91,7 +91,7 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 512  # RelGAN-256
+head_size = 256  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
@@ -124,20 +124,27 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 3
+# device = 2
 # print('device: ', device)
 if multi_gpu:
-    os.environ['CUDA_VISIBLE_DIVICES'] = '2,3'
+    devices = [1, 2]
+    device = devices[0]
+    torch.cuda.set_device(device)
+    os.environ['CUDA_VISIBLE_DIVICES'] = ','.join(map(str, devices))
 else:
     torch.cuda.set_device(device)
 
 # =====Save Model and samples=====
-save_root = 'save/{}_{}_{}_dt-{}_lt-{}_mt-{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type,
-                                                                       loss_type,
-                                                                       ''.join([m[0] for m in mu_type.split()]),
-                                                                       eval_type,
-                                                                       temperature,
-                                                                       log_time_str)
+save_root = 'save/{}/{}/{}_{}_dt-{}_lt-{}_mt-{}_et-{}_sl{}_temp{}_lfd{}_T{}/'.format(time.strftime("%Y%m%d"),
+                                                                                     dataset, run_model, model_type,
+                                                                                     d_type,
+                                                                                     loss_type,
+                                                                                     '+'.join(
+                                                                                         [m[:2] for m in
+                                                                                          mu_type.split()]),
+                                                                                     eval_type, max_seq_len,
+                                                                                     temperature, lambda_fd,
+                                                                                     log_time_str)
 save_samples_root = save_root + 'samples/'
 save_model_root = save_root + 'models/'
 
@@ -147,9 +154,12 @@ multi_oracle_state_dict_path = 'pretrain/oracle_data/oracle{}_lstm.pt'
 multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
 
 pretrain_root = 'pretrain/{}/'.format(dataset if if_real_data else 'oracle_data')
-pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
-pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
-pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
+pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                                   samples_num)
+pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                               samples_num)
+pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                                 samples_num)
 signal_file = 'run_signal.txt'
 
 tips = ''
@@ -158,9 +168,11 @@ if samples_num == 5000:
     assert 'c' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num, run_model)
 if head_size == 512:
     assert 'c' in run_model or if_real_data, 'warning: head_size={}, run_model={}'.format(head_size, run_model)
-if max_seq_len == 40:
-    assert dataset == 'emnlp_news' or 'amazon' in dataset, 'warning: dataset={}, seq_len={}'.format(dataset,
-                                                                                                    max_seq_len)
+
+
+# if max_seq_len == 40:
+#     assert dataset == 'emnlp_news' or 'amazon' in dataset, 'warning: dataset={}, seq_len={}'.format(dataset,
+#                                                                                                     max_seq_len)
 
 
 # Init settings according to parser
@@ -175,7 +187,7 @@ def init_param(opt):
         pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, oracle_samples_path, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
         lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
-        multi_oracle_samples_path, k_label
+        multi_oracle_samples_path, k_label, cat_train_data, cat_test_data
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -253,27 +265,36 @@ def init_param(opt):
     torch.cuda.set_device(device)
 
     # Save path
-    save_root = 'save/{}_{}_{}_dt-{}_lt-{}_mt-{}_et-{}_temp{}_T{}/'.format(run_model, model_type, dataset, d_type,
-                                                                           loss_type,
-                                                                           ''.join([m[0] for m in mu_type.split()]),
-                                                                           eval_type,
-                                                                           temperature,
-                                                                           log_time_str)
+    save_root = 'save/{}/{}/{}_{}_dt-{}_lt-{}_mt-{}_et-{}_sl{}_temp{}_lfd{}_T{}/'.format(time.strftime("%Y%m%d"),
+                                                                                         dataset, run_model, model_type,
+                                                                                         d_type,
+                                                                                         loss_type,
+                                                                                         '+'.join(
+                                                                                             [m[:2] for m in
+                                                                                              mu_type.split()]),
+                                                                                         eval_type, max_seq_len,
+                                                                                         temperature, lambda_fd,
+                                                                                         log_time_str)
 
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'
 
     train_data = 'dataset/' + dataset + '.txt'
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
+    cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
+    cat_test_data = 'dataset/testdata//' + dataset + '_cat{}_test.txt'
 
     if max_seq_len == 40:
-        oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}_seq40.pt'
-        multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}_seq40.pt'
+        oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}_sl40.pt'
+        multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}_sl40.pt'
 
     pretrain_root = 'pretrain/{}/'.format(dataset if if_real_data else 'oracle_data')
-    pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
-    pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
-    pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sn{}.pt'.format(run_model, model_type, samples_num)
+    pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type,
+                                                                                       max_seq_len, samples_num)
+    pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                                   samples_num)
+    pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                                     samples_num)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
@@ -282,4 +303,4 @@ def init_param(opt):
         dir_list.extend([save_root, save_samples_root, save_model_root])
     for d in dir_list:
         if not os.path.exists(d):
-            os.mkdir(d)
+            os.makedirs(d)

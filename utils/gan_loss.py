@@ -9,7 +9,7 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
 import config as cfg
 
 
@@ -41,7 +41,7 @@ class GANLoss(nn.Module):
 
         if loss_mode == 'lsgan':
             self.loss = nn.MSELoss()
-        elif loss_mode in ['vanilla', 'nsgan', 'rsgan']:
+        elif loss_mode in ['vanilla', 'ragan', 'rsgan']:
             self.loss = nn.BCEWithLogitsLoss()
         elif loss_mode in ['wgan', 'hinge']:
             self.loss = None
@@ -81,10 +81,10 @@ class GANLoss(nn.Module):
         else:
             raise NotImplementedError('which_D name [%s] is not recognized' % self.which_D)
 
-        if self.loss_mode in ['lsgan', 'nsgan']:  # !!! 这里的nsgan就是传统的vanilla
+        if self.loss_mode in ['lsgan', 'ragan']:  # !!! 这里的ragan就是传统的vanilla
             loss_fake = self.loss(prediction_fake, real_tensor)
             g_loss = loss_fake
-        elif self.loss_mode == 'vanilla':  # !!! 这里的vanilla就是论文中的nsgan
+        elif self.loss_mode == 'vanilla':  # !!! 这里的vanilla就是论文中的ragan
             loss_fake = -self.loss(prediction_fake, fake_tensor)
             g_loss = loss_fake
         elif self.loss_mode in ['wgan', 'hinge'] and self.which_D == 'S':
@@ -120,7 +120,7 @@ class GANLoss(nn.Module):
         else:
             raise NotImplementedError('which_D name [%s] is not recognized' % self.which_D)
 
-        if self.loss_mode in ['lsgan', 'nsgan', 'vanilla']:
+        if self.loss_mode in ['lsgan', 'ragan', 'vanilla']:
             loss_fake = self.loss(prediction_fake, fake_tensor)
             loss_real = self.loss(prediction_real, real_tensor)
         elif self.loss_mode == 'wgan':

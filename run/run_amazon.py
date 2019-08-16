@@ -20,23 +20,26 @@ else:
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
 
-num_group = 10  # run num groups of exp
+num_group = 5  # run num groups of exp
 run_model = 'evocatgan'  # catgan, evocatgan
 
 # === Compare Param ===
-MLE_train_epoch = 200
-gen_pretrain = [1, 1]
-loss_type = 'nsgan'
-mu_type = 'nsgan rsgan'
+MLE_train_epoch = 150
+PRE_clas_epoch = 20
+samples_num = 2000
+gen_pretrain = 0
+loss_type = 'ragan'
+mu_type = 'ragan rsgan'
 eval_type = 'Ra'
-ADV_train_epoch = [1500, 1500]
+ADV_train_epoch = [500, 500, 500, 500, 500]
+lambda_fd = [0, 0.001, 0.01, 0.1, 1]
 
 # === Real data===
 if_real_data = int(True)
-dataset = 'amazon_app_movie'  # amazon_app_movie
+dataset = 'mr15'  # amazon_app_book
 temp_adpt = 'exp'
-temperature = [100, 1000]
-tips = '[Real data-Image COCO] EvoCatGAN with temp{}, dataset={}, with head_size=512'.format(temperature, dataset)
+temperature = 100
+tips = '[Real data-Movie Review] Compare impact of lambda_fd: current lambda_fd = {}'
 
 # === Basic Param ===
 if_test = int(False)
@@ -45,9 +48,8 @@ data_shuffle = int(False)
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
 model_type = 'vanilla'
-samples_num = 10000
 n_parent = 1
-ADV_d_step = 3
+ADV_d_step = 5
 ADV_d_epoch = 1
 mem_slots = 1
 num_heads = 2
@@ -60,7 +62,6 @@ use_all_real_fake = int(False)
 use_population = int(False)
 d_out_mean = int(True)
 lambda_fq = 1.0
-lambda_fd = 0.0
 eval_b_num = 8
 
 for i in range(num_group * len(ADV_train_epoch)):
@@ -71,12 +72,13 @@ for i in range(num_group * len(ADV_train_epoch)):
         '--run_model', run_model,
         '--mle_epoch', MLE_train_epoch,
         '--ora_pretrain', ora_pretrain,
-        '--gen_pretrain', gen_pretrain[job_id],
+        '--gen_pretrain', gen_pretrain,
         '--loss_type', loss_type,
         '--mu_type', mu_type,
         '--eval_type', eval_type,
+        '--clas_pre_epoch', PRE_clas_epoch,
         '--adv_epoch', ADV_train_epoch[job_id],
-        '--tips', tips,
+        '--tips', tips.format(lambda_fd[job_id]),
         # Basic Param
         '--if_test', if_test,
         '--if_real_data', if_real_data,
@@ -89,7 +91,7 @@ for i in range(num_group * len(ADV_train_epoch)):
         '--adv_d_step', ADV_d_step,
         '--adv_d_epoch', ADV_d_epoch,
         '--temp_adpt', temp_adpt,
-        '--temperature', temperature[job_id],
+        '--temperature', temperature,
         '--mem_slots', mem_slots,
         '--num_heads', num_heads,
         '--head_size', head_size,
@@ -101,7 +103,7 @@ for i in range(num_group * len(ADV_train_epoch)):
         '--d_out_mean', d_out_mean,
         '--n_parent', n_parent,
         '--lambda_fq', lambda_fq,
-        '--lambda_fd', lambda_fd,
+        '--lambda_fd', lambda_fd[job_id],
         '--eval_b_num', eval_b_num,
     ]
 

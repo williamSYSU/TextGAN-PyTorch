@@ -290,7 +290,8 @@ class CSGANInstructor(BasicInstructor):
     def _save(self, phrase, epoch):
         """Save model state dict and generator's samples"""
         for i in range(cfg.k_label):
-            torch.save(self.gen_list[i].state_dict(),
+            if phrase != 'ADV':
+                torch.save(self.gen_list[i].state_dict(),
                        cfg.save_model_root + 'gen{}_{}_{:05d}.pt'.format(i, phrase, epoch))
             save_sample_path = cfg.save_samples_root + 'samples_d{}_{}_{:05d}.txt'.format(i, phrase, epoch)
             samples = self.gen_list[i].sample(cfg.batch_size, cfg.batch_size)

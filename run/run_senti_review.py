@@ -27,8 +27,8 @@ run_model = 'evocatgan'  # catgan, evocatgan
 # === Compare Param ===
 MLE_train_epoch = 200
 gen_pretrain = [1, 1]
-loss_type = 'nsgan'
-mu_type = 'nsgan rsgan'
+loss_type = 'ragan'
+mu_type = 'ragan rsgan'
 eval_type = 'Ra'
 ADV_train_epoch = [1500, 1500]
 

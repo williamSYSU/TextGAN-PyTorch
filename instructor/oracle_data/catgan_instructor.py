@@ -129,11 +129,17 @@ class CatGANInstructor(BasicInstructor):
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        self._run()
+        # self._run()
         # self.adv_train_discriminator(1)
         # self.adv_train_generator(1)
         # self.adv_train_descriptor(1)
         # self.update_temperature(1000,2000)
+        # for i in range(cfg.k_label):
+        #     self.oracle_list[i].max_seq_len = 40
+        #     self.oracle_data_list[i].max_seq_len = 40
+        #     samples = self.oracle_list[i].sample(10000, 8 * cfg.batch_size)
+        #     torch.save(samples, 'pretrain/oracle_data/oracle{}_lstm_samples_10000_seq40.pt'.format(i))
+        #     print(samples.shape)
         pass
 
     def pretrain_generator(self, epochs):
@@ -276,10 +282,11 @@ class CatGANInstructor(BasicInstructor):
                 total_loss += loss.item()
         return total_loss / len(data_loader)
 
-    def _save(self, phase, epoch, label_i=None):
+    def _save(self, phrase, epoch, label_i=None):
         assert type(label_i) == int
-        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
-        save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
+        if phrase != 'ADV':
+            torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
+        save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phrase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
         write_tensor(save_sample_path, samples)
 

@@ -77,6 +77,9 @@ class EvoGANInstructor(BasicInstructor):
         if cfg.CUDA:
             self.oracle = self.oracle.cuda()
             self.gen = self.gen.cuda()
+
+            if cfg.multi_gpu:
+                self.dis = torch.nn.parallel.DataParallel(self.dis, device_ids=cfg.devices)
             self.dis = self.dis.cuda()
 
     def load_gen(self, parent, parent_opt, mle=False):
