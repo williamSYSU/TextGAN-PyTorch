@@ -19,24 +19,25 @@ else:
 # Executables
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
+devices = '0,1'
 
-num_group = 10  # run num groups of exp
+num_group = 5  # run num groups of exp
 run_model = 'evogan'  # evogan
 
 # === Compare Param ===
 MLE_train_epoch = 150
-gen_pretrain = [1, 1]
+gen_pretrain = 1
 loss_type = 'ragan'
 mu_type = 'ragan rsgan'
 eval_type = 'Ra'
-ADV_train_epoch = [1500, 1500]
+ADV_train_epoch = [1000]
 
 # === Real data===
 if_real_data = int(True)
 dataset = 'emnlp_news'  # emnlp_news
 temp_adpt = 'exp'
-temperature = [100, 1000]
-tips = '[Real data-EMNLP NEWS] EvoGAN with temp{}, dataset={}, with head_size=512'.format(temperature, dataset)
+temperature = 100
+tips = '[Real data-EMNLP NEWS] EvoGAN, with head_size={}'
 
 # === Basic Param ===
 if_test = int(False)
@@ -68,15 +69,16 @@ for i in range(num_group * len(ADV_train_epoch)):
     args = [
         # Compare Param
         '--device', device,
+        '--devices', devices,
         '--run_model', run_model,
         '--mle_epoch', MLE_train_epoch,
         '--ora_pretrain', ora_pretrain,
-        '--gen_pretrain', gen_pretrain[job_id],
+        '--gen_pretrain', gen_pretrain,
         '--loss_type', loss_type,
         '--mu_type', mu_type,
         '--eval_type', eval_type,
         '--adv_epoch', ADV_train_epoch[job_id],
-        '--tips', tips,
+        '--tips', tips.format(head_size),
         # Basic Param
         '--if_test', if_test,
         '--if_real_data', if_real_data,
@@ -89,7 +91,7 @@ for i in range(num_group * len(ADV_train_epoch)):
         '--adv_d_step', ADV_d_step,
         '--adv_d_epoch', ADV_d_epoch,
         '--temp_adpt', temp_adpt,
-        '--temperature', temperature[job_id],
+        '--temperature', temperature,
         '--mem_slots', mem_slots,
         '--num_heads', num_heads,
         '--head_size', head_size,

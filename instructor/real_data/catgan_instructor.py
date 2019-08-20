@@ -77,6 +77,8 @@ class CatGANInstructor(BasicInstructor):
 
         if cfg.CUDA:
             self.gen = self.gen.cuda()
+            if cfg.multi_gpu:
+                self.dis = torch.nn.parallel.DataParallel(self.dis, device_ids=cfg.devices)
             self.dis = self.dis.cuda()
             self.clas = self.clas.cuda()
 

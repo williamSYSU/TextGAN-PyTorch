@@ -15,7 +15,7 @@ import torch
 # =====Program=====
 if_test = True
 CUDA = True
-multi_gpu = True
+multi_gpu = False
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
@@ -31,7 +31,7 @@ dis_init = 'uniform'  # normal, uniform, truncated_normal
 # =====EvoGAN=====
 n_parent = 1
 eval_b_num = 8  # >= n_parent*ADV_d_step
-max_bn = 8 if eval_b_num > 8 else eval_b_num
+max_bn = 1 if eval_b_num > 1 else eval_b_num
 lambda_fq = 1.0
 lambda_fd = 0.0
 d_out_mean = True
@@ -41,8 +41,8 @@ use_all_real_fake = False
 use_population = False
 
 # =====Oracle or Real, type=====
-if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_movie, amazon_app_book, mr15
+if_real_data = True  # if use real data
+dataset = 'emnlp_news'  # oracle, image_coco, emnlp_news, amazon_app_movie, amazon_app_book, mr15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'ragan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'rsgan ragan'  # rsgan lsgan ragan vanilla wgan hinge
@@ -55,7 +55,7 @@ ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
 evo_temp_step = 1
-temperature = 1
+temperature = 100
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
@@ -79,7 +79,7 @@ adv_log_step = 20
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
 cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
-cat_test_data = 'dataset/testdata//' + dataset + '_cat{}_test.txt'
+cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1
@@ -124,14 +124,16 @@ if torch.cuda.is_available():
     device = util_gpu.index(min(util_gpu))
 else:
     device = -1
-# device = 2
+# device = 1
 # print('device: ', device)
 if multi_gpu:
-    devices = [1, 2]
+    devices = '2,3'
+    devices = list(map(int, devices.split(',')))
     device = devices[0]
     torch.cuda.set_device(device)
     os.environ['CUDA_VISIBLE_DIVICES'] = ','.join(map(str, devices))
 else:
+    devices = str(device)
     torch.cuda.set_device(device)
 
 # =====Save Model and samples=====
@@ -164,10 +166,12 @@ signal_file = 'run_signal.txt'
 
 tips = ''
 
-if samples_num == 5000:
+if samples_num == 5000 or samples_num == 2000:
     assert 'c' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num, run_model)
-if head_size == 512:
-    assert 'c' in run_model or if_real_data, 'warning: head_size={}, run_model={}'.format(head_size, run_model)
+
+
+# if head_size == 512:
+#     assert 'c' in run_model or if_real_data, 'warning: head_size={}, run_model={}'.format(head_size, run_model)
 
 
 # if max_seq_len == 40:
@@ -187,7 +191,7 @@ def init_param(opt):
         pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, oracle_samples_path, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
         lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
-        multi_oracle_samples_path, k_label, cat_train_data, cat_test_data
+        multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -201,6 +205,7 @@ def init_param(opt):
     if_real_data = True if opt.if_real_data == 1 else False
     CUDA = True if opt.cuda == 1 else False
     device = opt.device
+    devices = opt.devices
     data_shuffle = opt.shuffle
     gen_init = opt.gen_init
     dis_init = opt.dis_init
@@ -234,6 +239,7 @@ def init_param(opt):
     train_data = opt.train_data
     test_data = opt.test_data
     temp_adpt = opt.temp_adpt
+    evo_temp_step = opt.evo_temp_step
     temperature = opt.temperature
     oracle_pretrain = True if opt.ora_pretrain == 1 else False
     gen_pretrain = True if opt.gen_pretrain == 1 else False
@@ -262,7 +268,14 @@ def init_param(opt):
     tips = opt.tips
 
     # CUDA device
-    torch.cuda.set_device(device)
+    if multi_gpu:
+        if type(devices) == str:
+            devices = list(map(int, devices.split(',')))
+        device = devices[0]
+        torch.cuda.set_device(device)
+        os.environ['CUDA_VISIBLE_DIVICES'] = ','.join(map(str, devices))
+    else:
+        torch.cuda.set_device(device)
 
     # Save path
     save_root = 'save/{}/{}/{}_{}_dt-{}_lt-{}_mt-{}_et-{}_sl{}_temp{}_lfd{}_T{}/'.format(time.strftime("%Y%m%d"),
@@ -282,7 +295,7 @@ def init_param(opt):
     train_data = 'dataset/' + dataset + '.txt'
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
     cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
-    cat_test_data = 'dataset/testdata//' + dataset + '_cat{}_test.txt'
+    cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
     if max_seq_len == 40:
         oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}_sl40.pt'

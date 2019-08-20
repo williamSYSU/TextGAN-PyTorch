@@ -20,25 +20,25 @@ else:
 # Executables
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
+devices = str(device)
 
 num_group = 10  # run num groups of exp
 run_model = 'evocatgan'  # catgan, evocatgan
 
 # === Compare Param ===
-MLE_train_epoch = 200
-gen_pretrain = [1, 1]
+MLE_train_epoch = 150
+gen_pretrain = [0, 1, 1, 1]
 loss_type = 'ragan'
-mu_type = 'ragan rsgan'
+mu_type = 'rsgan ragan'
 eval_type = 'Ra'
-ADV_train_epoch = [1500, 1500]
+ADV_train_epoch = [500, 500, 500, 500]
 
 # === Real data===
 if_real_data = int(True)
 dataset = 'mr15'  # mr15, br15, cr15
 temp_adpt = 'exp'
-temperature = [100, 1000]
-tips = '[Real data-Sentiment Reviews (MR, BR, CR)] EvoCatGAN with temp{}, dataset={}, with head_size=512'.format(
-    temperature, dataset)
+temperature = 100
+tips = '[Real data-MR] EvoCatGAN with head_size=512'
 
 # === Basic Param ===
 if_test = int(False)
@@ -70,6 +70,7 @@ for i in range(num_group * len(ADV_train_epoch)):
     args = [
         # Compare Param
         '--device', device,
+        '--devices', devices,
         '--run_model', run_model,
         '--mle_epoch', MLE_train_epoch,
         '--ora_pretrain', ora_pretrain,
@@ -91,7 +92,7 @@ for i in range(num_group * len(ADV_train_epoch)):
         '--adv_d_step', ADV_d_step,
         '--adv_d_epoch', ADV_d_epoch,
         '--temp_adpt', temp_adpt,
-        '--temperature', temperature[job_id],
+        '--temperature', temperature,
         '--mem_slots', mem_slots,
         '--num_heads', num_heads,
         '--head_size', head_size,

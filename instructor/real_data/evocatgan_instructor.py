@@ -24,7 +24,7 @@ from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss
 from utils.helpers import get_fixed_temperature
-from utils.text_process import write_tensor, tensor_to_tokens, get_tokenlized
+from utils.text_process import tensor_to_tokens, get_tokenlized, write_tokens
 
 
 class EvoCatGANInstructor(BasicInstructor):
@@ -87,6 +87,8 @@ class EvoCatGANInstructor(BasicInstructor):
 
         if cfg.CUDA:
             self.gen = self.gen.cuda()
+            if cfg.multi_gpu:
+                self.dis = torch.nn.parallel.DataParallel(self.dis, device_ids=cfg.devices)
             self.dis = self.dis.cuda()
             self.clas = self.clas.cuda()
 
@@ -450,7 +452,7 @@ class EvoCatGANInstructor(BasicInstructor):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
-        write_tensor(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))
+        write_tokens(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))
 
     @staticmethod
     def merge(*args):

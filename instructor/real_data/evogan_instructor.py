@@ -61,7 +61,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # Metrics
         self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                         real_text=self.test_data, gram=[3])
+                         real_text=self.test_data, gram=[2, 3, 4, 5])
         self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
                               real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
                               gram=3)
@@ -80,6 +80,8 @@ class EvoGANInstructor(BasicInstructor):
         if cfg.CUDA:
             # self.gen = torch.nn.DataParallel(self.gen)
             self.gen = self.gen.cuda()
+            if cfg.multi_gpu:
+                self.dis = torch.nn.parallel.DataParallel(self.dis, device_ids=cfg.devices)
             self.dis = self.dis.cuda()
 
     def load_gen(self, parent, parent_opt, mle=False):

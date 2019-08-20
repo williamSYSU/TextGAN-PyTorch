@@ -9,8 +9,10 @@
 
 from models.discriminator import CNNDiscriminator, CNNClassifier
 
-dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20]
-dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
+# dis_filter_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15]
+# dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160]
+dis_filter_sizes = [2, 3, 4, 5]
+dis_num_filters = [200, 200, 200, 200]
 clas_filter_sizes = [2]
 clas_num_filters = [300]
 

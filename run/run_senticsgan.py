@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
-# @Author       : William
-# @Project      : TextGAN-william
-# @FileName     : run_amazon.py
-# @Time         : Created at 2019-08-04
-# @Blog         : http://zhiweil.ml/
-# @Description  : 
-# Copyrights (C) 2018. All Rights Reserved.
+
+
 import sys
 from subprocess import call
 
@@ -20,57 +15,48 @@ else:
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
 
-num_group = 5  # run num groups of exp
-run_model = 'evocatgan'  # catgan, evocatgan
-# devices = '6,7'
+num_group = 1  # run num groups of exp
+run_model = 'csgan'  # csgan, sentigan
 
 # === Compare Param ===
-MLE_train_epoch = 150
-PRE_clas_epoch = 5
-batch_size = 32
-samples_num = 10000
+MLE_train_epoch = 120
+PRE_clas_epoch = 20
+samples_num = 2000
 gen_pretrain = 1
-loss_type = 'ragan'
-mu_type = 'rsgan ragan'
-# loss_type = 'ragan'
-# mu_type = 'ragan rsgan'
-eval_type = 'Ra'
-evo_temp_step = 1
-# evo_temp_step = 1
-ADV_train_epoch = [500, 500]
-lambda_fd = [0., 0.001]
-# ADV_train_epoch = [500, 500, 500, 500, 500]
-# lambda_fd = [0, 0.001, 0.01, 0.1, 1]
+ADV_train_epoch = [100]
 
 # === Real data===
 if_real_data = int(True)
-dataset = 'amazon_app_book'  # amazon_app_book
+dataset = 'mr15'  # mr15, amazon_app_book
 temp_adpt = 'exp'
-temperature = 100
-tips = '[Real data-amazon_app_book] EvoCatGAN'
-# tips = '[Real data-amazon_app_book] Compare impact of lambda_fd: current lambda_fd = {}'
+temperature = 1
+tips = '[Oracle data] {}'
 
 # === Basic Param ===
 if_test = int(False)
 ora_pretrain = int(True)
 data_shuffle = int(False)
-gen_init = 'truncated_normal'
+gen_init = 'normal'
 dis_init = 'uniform'
 model_type = 'vanilla'
+loss_type = 'ragan'
+mu_type = 'ragan rsgan'
+eval_type = 'Ra'
 n_parent = 1
 ADV_d_step = 5
 ADV_d_epoch = 1
 mem_slots = 1
 num_heads = 2
-head_size = 512
+head_size = 256
 pre_log_step = 10
-adv_log_step = 20
+adv_log_step = 1
 
 # === EvoGAN Param ===
 use_all_real_fake = int(False)
 use_population = int(False)
 d_out_mean = int(True)
 lambda_fq = 1.0
+lambda_fd = 0.0
 eval_b_num = 8
 
 for i in range(num_group * len(ADV_train_epoch)):
@@ -78,22 +64,20 @@ for i in range(num_group * len(ADV_train_epoch)):
     args = [
         # Compare Param
         '--device', device,
-        # '--devices', devices,
         '--run_model', run_model,
         '--mle_epoch', MLE_train_epoch,
+        '--clas_pre_epoch', PRE_clas_epoch,
         '--ora_pretrain', ora_pretrain,
         '--gen_pretrain', gen_pretrain,
         '--loss_type', loss_type,
         '--mu_type', mu_type,
         '--eval_type', eval_type,
-        '--clas_pre_epoch', PRE_clas_epoch,
         '--adv_epoch', ADV_train_epoch[job_id],
-        '--tips', tips,
+        '--tips', tips.format(run_model),
         # Basic Param
         '--if_test', if_test,
         '--if_real_data', if_real_data,
         '--dataset', dataset,
-        '--batch_size', batch_size,
         '--shuffle', data_shuffle,
         '--gen_init', gen_init,
         '--dis_init', dis_init,
@@ -103,7 +87,6 @@ for i in range(num_group * len(ADV_train_epoch)):
         '--adv_d_epoch', ADV_d_epoch,
         '--temp_adpt', temp_adpt,
         '--temperature', temperature,
-        '--evo_temp_step', evo_temp_step,
         '--mem_slots', mem_slots,
         '--num_heads', num_heads,
         '--head_size', head_size,
@@ -115,7 +98,7 @@ for i in range(num_group * len(ADV_train_epoch)):
         '--d_out_mean', d_out_mean,
         '--n_parent', n_parent,
         '--lambda_fq', lambda_fq,
-        '--lambda_fd', lambda_fd[job_id],
+        '--lambda_fd', lambda_fd,
         '--eval_b_num', eval_b_num,
     ]
 

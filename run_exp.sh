@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 for _ in {1..5}; do
-  python main.py --run_model "evocatgan" --if_test 0 --gen_pretrain 0 --if_real_data 1 --dataset mr15 --temperature 100 --loss_type "nsgan" --mu_type "nsgan rsgan" --eval_type "Ra" --adv_epoch 500 --device 7
+  python main.py --run_model "csgan" --if_test 0 --gen_pretrain 0 --if_real_data 1 --dataset mr15 --temperature 100 --loss_type "nsgan" --mu_type "nsgan rsgan" --eval_type "Ra" --adv_epoch 500 --device 7
 done
 
 # Oracle data, catgan and evocatgan
