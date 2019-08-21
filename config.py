@@ -17,13 +17,13 @@ if_test = True
 CUDA = True
 multi_gpu = False
 if_save = True
-data_shuffle = False  # False
+data_shuffle = True  # False
 oracle_pretrain = True  # True
 gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
+run_model = 'evocatgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -42,7 +42,7 @@ use_population = False
 
 # =====Oracle or Real, type=====
 if_real_data = True  # if use real data
-dataset = 'emnlp_news'  # oracle, image_coco, emnlp_news, amazon_app_movie, amazon_app_book, mr15
+dataset = 'mr15'  # oracle, image_coco, emnlp_news, amazon_app_book, amazon_app_movie, mr15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
 loss_type = 'ragan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'rsgan ragan'  # rsgan lsgan ragan vanilla wgan hinge
@@ -275,6 +275,7 @@ def init_param(opt):
         torch.cuda.set_device(device)
         os.environ['CUDA_VISIBLE_DIVICES'] = ','.join(map(str, devices))
     else:
+        devices = str(device)
         torch.cuda.set_device(device)
 
     # Save path

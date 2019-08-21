@@ -101,6 +101,7 @@ if __name__ == '__main__':
 
     if opt.if_real_data:
         opt.max_seq_len, opt.vocab_size = text_process('dataset/' + opt.dataset + '.txt')
+        # opt.max_seq_len, opt.vocab_size = 40, 6418
     cfg.init_param(opt)
     opt.save_root = cfg.save_root
 

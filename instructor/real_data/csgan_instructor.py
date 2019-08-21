@@ -12,7 +12,7 @@ from models.CSGAN_G import CSGAN_G
 from utils import rollout
 from utils.cat_data_loader import CatClasDataIter
 from utils.data_loader import GenDataIter
-from utils.text_process import tensor_to_tokens, get_tokenlized, write_tokens
+from utils.text_process import tensor_to_tokens, write_tokens
 
 
 class CSGANInstructor(BasicInstructor):
@@ -42,20 +42,23 @@ class CSGANInstructor(BasicInstructor):
 
         # DataLoader
         self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
-        self.test_data_list = [get_tokenlized(cfg.cat_test_data.format(i)) for i in range(cfg.k_label)]
+        self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i), if_test_data=True) for i in range(cfg.k_label)]
         self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
+        self.test_samples_list = [self.test_data_list[i].target for i in range(cfg.k_label)]
         self.gen_data_list = [GenDataIter(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size))
                               for i in range(cfg.k_label)]
         self.dis_data = CatClasDataIter(self.train_samples_list)  # fake init (reset during training)
-        self.clas_data = CatClasDataIter(self.train_samples_list)  # init classifier train data
-        self.eval_clas_data = CatClasDataIter(self.train_samples_list)  # init classifier train data
+        self.clas_data = CatClasDataIter(self.test_samples_list)  # init classifier train data
+        self.eval_clas_data = CatClasDataIter(self.test_samples_list)  # init classifier train data
         self.clas_data.reset(self.train_samples_list)
-        self.eval_clas_data.reset(self.train_samples_list)
+        self.eval_clas_data.reset(self.test_samples_list)  # cal ACC metric
 
         # Others
         self.freeze_dis = False
         self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                          real_text=self.test_data_list[i], gram=[2, 3, 4, 5]) for i in range(cfg.k_label)]
+                          real_text=tensor_to_tokens(self.test_data_list[i].target,
+                                                     self.test_data_list[i].index_word_dict), gram=[2, 3, 4, 5])
+                     for i in range(cfg.k_label)]
         self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
                                real_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
                                gram=3) for i in range(cfg.k_label)]
@@ -264,7 +267,7 @@ class CSGANInstructor(BasicInstructor):
 
         # Evaluation Classifier accuracy
         self.clas_data.reset([eval_samples], label_i)
-        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
+        _, c_acc = self.eval_dis(self.eval_clas, self.eval_clas_data.loader, self.clas_criterion)
 
         return bleu_score, gen_nll, self_nll, self_bleu_score, c_acc
 

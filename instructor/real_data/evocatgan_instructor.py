@@ -24,7 +24,7 @@ from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss
 from utils.helpers import get_fixed_temperature
-from utils.text_process import tensor_to_tokens, get_tokenlized, write_tokens
+from utils.text_process import tensor_to_tokens, write_tokens
 
 
 class EvoCatGANInstructor(BasicInstructor):
@@ -64,17 +64,20 @@ class EvoCatGANInstructor(BasicInstructor):
 
         # DataLoader
         self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
-        self.test_data_list = [get_tokenlized(cfg.cat_test_data.format(i)) for i in range(cfg.k_label)]
+        self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i), if_test_data=True) for i in range(cfg.k_label)]
         self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
+        self.test_samples_list = [self.test_data_list[i].target for i in range(cfg.k_label)]
         self.all_train_data = CatGenDataIter(self.train_samples_list)
         self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
                               for i in range(cfg.k_label)]
-        self.clas_data = CatClasDataIter(self.train_samples_list)  # init classifier train data
+        self.clas_data = CatClasDataIter(self.test_samples_list)  # init classifier train data
         self.eval_clas_data = CatClasDataIter(self.train_samples_list)
 
         # Metrics
         self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                          real_text=self.test_data_list[i], gram=[2, 3, 4, 5]) for i in range(cfg.k_label)]
+                          real_text=tensor_to_tokens(self.test_data_list[i].target,
+                                                     self.test_data_list[i].index_word_dict), gram=[2, 3, 4, 5])
+                     for i in range(cfg.k_label)]
         self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
                                real_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
                                gram=3) for i in range(cfg.k_label)]
@@ -149,8 +152,8 @@ class EvoCatGANInstructor(BasicInstructor):
         # self.variation(1, self.G_criterion[0])
         # self.evolve_generator_with_temp(1)
         # self.evolve_discriminator(1)
-        self.train_classifier(20)
-        self.pretrain_generator(60)
+        # self.pretrain_generator(60)
+        self.train_classifier(30)
         pass
 
     def pretrain_generator(self, epochs):
@@ -172,17 +175,14 @@ class EvoCatGANInstructor(BasicInstructor):
                         self._save('MLE', epoch, label_i)
 
     def train_classifier(self, epochs):
-        # eval_s = [self.train_samples_list[i][:200] for i in range(cfg.k_label)]
-        # train_s = [self.train_samples_list[i][200:] for i in range(cfg.k_label)]
-        self.clas_data.reset(self.train_samples_list)  # TODO: bug: have to reset
-        # self.clas_data.reset(train_s)  # TODO: bug: have to reset
-        # self.eval_clas_data.reset(eval_s)
+        # self.clas_data.reset(self.test_samples_list)  # TODO: bug: have to reset
+        # self.eval_clas_data.reset(self.train_samples_list)
         for epoch in range(epochs):
             c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
-            self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', epoch, c_loss, c_acc)
 
-            # _, eval_acc = self.eval_dis(self.clas, self.eval_clas_data.loader, self.clas_criterion)
-            # self.log.debug('eval_acc = %.4f' % eval_acc)
+            _, eval_acc = self.eval_dis(self.clas, self.eval_clas_data.loader, self.clas_criterion)
+            self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f, eval_acc = %.4f', epoch, c_loss, c_acc,
+                          eval_acc)
 
     def evolve_generator(self, evo_g_step):
         # evaluation real data

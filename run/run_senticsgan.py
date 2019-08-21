@@ -15,19 +15,19 @@ else:
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
 
-num_group = 1  # run num groups of exp
-run_model = 'csgan'  # csgan, sentigan
+num_group = 5  # run num groups of exp
+run_model = ['csgan', 'sentigan']  # csgan, sentigan
 
 # === Compare Param ===
 MLE_train_epoch = 120
-PRE_clas_epoch = 20
-samples_num = 2000
+PRE_clas_epoch = 5
+samples_num = 10000
 gen_pretrain = 1
-ADV_train_epoch = [100]
+ADV_train_epoch = [100, 100]
 
 # === Real data===
 if_real_data = int(True)
-dataset = 'mr15'  # mr15, amazon_app_book
+dataset = 'amazon_app_book'  # mr15, amazon_app_book
 temp_adpt = 'exp'
 temperature = 1
 tips = '[Oracle data] {}'
@@ -64,7 +64,7 @@ for i in range(num_group * len(ADV_train_epoch)):
     args = [
         # Compare Param
         '--device', device,
-        '--run_model', run_model,
+        '--run_model', run_model[job_id],
         '--mle_epoch', MLE_train_epoch,
         '--clas_pre_epoch', PRE_clas_epoch,
         '--ora_pretrain', ora_pretrain,
@@ -73,7 +73,7 @@ for i in range(num_group * len(ADV_train_epoch)):
         '--mu_type', mu_type,
         '--eval_type', eval_type,
         '--adv_epoch', ADV_train_epoch[job_id],
-        '--tips', tips.format(run_model),
+        '--tips', tips.format(run_model[job_id]),
         # Basic Param
         '--if_test', if_test,
         '--if_real_data', if_real_data,

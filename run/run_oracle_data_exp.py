@@ -19,22 +19,22 @@ else:
 # Executables
 executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
-devices = str(device)
+# devices = str(device)
 
 num_group = 5  # run num groups of exp
-run_model = 'evogan'
+run_model = 'relgan'
 
 # === Compare Param ===
 MLE_train_epoch = 150
 n_parent = 1
 ora_pretrain = int(True)
 gen_pretrain = int(True)
-loss_type = 'ragan'
+loss_type = 'rsgan'  # ragan
 mu_type = 'rsgan ragan'
 eval_type = 'Ra'
-temperature = [1, 5]
+temperature = [5, 1]
 ADV_train_epoch = [2000, 2000]
-tips = '[Oracle data-Temperature] EvoGAN, temp = {}'
+tips = '[Oracle data-Temperature] RelGAN, temp = {}'
 
 # === Basic Param ===
 if_test = int(False)
