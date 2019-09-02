@@ -30,7 +30,7 @@ gen_pretrain = 1
 loss_type = 'ragan'
 mu_type = 'ragan rsgan'
 eval_type = 'Ra'
-ADV_train_epoch = [1000]
+ADV_train_epoch = [150]
 
 # === Real data===
 if_real_data = int(True)
@@ -52,7 +52,7 @@ ADV_d_step = 3
 ADV_d_epoch = 1
 mem_slots = 1
 num_heads = 2
-head_size = 512
+head_size = 256
 pre_log_step = 10
 adv_log_step = 20
 

@@ -79,7 +79,6 @@ class EvoGANInstructor(BasicInstructor):
                 self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
 
         if cfg.CUDA:
-            # self.gen = torch.nn.DataParallel(self.gen)
             self.gen = self.gen.cuda()
             if cfg.multi_gpu:
                 self.dis = torch.nn.parallel.DataParallel(self.dis, device_ids=cfg.devices)

@@ -13,17 +13,17 @@ import os
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
-multi_gpu = False
+multi_gpu = True
 if_save = True
-data_shuffle = True  # False
+data_shuffle = False  # False
 oracle_pretrain = True  # True
 gen_pretrain = True
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evocatgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
+run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -42,15 +42,15 @@ use_population = False
 
 # =====Oracle or Real, type=====
 if_real_data = True  # if use real data
-dataset = 'mr15'  # oracle, image_coco, emnlp_news, amazon_app_book, amazon_app_movie, mr15
+dataset = 'amazon_app_book'  # oracle, image_coco, emnlp_news, amazon_app_book, amazon_app_movie, mr15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'ragan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan ragan'  # rsgan lsgan ragan vanilla wgan hinge
+loss_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra, bleu3, bleu-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_movie: 6273, amazon_app_book: 6418, mr15: 6289
 max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_movie: 40
-ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 500  # SeqGAN, LeakGAN-200, RelGAN-3000
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
@@ -91,12 +91,12 @@ step_size = 4  # LeakGAN-4
 
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
-head_size = 256  # RelGAN-256
+head_size = 512  # RelGAN-256
 
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_step = 3  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
@@ -127,7 +127,7 @@ else:
 # device = 1
 # print('device: ', device)
 if multi_gpu:
-    devices = '2,3'
+    devices = '0,1'
     devices = list(map(int, devices.split(',')))
     device = devices[0]
     torch.cuda.set_device(device)

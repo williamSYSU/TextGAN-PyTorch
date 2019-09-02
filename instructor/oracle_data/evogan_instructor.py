@@ -122,6 +122,8 @@ class EvoGANInstructor(BasicInstructor):
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 
+                # self.log.info('[ADV] epoch %d: temp = %.4f' % (adv_epoch, self.gen.temperature.item()))
+                # self.log.info(fit_score[best_id])
                 self.log.info('[ADV] epoch %d: temp = %.4f, d_loss = %.4f, %s' % (
                     adv_epoch, self.gen.temperature.item(), d_loss, self.cal_metrics(fmt_str=True)))
 
@@ -132,20 +134,6 @@ class EvoGANInstructor(BasicInstructor):
         print('>>> Begin test...')
 
         self._run()
-
-        # self.oracle.max_seq_len = 40
-        # self.oracle_data.max_seq_len = 40
-        # self.oracle.load_state_dict(
-        #     torch.load('/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm.pt'))
-        # big_s = self.oracle.sample(10000, 8 * cfg.batch_size)
-        # small_s = self.oracle.sample(5000, 8 * cfg.batch_size)
-        # torch.save(big_s,
-        #            '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_10000_seq40.pt')
-        # torch.save(small_s,
-        #            '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data_gt4.08_0731_152125/oracle_lstm_samples_5000_seq40.pt')
-        # self.oracle_data.reset(big_s)
-        # gt = self.eval_gen(self.oracle, self.oracle_data.loader, self.mle_criterion)
-        # print('ground truth: %.4f' % gt)
 
         pass
 
@@ -452,6 +440,7 @@ class EvoGANInstructor(BasicInstructor):
                 Fd = 0
         elif eval_type == 'Ra':
             g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
+            # g_loss = -torch.mean(self.eval_d_out_fake - torch.mean(self.eval_d_out_real))
             Fq = g_loss.item()
 
             self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
