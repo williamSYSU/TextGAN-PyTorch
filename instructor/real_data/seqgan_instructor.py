@@ -42,11 +42,13 @@ class SeqGANInstructor(BasicInstructor):
 
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
-        self.dis_data = DisDataIter(self.oracle_data.random_batch()['target'], self.gen_data.random_batch()['target'])
+        self.dis_data = DisDataIter(self.train_data.random_batch()['target'], self.gen_data.random_batch()['target'])
 
         # Metrics
-        self.bleu3 = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                          real_text=tensor_to_tokens(self.test_data.target, self.index_word_dict),
+        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict), gram=3)
+        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
                           gram=3)
 
     def _run(self):
@@ -98,7 +100,7 @@ class SeqGANInstructor(BasicInstructor):
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
-                pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
+                pre_loss = self.train_gen_epoch(self.gen, self.train_data.loader, self.mle_criterion, self.gen_opt)
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
@@ -139,7 +141,7 @@ class SeqGANInstructor(BasicInstructor):
         # prepare loader for validate
         for step in range(d_step):
             # prepare loader for training
-            pos_samples = self.oracle_data.target
+            pos_samples = self.train_data.target
             neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
             self.dis_data.reset(pos_samples, neg_samples)
 

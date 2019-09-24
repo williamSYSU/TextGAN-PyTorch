@@ -7,9 +7,10 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-from models.generator import LSTMGenerator
 import torch
 import torch.nn.functional as F
+
+from models.generator import LSTMGenerator
 
 
 class SeqGAN_G(LSTMGenerator):

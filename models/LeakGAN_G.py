@@ -14,7 +14,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import config as cfg
-from utils.helpers import truncated_normal_
 
 dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
 goal_out_size = sum(dis_num_filters)
@@ -378,11 +377,3 @@ class LeakGAN_G(nn.Module):
         work_params += list(self.goal2goal.parameters())
 
         return mana_params, work_params
-
-    def init_params(self):
-        for param in self.parameters():
-            if param.requires_grad:
-                if cfg.use_truncated_normal:
-                    truncated_normal_(param, std=0.1)
-                else:
-                    torch.nn.init.normal_(param, std=0.1)

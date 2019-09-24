@@ -6,7 +6,7 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
-
+import time
 from time import strftime, localtime
 
 import os
@@ -30,7 +30,7 @@ dis_init = 'uniform'  # normal, uniform, truncated_normal
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'RSGAN'  # standard, JS, KL, hinge, tv, LS, RSGAN (for RelGAN)
+loss_type = 'rsgan'  # standard, JS, KL, hinge, tv, LS, rsgan (for RelGAN)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
@@ -81,7 +81,8 @@ dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 
 # =====log=====
-log_filename = strftime("log/log_%m%d_%H%M", localtime())
+log_time_str = strftime("%m%d_%H%M_%S", localtime())
+log_filename = strftime("log/log_%s" % log_time_str)
 if os.path.exists(log_filename + '.txt'):
     i = 2
     while True:
@@ -108,17 +109,22 @@ else:
 torch.cuda.set_device(device)
 
 # =====Save Model and samples=====
-save_root = 'save/{}_{}_{}_{}_glr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
-                                                        temperature, strftime("%m%d-%H%M", localtime()))
+save_root = 'save/{}/{}/{}_{}_lt-{}_sl{}_temp{}_T{}/'.format(time.strftime("%Y%m%d"),
+                                                             dataset, run_model, model_type,
+                                                             loss_type, max_seq_len,
+                                                             temperature,
+                                                             log_time_str)
 save_samples_root = save_root + 'samples/'
 save_model_root = save_root + 'models/'
 
 oracle_state_dict_path = 'pretrain/oracle_data/oracle_lstm.pt'
 oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}.pt'
 
-pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
-pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
-pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
+pretrain_root = 'pretrain/{}/'.format(dataset if if_real_data else 'oracle_data')
+pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                                   samples_num)
+pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                               samples_num)
 signal_file = 'run_signal.txt'
 
 tips = ''
@@ -133,7 +139,7 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, dataset, gen_init, dis_init
+        pretrained_dis_path, pretrain_root, if_test, dataset, gen_init, dis_init, oracle_samples_path
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -196,23 +202,31 @@ def init_param(opt):
     torch.cuda.set_device(device)
 
     # Save path
-    save_root = 'save/{}_{}_{}_{}_glr{}_temp{}_T{}/'.format(run_model, model_type, dataset, loss_type, gen_lr,
-                                                            temperature, strftime("%m%d-%H%M", localtime()))
+    save_root = 'save/{}/{}/{}_{}_lt-{}_sl{}_temp{}_T{}/'.format(time.strftime("%Y%m%d"),
+                                                                 dataset, run_model, model_type,
+                                                                 loss_type, max_seq_len,
+                                                                 temperature,
+                                                                 log_time_str)
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'
 
     train_data = 'dataset/' + dataset + '.txt'
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
 
-    pretrain_root = 'pretrain/{}/'.format('real_data' if if_real_data else 'oracle_data')
-    pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}.pt'.format(run_model, model_type)
-    pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}.pt'.format(run_model, model_type)
+    if max_seq_len == 40:
+        oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}_sl40.pt'
+
+    pretrain_root = 'pretrain/{}/'.format(dataset if if_real_data else 'oracle_data')
+    pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type,
+                                                                                       max_seq_len, samples_num)
+    pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                                   samples_num)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
-                'pretrain/oracle_data', 'pretrain/real_data']
+                'pretrain/oracle_data', 'pretrain/real_data', 'pretrain/{}'.format(dataset)]
     if not if_test:
         dir_list.extend([save_root, save_samples_root, save_model_root])
     for d in dir_list:
         if not os.path.exists(d):
-            os.mkdir(d)
+            os.makedirs(d)

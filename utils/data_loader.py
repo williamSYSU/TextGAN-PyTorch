@@ -25,13 +25,15 @@ class GANDataset(Dataset):
 
 
 class GenDataIter:
-    def __init__(self, samples):
+    def __init__(self, samples, if_test_data=False):
         self.batch_size = cfg.batch_size
         self.max_seq_len = cfg.max_seq_len
         self.start_letter = cfg.start_letter
         self.shuffle = cfg.data_shuffle
         if cfg.if_real_data:
             self.word_index_dict, self.index_word_dict = load_dict(cfg.dataset)
+        if if_test_data:
+            self.word_index_dict, self.index_word_dict = get_test_dict(cfg.dataset)
 
         self.loader = DataLoader(
             dataset=GANDataset(self.__read_data__(samples)),
@@ -130,8 +132,8 @@ class DisDataIter:
 
         # shuffle
         perm = torch.randperm(inp.size(0))
-        target = target[perm]
         inp = inp[perm]
+        target = target[perm]
 
         if gpu:
             return inp.cuda(), target.cuda()

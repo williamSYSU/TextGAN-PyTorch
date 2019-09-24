@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
@@ -55,11 +57,14 @@ class CNNDiscriminator(nn.Module):
 
     def init_params(self):
         for param in self.parameters():
-            if param.requires_grad:
-                if cfg.use_truncated_normal:
-                    truncated_normal_(param, std=0.1)
-                else:
-                    torch.nn.init.normal_(param, std=0.1)
+            if param.requires_grad and len(param.shape) > 0:
+                stddev = 1 / math.sqrt(param.shape[0])
+                if cfg.dis_init == 'uniform':
+                    torch.nn.init.uniform_(param, a=-0.05, b=0.05)
+                elif cfg.dis_init == 'normal':
+                    torch.nn.init.normal_(param, std=stddev)
+                elif cfg.dis_init == 'truncated_normal':
+                    truncated_normal_(param, std=stddev)
 
 
 class GRUDiscriminator(nn.Module):
@@ -119,8 +124,11 @@ class GRUDiscriminator(nn.Module):
 
     def init_params(self):
         for param in self.parameters():
-            if param.requires_grad:
-                if cfg.use_truncated_normal:
-                    truncated_normal_(param, std=0.1)
-                else:
-                    torch.nn.init.normal_(param, std=0.1)
+            if param.requires_grad and len(param.shape) > 0:
+                stddev = 1 / math.sqrt(param.shape[0])
+                if cfg.dis_init == 'uniform':
+                    torch.nn.init.uniform_(param, a=-0.05, b=0.05)
+                elif cfg.dis_init == 'normal':
+                    torch.nn.init.normal_(param, std=stddev)
+                elif cfg.dis_init == 'truncated_normal':
+                    truncated_normal_(param, std=stddev)

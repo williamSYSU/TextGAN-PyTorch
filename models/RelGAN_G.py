@@ -6,7 +6,6 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +13,6 @@ import torch.nn.functional as F
 import config as cfg
 from models.generator import LSTMGenerator
 from models.relational_rnn_general import RelationalMemory
-from utils.helpers import truncated_normal_
 
 
 class RelGAN_G(LSTMGenerator):
@@ -106,18 +104,11 @@ class RelGAN_G(LSTMGenerator):
     @staticmethod
     def add_gumbel(o_t, eps=1e-10, gpu=cfg.CUDA):
         """Add o_t by a vector sampled from Gumbel(0,1)"""
-        u = torch.rand(o_t.size())
+        u = torch.zeros(o_t.size())
         if gpu:
             u = u.cuda()
+
+        u.uniform_(0, 1)
         g_t = -torch.log(-torch.log(u + eps) + eps)
         gumbel_t = o_t + g_t
         return gumbel_t
-
-    def init_params(self):
-        for param in self.parameters():
-            if param.requires_grad and len(param.shape) > 0:
-                stddev = 1 / math.sqrt(param.shape[0])
-                if cfg.use_truncated_normal:
-                    truncated_normal_(param, std=stddev)
-                else:
-                    torch.nn.init.normal_(param, std=stddev)

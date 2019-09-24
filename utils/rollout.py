@@ -7,6 +7,7 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
+import copy
 import torch
 import torch.nn.functional as F
 
@@ -14,6 +15,7 @@ import torch.nn.functional as F
 class ROLLOUT:
     def __init__(self, gen, gpu=True):
         self.gen = gen
+        self.old_model = copy.deepcopy(gen)
         self.max_seq_len = gen.max_seq_len
         self.vocab_size = gen.vocab_size
         self.step_size = gen.step_size if gen.name == 'leakgan' else 0
@@ -175,7 +177,6 @@ class ROLLOUT:
                 idx += 1
 
         rewards = rewards.view(batch_size, self.max_seq_len // self.step_size, rollout_num)
-        # rewards = torch.sum(rewards, dim=-1) / rollout_num
         rewards = torch.mean(rewards, dim=-1)
         return rewards
 

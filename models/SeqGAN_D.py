@@ -14,6 +14,6 @@ dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
 
 
 class SeqGAN_D(CNNDiscriminator):
-    def __init__(self, embed_dim, vocab_size, padding_idx, gpu=False, dropout=0.2):
+    def __init__(self, embed_dim, vocab_size, padding_idx, gpu=False, dropout=0.25):
         super(SeqGAN_D, self).__init__(embed_dim, vocab_size, dis_filter_sizes, dis_num_filters, padding_idx, gpu,
                                        dropout)

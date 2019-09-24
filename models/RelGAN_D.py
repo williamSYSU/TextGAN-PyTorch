@@ -60,9 +60,3 @@ class RelGAN_D(CNNDiscriminator):
         logits = self.out2logits(pred).squeeze(1)  # [batch_size * num_rep]
 
         return logits
-
-    def init_params(self):
-        for param in self.parameters():
-            if param.requires_grad:
-                # need to be initialized with uniform
-                torch.nn.init.uniform_(param, -0.05, 0.05)

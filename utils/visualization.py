@@ -9,16 +9,6 @@
 
 import matplotlib.pyplot as plt
 
-# title_dict = {0: 'gen_pre_loss',
-#               1: 'gen_adv_loss',
-#               2: 'gen_mana_loss',
-#               3: 'gen_work_loss',
-#               4: 'dis_loss',
-#               5: 'dis_train_acc',
-#               6: 'dis_eval_acc',
-#               7: 'oracle_NLL',
-#               8: 'gen_NLL',
-#               9: 'BLEU-3'}
 title_dict = {
     'gen_pre_loss': 'pre_loss',
     'gen_adv_loss': 'g_loss',

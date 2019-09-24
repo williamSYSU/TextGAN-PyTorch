@@ -47,9 +47,12 @@ class RelGANInstructor(BasicInstructor):
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
         # Metrics
-        self.bleu3 = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                          real_text=tensor_to_tokens(self.test_data.target, self.index_word_dict),
-                          gram=3)
+        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict),
+                         gram=[2, 3, 4, 5])
+        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              gram=3)
 
     def _run(self):
         # =====PRE-TRAINING (GENERATOR)=====
@@ -59,8 +62,6 @@ class RelGANInstructor(BasicInstructor):
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
                 print('Save pretrain_generator: {}'.format(cfg.pretrained_gen_path))
-
-        self.log.info('Initial generator: %s' % (self.cal_metrics(fmt_str=True)))
 
         # # =====ADVERSARIAL TRAINING=====
         self.log.info('Starting Adversarial Training...')
@@ -101,10 +102,10 @@ class RelGANInstructor(BasicInstructor):
             self.sig.update()
             if self.sig.pre_sig:
                 # =====Train=====
-                pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
+                pre_loss = self.train_gen_epoch(self.gen, self.train_data.loader, self.mle_criterion, self.gen_opt)
 
                 # =====Test=====
-                if epoch % cfg.pre_log_step == 0:
+                if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info('[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (
                         epoch, pre_loss, self.cal_metrics(fmt_str=True)))
 
@@ -119,7 +120,7 @@ class RelGANInstructor(BasicInstructor):
     def adv_train_generator(self, g_step):
         total_loss = 0
         for step in range(g_step):
-            real_samples = self.oracle_data.random_batch()['target']
+            real_samples = self.train_data.random_batch()['target']
             gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
@@ -138,7 +139,7 @@ class RelGANInstructor(BasicInstructor):
     def adv_train_discriminator(self, d_step):
         total_loss = 0
         for step in range(d_step):
-            real_samples = self.oracle_data.random_batch()['target']
+            real_samples = self.train_data.random_batch()['target']
             gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True)
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()

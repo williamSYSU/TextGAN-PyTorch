@@ -45,12 +45,14 @@ class LeakGANInstructor(BasicInstructor):
 
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis))
-        self.dis_data = DisDataIter(self.gen_data.random_batch()['target'], self.oracle_data.random_batch()['target'])
+        self.dis_data = DisDataIter(self.gen_data.random_batch()['target'], self.train_data.random_batch()['target'])
 
         # Metrics
-        self.bleu3 = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                          real_text=tensor_to_tokens(self.test_data.target, self.index_word_dict),
-                          gram=3)
+        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict), gram=3)
+        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              gram=3)
 
     def _run(self):
         for inter_num in range(cfg.inter_epoch):
@@ -112,7 +114,7 @@ class LeakGANInstructor(BasicInstructor):
                 pre_work_loss = 0
 
                 # =====Train=====
-                for i, data in enumerate(self.oracle_data.loader):
+                for i, data in enumerate(self.train_data.loader):
                     inp, target = data['input'], data['target']
                     if cfg.CUDA:
                         inp, target = inp.cuda(), target.cuda()
@@ -121,8 +123,8 @@ class LeakGANInstructor(BasicInstructor):
                     self.optimize_multi(self.gen_opt, [mana_loss, work_loss])
                     pre_mana_loss += mana_loss.data.item()
                     pre_work_loss += work_loss.data.item()
-                pre_mana_loss = pre_mana_loss / len(self.oracle_data.loader)
-                pre_work_loss = pre_work_loss / len(self.oracle_data.loader)
+                pre_mana_loss = pre_mana_loss / len(self.train_data.loader)
+                pre_work_loss = pre_work_loss / len(self.train_data.loader)
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
@@ -170,7 +172,7 @@ class LeakGANInstructor(BasicInstructor):
         """
         for step in range(d_step):
             # prepare loader for training
-            pos_samples = self.oracle_data.target
+            pos_samples = self.train_data.target
             neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
             self.dis_data.reset(pos_samples, neg_samples)
 
@@ -185,22 +187,22 @@ class LeakGANInstructor(BasicInstructor):
 
     def cal_metrics(self, fmt_str=False):
         self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis))
-        self.bleu3.test_text = tensor_to_tokens(self.gen_data.target, self.index_word_dict)
-        bleu3_score = self.bleu3.get_score(ignore=False)
+        self.bleu.test_text = tensor_to_tokens(self.gen_data.target, self.index_word_dict)
+        bleu_score = self.bleu.get_score(ignore=False)
 
         with torch.no_grad():
             gen_nll = 0
-            for data in self.oracle_data.loader:
+            for data in self.train_data.loader:
                 inp, target = data['input'], data['target']
                 if cfg.CUDA:
                     inp, target = inp.cuda(), target.cuda()
                 loss = self.gen.batchNLLLoss(target, self.dis)
                 gen_nll += loss.item()
-            gen_nll /= len(self.oracle_data.loader)
+            gen_nll /= len(self.train_data.loader)
 
         if fmt_str:
-            return 'BLEU-3 = %.4f, gen_NLL = %.4f,' % (bleu3_score, gen_nll)
-        return bleu3_score, gen_nll
+            return 'BLEU-3 = %.4f, gen_NLL = %.4f,' % (bleu_score, gen_nll)
+        return bleu_score, gen_nll
 
     def _save(self, phrase, epoch):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))

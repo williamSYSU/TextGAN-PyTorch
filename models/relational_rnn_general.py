@@ -224,7 +224,6 @@ class RelationalMemory(nn.Module):
         # equation 8: since there is no output gate, h is just a tanh'ed m
         memory = torch.tanh(memory)
 
-        # TODO: check this input flattening is correct
         # sonnet uses this, but i think it assumes time step of 1 for all cases
         # if inputs is (B, T, features) where T > 1, this gets incorrect
         # inputs = inputs.view(inputs.shape[0], -1)

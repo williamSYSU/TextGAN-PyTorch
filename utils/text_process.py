@@ -51,7 +51,7 @@ def get_dict(word_set):
     return word_index_dict, index_word_dict
 
 
-def text_precess(train_text_loc, test_text_loc=None):
+def text_process(train_text_loc, test_text_loc=None):
     """get sequence length and dict size"""
     train_tokens = get_tokenlized(train_text_loc)
     if test_text_loc is None:
@@ -59,46 +59,33 @@ def text_precess(train_text_loc, test_text_loc=None):
     else:
         test_tokens = get_tokenlized(test_text_loc)
     word_set = get_word_list(train_tokens + test_tokens)
-    [word_index_dict, index_word_dict] = get_dict(word_set)
+    word_index_dict, index_word_dict = get_dict(word_set)
 
     if test_text_loc is None:
         sequence_len = len(max(train_tokens, key=len))
     else:
         sequence_len = max(len(max(train_tokens, key=len)), len(max(test_tokens, key=len)))
 
-    # with open(oracle_file, 'w') as outfile:
-    #     outfile.write(text_to_code(tokens, word_index_dict, seq_len))
-
-    return sequence_len, len(word_index_dict) + 1
+    return sequence_len, len(word_index_dict)
 
 
 # ========================================================================
-def init_dict():
+def init_dict(dataset):
     """
     Initialize dictionaries of dataset, please note that '0': padding_idx, '1': start_letter.
     Finally save dictionary files locally.
     """
-    # image_coco
-    tokens = get_tokenlized('dataset/image_coco.txt')
-    tokens.extend(get_tokenlized('dataset/testdata/image_coco_test.txt'))
+    tokens = get_tokenlized('dataset/{}.txt'.format(dataset))
+    # tokens.extend(get_tokenlized('dataset/testdata/{}_test.txt'.format(dataset))) # !!! no test data
     word_set = get_word_list(tokens)
     word_index_dict, index_word_dict = get_dict(word_set)
 
-    with open('dataset/image_coco_wi_dict.txt', 'w') as dictout:
+    with open('dataset/{}_wi_dict.txt'.format(dataset), 'w') as dictout:
         dictout.write(str(word_index_dict))
-    with open('dataset/image_coco_iw_dict.txt', 'w') as dictout:
+    with open('dataset/{}_iw_dict.txt'.format(dataset), 'w') as dictout:
         dictout.write(str(index_word_dict))
 
-    # emnlp
-    tokens = get_tokenlized('dataset/emnlp_news.txt')
-    tokens.extend(get_tokenlized('dataset/testdata/emnlp_news_test.txt'))
-    word_set = get_word_list(tokens)
-    word_index_dict, index_word_dict = get_dict(word_set)
-
-    with open('dataset/emnlp_news_wi_dict.txt', 'w') as dictout:
-        dictout.write(str(word_index_dict))
-    with open('dataset/emnlp_news_iw_dict.txt', 'w') as dictout:
-        dictout.write(str(index_word_dict))
+    print('total tokens: ', len(word_index_dict))
 
 
 def load_dict(dataset):
@@ -107,13 +94,20 @@ def load_dict(dataset):
     wi_path = 'dataset/{}_wi_dict.txt'.format(dataset)
 
     if not os.path.exists(iw_path) or not os.path.exists(iw_path):  # initialize dictionaries
-        init_dict()
+        init_dict(dataset)
 
     with open(iw_path, 'r') as dictin:
         index_word_dict = eval(dictin.read().strip())
     with open(wi_path, 'r') as dictin:
         word_index_dict = eval(dictin.read().strip())
 
+    return word_index_dict, index_word_dict
+
+
+def get_test_dict(dataset):
+    tokens = get_tokenlized('dataset/testdata/{}_test.txt'.format(dataset))
+    word_set = get_word_list(tokens)
+    word_index_dict, index_word_dict = get_dict(word_set)
     return word_index_dict, index_word_dict
 
 

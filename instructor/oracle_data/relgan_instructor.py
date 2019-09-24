@@ -53,8 +53,6 @@ class RelGANInstructor(BasicInstructor):
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
                 print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
 
-        self.log.info('Initial generator: %s' % (self.cal_metrics(fmt_str=True)))
-
         # # =====ADVERSARIAL TRAINING=====
         self.log.info('Starting Adversarial Training...')
         progress = tqdm(range(cfg.ADV_train_epoch))
@@ -97,7 +95,7 @@ class RelGANInstructor(BasicInstructor):
                 pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
 
                 # =====Test=====
-                if epoch % cfg.pre_log_step == 0:
+                if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
 

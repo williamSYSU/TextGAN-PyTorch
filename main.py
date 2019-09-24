@@ -3,6 +3,7 @@ from __future__ import print_function
 import argparse
 
 import config as cfg
+from utils.text_process import text_process
 
 
 def program_config(parser):
@@ -16,7 +17,8 @@ def program_config(parser):
     parser.add_argument('--cuda', default=cfg.CUDA, type=int)
     parser.add_argument('--device', default=cfg.device, type=int)
     parser.add_argument('--shuffle', default=cfg.data_shuffle, type=int)
-    parser.add_argument('--use_truncated_normal', default=cfg.use_truncated_normal, type=int)
+    parser.add_argument('--gen_init', default=cfg.gen_init, type=str)
+    parser.add_argument('--dis_init', default=cfg.dis_init, type=str)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
@@ -77,6 +79,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser = program_config(parser)
     opt = parser.parse_args()
+
+    if opt.if_real_data:
+        opt.max_seq_len, opt.vocab_size = text_process('dataset/' + opt.dataset + '.txt')
     cfg.init_param(opt)
     opt.save_root = cfg.save_root
 

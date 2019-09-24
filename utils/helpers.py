@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from utils.data_loader import GenDataIter
+
 
 class Signal:
     """Running signal to control training process"""
@@ -57,10 +59,10 @@ def create_logger(name, silent=False, to_disk=False, log_file=None):
 
 def create_oracle():
     """Create a new Oracle model and Oracle's samples"""
-    from models.Oracle import Oracle
     import config as cfg
+    from models.Oracle import Oracle
     from instructor.oracle_data.instructor import BasicInstructor
-    from utils.data_loader import GenDataIter
+
     print('Creating Oracle...')
     oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
                     cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
@@ -86,7 +88,7 @@ def get_fixed_temperature(temper, i, N, adapt):
     N = 5000
 
     if adapt == 'no':
-        temper_var_np = temper  # no increase
+        temper_var_np = 1.0  # no increase, origin: temper
     elif adapt == 'lin':
         temper_var_np = 1 + i / (N - 1) * (temper - 1)  # linear increase
     elif adapt == 'exp':
@@ -141,7 +143,7 @@ def get_losses(d_out_real, d_out_fake, loss_type='JS'):
         d_loss = torch.mean(nn.Tanh(d_out_fake) - nn.Tanh(d_out_real))
         g_loss = torch.mean(-nn.Tanh(d_out_fake))
 
-    elif loss_type == 'RSGAN':  # relativistic standard GAN
+    elif loss_type == 'rsgan':  # relativistic standard GAN
         d_loss = bce_loss(d_out_real - d_out_fake, torch.ones_like(d_out_real))
         g_loss = bce_loss(d_out_fake - d_out_real, torch.ones_like(d_out_fake))
 

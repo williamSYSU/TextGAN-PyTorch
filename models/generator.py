@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 
@@ -75,11 +77,14 @@ class LSTMGenerator(nn.Module):
 
     def init_params(self):
         for param in self.parameters():
-            if param.requires_grad:
-                if cfg.use_truncated_normal:
-                    truncated_normal_(param, std=0.1)
-                else:
-                    torch.nn.init.normal_(param, std=0.1)
+            if param.requires_grad and len(param.shape) > 0:
+                stddev = 1 / math.sqrt(param.shape[0])
+                if cfg.gen_init == 'uniform':
+                    torch.nn.init.uniform_(param, a=-0.05, b=0.05)
+                elif cfg.gen_init == 'normal':
+                    torch.nn.init.normal_(param, std=stddev)
+                elif cfg.gen_init == 'truncated_normal':
+                    truncated_normal_(param, std=stddev)
 
     def init_oracle(self):
         for param in self.parameters():

@@ -8,6 +8,7 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
+import torch.nn as nn
 
 import config as cfg
 from utils.data_loader import GenDataIter
@@ -17,8 +18,8 @@ from utils.text_process import load_dict, write_tokens, tensor_to_tokens
 
 class BasicInstructor:
     def __init__(self, opt):
-        self.log = create_logger(__name__, silent=False, to_disk=False if cfg.if_test else True,
-                                 log_file=None if cfg.if_test
+        self.log = create_logger(__name__, silent=False, to_disk=True,
+                                 log_file=cfg.log_filename if cfg.if_test
                                  else [cfg.log_filename, cfg.save_root + 'log.txt'])
         self.sig = Signal(cfg.signal_file)
         self.opt = opt
@@ -28,8 +29,15 @@ class BasicInstructor:
         self.word_index_dict, self.index_word_dict = load_dict(cfg.dataset)
 
         # Dataloader
-        self.oracle_data = GenDataIter(cfg.train_data)
-        self.test_data = GenDataIter(cfg.test_data)
+        self.train_data = GenDataIter(cfg.train_data)
+        self.test_data = GenDataIter(cfg.test_data, if_test_data=True)
+        self.gen_data = None
+
+        # Criterion
+        self.mle_criterion = nn.NLLLoss()
+        self.dis_criterion = None
+        self.bleu = None
+        self.self_bleu = None
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -132,6 +140,8 @@ class BasicInstructor:
     def optimize(opt, loss, model=None, retain_graph=False):
         opt.zero_grad()
         loss.backward(retain_graph=retain_graph)
+        if model is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.clip_norm)
         opt.step()
 
     def show_config(self):
@@ -146,17 +156,28 @@ class BasicInstructor:
         Calculate metrics
         :param fmt_str: if return format string for logging
         """
-        self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
-        self.bleu3.test_text = tensor_to_tokens(self.gen_data.target, self.index_word_dict)
-        bleu3_score = self.bleu3.get_score(ignore=False)
+        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
+        self.gen_data.reset(eval_samples)
+        new_gen_tokens = tensor_to_tokens(eval_samples, self.index_word_dict)
+        self.bleu.test_text = new_gen_tokens
+        self.self_bleu.real_text = new_gen_tokens
+        self.self_bleu.test_text = tensor_to_tokens(self.gen.sample(200, 200), self.index_word_dict)
 
+        # BLEU-[2,3,4,5]
+        bleu_score = self.bleu.get_score(ignore=False)
+
+        # Self-BLEU
+        self_bleu_score = self.self_bleu.get_score(ignore=False)
+
+        # NLL_gen
         gen_nll = self.eval_gen(self.gen,
-                                self.oracle_data.loader,
+                                self.train_data.loader,
                                 self.mle_criterion)
 
         if fmt_str:
-            return 'BLEU-3 = %.4f, gen_NLL = %.4f,' % (bleu3_score, gen_nll)
-        return bleu3_score, gen_nll
+            return 'BLEU-%s = %s, gen_NLL = %.4f, self_bleu = %s,' % (
+                self.bleu.gram, bleu_score, gen_nll, self_bleu_score)
+        return bleu_score, gen_nll, self_bleu_score
 
     def _save(self, phrase, epoch):
         """Save model state dict and generator's samples"""
