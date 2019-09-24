@@ -83,7 +83,8 @@ class GANLoss(nn.Module):
 
         if self.loss_mode in ['lsgan', 'ragan']:  # !!! 这里的ragan就是传统的vanilla
             loss_fake = self.loss(prediction_fake, real_tensor)
-            g_loss = loss_fake
+            loss_real = self.loss(prediction_real, fake_tensor)
+            g_loss = loss_fake + loss_real
         elif self.loss_mode == 'vanilla':  # !!! 这里的vanilla就是论文中的ragan
             loss_fake = -self.loss(prediction_fake, fake_tensor)
             g_loss = loss_fake
