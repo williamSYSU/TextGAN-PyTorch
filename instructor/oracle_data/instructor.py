@@ -29,6 +29,7 @@ class BasicInstructor:
         # oracle, generator, discriminator
         self.oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                              cfg.padding_idx, gpu=cfg.CUDA)
+        self.dis = None
 
         self.show_config()
 
@@ -38,6 +39,13 @@ class BasicInstructor:
             self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
         self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
         self.oracle_data = GenDataIter(self.oracle_samples)
+
+        self.gen_data = None
+        self.dis_data = None
+
+        # Criterion
+        self.mle_criterion = nn.NLLLoss()
+        self.dis_criterion = None
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
