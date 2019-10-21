@@ -40,8 +40,8 @@ class BLEU(Metrics):
             self.get_reference()
             self.is_first = False
         if is_fast:
-            return self.get_bleu_fast(given_gram, fmt_str)
-        return self.get_bleu(given_gram, fmt_str)
+            return self.get_bleu_fast(given_gram)
+        return self.get_bleu(given_gram)
 
     def get_reference(self):
         reference = self.real_text.copy()
