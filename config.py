@@ -13,17 +13,17 @@ import os
 import torch
 
 # =====Program=====
-if_test = False
+if_test = True
 CUDA = True
 multi_gpu = False
 if_save = True
 data_shuffle = False  # False
 oracle_pretrain = True  # True
-gen_pretrain = True
+gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'evogan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan
+run_model = 'maligan'  # seqgan, leakgan, relgan, catgan, bargan, evogan, evocatgan, sentigan, csgan, maligan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -44,13 +44,13 @@ use_population = False
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, amazon_app_movie, mr15
 model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
-loss_type = 'ragan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'ragan'  # rsgan lsgan ragan vanilla wgan hinge
+loss_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
+mu_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra, bleu3, bleu-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_movie: 6273, amazon_app_book: 6418, mr15: 6289
 max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_movie: 40
-ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
+ADV_train_epoch = 100  # SeqGAN, LeakGAN-200, RelGAN-3000
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
@@ -59,7 +59,7 @@ temperature = 1
 
 # =====Basic Train=====
 samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
-MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
+MLE_train_epoch = 80  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 5
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
@@ -82,8 +82,8 @@ cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
 cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
 # =====Generator=====
-ADV_g_step = 1  # 1
-rollout_num = 4  # 4
+ADV_g_step = 50  # 1
+rollout_num = 16  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
 goal_size = 16  # LeakGAN-16
@@ -96,8 +96,8 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 3  # SeqGAN,LeakGAN,RelGAN-5
-ADV_d_epoch = 1  # SeqGAN,LeakGAN-3
+ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
 dis_hidden_dim = 64

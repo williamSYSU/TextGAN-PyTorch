@@ -115,18 +115,23 @@ if __name__ == '__main__':
         from instructor.real_data.evocatgan_instructor import EvoCatGANInstructor
         from instructor.real_data.csgan_instructor import CSGANInstructor
         from instructor.real_data.sentigan_instructor import SentiGANInstructor
+
+        MaliGANInstructor = None
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
+        from instructor.oracle_data.maligan_instructor import MaliGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
         from instructor.oracle_data.catgan_instructor import CatGANInstructor
         from instructor.oracle_data.evogan_instructor import EvoGANInstructor
         from instructor.oracle_data.evocatgan_instructor import EvoCatGANInstructor
         from instructor.oracle_data.sentigan_instructor import SentiGANInstructor
         from instructor.oracle_data.csgan_instructor import CSGANInstructor
+
     instruction_dict = {
-        'leakgan': LeakGANInstructor,
         'seqgan': SeqGANInstructor,
+        'leakgan': LeakGANInstructor,
+        'maligan': MaliGANInstructor,
         'relgan': RelGANInstructor,
         'catgan': CatGANInstructor,
         'evogan': EvoGANInstructor,
