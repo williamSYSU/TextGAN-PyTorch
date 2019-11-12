@@ -163,13 +163,4 @@ def mean_list(x, y):
 
 
 if __name__ == '__main__':
-    # create_oracle()
-    # clean_amazon_long_sentence()
-    # create_oracle()
-    # create_multi_oracle(2)
-    # create_specific_oracle(5.745, 5.754, 5)
-    # create_specific_oracle(4.05, 4.09, 3)
-    # for i in range(10):
-    #     save_path = '/home/zhiwei/Documents/TextGAN-william/pretrain/oracle_data{}'.format(i)
-    #     create_many_oracle(from_a=5.9, to_b=5.91, num=1, save_path=save_path)
     pass

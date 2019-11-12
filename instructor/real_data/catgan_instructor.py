@@ -148,12 +148,7 @@ class CatGANInstructor(BasicInstructor):
     def _test(self):
         self.log.debug('>>> Begin test...')
 
-        # self._run()
-        # self.variation(1, self.G_criterion[0])
-        # self.evolve_generator_with_temp(1)
-        # self.evolve_discriminator(1)
-        # self.pretrain_generator(60)
-        self.train_classifier(30)
+        self._run()
         pass
 
     def pretrain_generator(self, epochs):
