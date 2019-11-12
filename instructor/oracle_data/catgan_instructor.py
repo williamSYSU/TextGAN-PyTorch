@@ -453,7 +453,7 @@ class CatGANInstructor(BasicInstructor):
         """Evaluation all children, update child score. Note that the eval data should be the same"""
         if 'nll' in eval_type:
             nll_oracle = []
-            nll_self = []
+            nll_div = []
             for label_i in range(cfg.k_label):
                 self.gen_data_list[label_i].reset(
                     self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size, label_i=label_i))
@@ -463,22 +463,22 @@ class CatGANInstructor(BasicInstructor):
                                                      self.gen_data_list[label_i].loader,
                                                      self.mle_criterion, label_i))  # NLL_Oracle
                 if cfg.lambda_fd != 0:
-                    nll_self.append(self.eval_gen(self.gen,
-                                                  self.gen_data_list[label_i].loader,
-                                                  self.mle_criterion, label_i))  # NLL_self
+                    nll_div.append(self.eval_gen(self.gen,
+                                                 self.gen_data_list[label_i].loader,
+                                                 self.mle_criterion, label_i))  # NLL_div
 
             if 'f1' in eval_type:
                 if cfg.k_label == 1:
                     Fq = nll_oracle[0] if len(nll_oracle) > 0 else 0
-                    Fd = nll_self[0] if len(nll_self) > 0 else 0
+                    Fd = nll_div[0] if len(nll_div) > 0 else 0
                 elif cfg.k_label == 2:
                     Fq = nll_oracle[0] * nll_oracle[1] / (nll_oracle[0] + nll_oracle[1]) if len(nll_oracle) > 0 else 0
-                    Fd = nll_self[0] * nll_self[1] / (nll_self[0] + nll_self[1]) if len(nll_self) > 0 else 0
+                    Fd = nll_div[0] * nll_div[1] / (nll_div[0] + nll_div[1]) if len(nll_div) > 0 else 0
                 else:
                     raise NotImplementedError("k_label = %d is not supported" % cfg.k_label)
             else:  # sum
                 Fq = sum(nll_oracle)
-                Fd = sum(nll_self)
+                Fd = sum(nll_div)
         elif eval_type == 'Ra':
             g_loss = 0
             for i in range(cfg.k_label):
@@ -486,15 +486,15 @@ class CatGANInstructor(BasicInstructor):
             Fq = g_loss.item()
 
             if cfg.lambda_fd != 0:
-                nll_self = []
+                nll_div = []
                 for label_i in range(cfg.k_label):
                     self.gen_data_list[label_i].reset(
                         self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size, label_i=label_i))
 
-                    nll_self.append(self.eval_gen(self.gen,
-                                                  self.gen_data_list[label_i].loader,
-                                                  self.mle_criterion, label_i))  # NLL_self
-                Fd = sum(nll_self)
+                    nll_div.append(self.eval_gen(self.gen,
+                                                 self.gen_data_list[label_i].loader,
+                                                 self.mle_criterion, label_i))  # NLL_div
+                Fd = sum(nll_div)
             else:
                 Fd = 0
         else:

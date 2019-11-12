@@ -385,12 +385,12 @@ class CatGANInstructor(BasicInstructor):
                         in range(cfg.k_label)]
 
         if cfg.lambda_fd != 0:
-            nll_self = []
+            nll_div = []
             for label_i in range(cfg.k_label):
                 self.gen_data_list[label_i].reset(eval_samples[label_i])
-                nll_self.append(self.eval_gen(self.gen, self.gen_data_list[label_i].loader, self.mle_criterion,
-                                              label_i))  # NLL_self
-            Fd = sum(nll_self)
+                nll_div.append(self.eval_gen(self.gen, self.gen_data_list[label_i].loader, self.mle_criterion,
+                                             label_i))  # NLL_div
+            Fd = sum(nll_div)
         else:
             Fd = 0
 

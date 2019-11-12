@@ -8,7 +8,7 @@ title_dict = {
     'gen_NLL': 'gen_NLL',
     'self_NLL': 'self_NLL',
     'nll_oracle': 'nll_oracle',
-    'nll_self': 'nll_self',
+    'nll_div': 'nll_div',
     'temp': 'temp',
 }
 
