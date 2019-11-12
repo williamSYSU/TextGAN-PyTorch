@@ -42,23 +42,23 @@ use_population = False
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, amazon_app_movie, mr15
+dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, mr15
 model_type = 'vanilla'  # vanilla, noRMC
 loss_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
 mu_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra, bleu3, bleu-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
-vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_movie: 6273, amazon_app_book: 6418, mr15: 6289
-max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_movie: 40
+vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_book: 6418, mr15: 6289
+max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_book: 40
 ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
 
-temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
+temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
 evo_temp_step = 1
 temperature = 1
 
 # =====Basic Train=====
-samples_num = 10000  # 10000, mr15: 1500, mr20: 2000
+samples_num = 10000  # 10000, mr15: 1500,
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 5
 inter_epoch = 15  # LeakGAN-10
