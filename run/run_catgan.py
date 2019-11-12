@@ -26,26 +26,28 @@ else:
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = 'python'
+executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'
 rootdir = '../'
 
 # ===Program===
-run_model = 'catgan'
-MLE_train_epoch = 150
+# CatGAN: Catgory text generation model
+# EvoGAN: General text generation model
+run_model = ['catgan', 'catgan', 'catgan', 'evogan', 'evogan', 'evogan']
+MLE_train_epoch = 1
 loss_type = 'ragan'
 mu_type = 'ragan rsgan'
 eval_type = 'Ra'
 ADV_train_epoch = 2000
 
 # === Real data===
-if_real_data = [int(False), int(True), int(True)]
-dataset = ['oracle', 'mr15', 'amazon_app_book']
+if_real_data = [int(False), int(True), int(True), int(False), int(True), int(True)]
+dataset = ['oracle', 'mr15', 'amazon_app_book', 'oracle', 'image_coco', 'emnlp_news']
 temp_adpt = 'exp'
-temperature = [1, 100, 100]
-tips = 'CatGAN experiments'
+temperature = [1, 100, 100, 1, 100, 100]
+tips = '{} experiments'
 
 # === Basic Param ===
-if_test = int(False)
+if_test = int(True)
 ora_pretrain = int(True)
 gen_pretrain = int(False)
 data_shuffle = int(False)
@@ -58,20 +60,20 @@ ADV_d_step = 3
 ADV_d_epoch = 1
 mem_slots = 1
 num_heads = 2
-head_size = 256
+head_size = [512, 512, 512, 256, 256, 256]
 pre_log_step = 10
 adv_log_step = 20
 
 # === EvoGAN Param ===
 d_out_mean = int(True)
 lambda_fq = 1.0
-lambda_fd = 0.0
+lambda_fd = 0.001
 eval_b_num = 8
 
 args = [
     # Compare Param
     '--device', gpu_id,
-    '--run_model', run_model,
+    '--run_model', run_model[job_id],
     '--mle_epoch', MLE_train_epoch,
     '--ora_pretrain', ora_pretrain,
     '--gen_pretrain', gen_pretrain,
@@ -79,7 +81,7 @@ args = [
     '--mu_type', mu_type,
     '--eval_type', eval_type,
     '--adv_epoch', ADV_train_epoch,
-    '--tips', tips,
+    '--tips', tips.format(run_model[job_id]),
     # Basic Param
     '--if_test', if_test,
     '--if_real_data', if_real_data[job_id],
@@ -95,7 +97,7 @@ args = [
     '--temperature', temperature[job_id],
     '--mem_slots', mem_slots,
     '--num_heads', num_heads,
-    '--head_size', head_size,
+    '--head_size', head_size[job_id],
     '--pre_log_step', pre_log_step,
     '--adv_log_step', adv_log_step,
     # EvoGAN Param
