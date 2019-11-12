@@ -435,7 +435,7 @@ class EvoGANInstructor(BasicInstructor):
             if cfg.lambda_fd != 0:
                 Fd = self.eval_gen(self.gen,
                                    self.gen_data.loader,
-                                   self.mle_criterion)  # NLL_Self
+                                   self.mle_criterion)  # NLL_div
             else:
                 Fd = 0
         elif eval_type == 'Ra':
@@ -447,7 +447,7 @@ class EvoGANInstructor(BasicInstructor):
             if cfg.lambda_fd != 0:
                 Fd = self.eval_gen(self.gen,
                                    self.gen_data.loader,
-                                   self.mle_criterion)  # NLL_Self
+                                   self.mle_criterion)  # NLL_div
             else:
                 Fd = 0
         else:
