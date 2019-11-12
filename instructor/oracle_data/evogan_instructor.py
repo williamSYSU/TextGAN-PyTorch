@@ -4,7 +4,7 @@
 # @FileName     : evogan_instructor.py
 # @Time         : Created at 2019-07-09
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  : CatGAN for general text generation
 # Copyrights (C) 2018. All Rights Reserved.
 import copy
 import numpy as np

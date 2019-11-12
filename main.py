@@ -34,7 +34,6 @@ def program_config(parser):
     parser.add_argument('--freeze_dis', default=cfg.freeze_dis, type=int)
     parser.add_argument('--freeze_clas', default=cfg.freeze_clas, type=int)
     parser.add_argument('--use_all_real_fake', default=cfg.use_all_real_fake, type=int)
-    parser.add_argument('--use_population', default=cfg.use_population, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
@@ -110,10 +109,8 @@ if __name__ == '__main__':
         from instructor.real_data.seqgan_instructor import SeqGANInstructor
         from instructor.real_data.leakgan_instructor import LeakGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
-        from instructor.real_data.catgan_instructor import CatGANInstructor
         from instructor.real_data.evogan_instructor import EvoGANInstructor
-        from instructor.real_data.evocatgan_instructor import EvoCatGANInstructor
-        from instructor.real_data.csgan_instructor import CSGANInstructor
+        from instructor.real_data.catgan_instructor import CatGANInstructor
         from instructor.real_data.sentigan_instructor import SentiGANInstructor
 
         MaliGANInstructor = None
@@ -122,22 +119,18 @@ if __name__ == '__main__':
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
         from instructor.oracle_data.maligan_instructor import MaliGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
-        from instructor.oracle_data.catgan_instructor import CatGANInstructor
         from instructor.oracle_data.evogan_instructor import EvoGANInstructor
-        from instructor.oracle_data.evocatgan_instructor import EvoCatGANInstructor
+        from instructor.oracle_data.catgan_instructor import CatGANInstructor
         from instructor.oracle_data.sentigan_instructor import SentiGANInstructor
-        from instructor.oracle_data.csgan_instructor import CSGANInstructor
 
     instruction_dict = {
         'seqgan': SeqGANInstructor,
         'leakgan': LeakGANInstructor,
         'maligan': MaliGANInstructor,
         'relgan': RelGANInstructor,
-        'catgan': CatGANInstructor,
         'evogan': EvoGANInstructor,
-        'evocatgan': EvoCatGANInstructor,
+        'catgan': CatGANInstructor,
         'sentigan': SentiGANInstructor,
-        'csgan': CSGANInstructor,
     }
 
     inst = instruction_dict[cfg.run_model](opt)

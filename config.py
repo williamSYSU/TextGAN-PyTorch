@@ -23,7 +23,7 @@ gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'maligan'  # seqgan, leakgan, relgan, catgan, evogan, evocatgan, sentigan, csgan, maligan
+run_model = 'maligan'  # seqgan, leakgan, relgan, catgan, evogan, sentigan, maligan
 k_label = 2  # num of labels
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal

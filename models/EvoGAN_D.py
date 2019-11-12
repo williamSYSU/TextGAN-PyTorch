@@ -32,16 +32,11 @@ class EvoGAN_D(CNNDiscriminator):
         self.convs = nn.ModuleList([
             nn.Conv2d(1, n, (f, self.emb_dim_single), stride=(1, self.emb_dim_single)) for (n, f) in
             zip(dis_num_filters, dis_filter_sizes)
-        ])  # origin
-        # self.convs = nn.ModuleList([
-        #     nn.Conv2d(1, n, (f, embed_dim)) for (n, f) in zip(dis_num_filters, dis_filter_sizes)
-        # ])
+        ])
 
         self.highway = nn.Linear(self.feature_dim, self.feature_dim)
         self.feature2out = nn.Linear(self.feature_dim, 100)  # origin
-        # self.feature2out = nn.Linear(self.feature_dim, 1)
         self.out2logits = nn.Linear(100, 1)  # origin
-        # self.out2logits = nn.Linear(100, 2)   # Cross Entropy
         self.dropout = nn.Dropout(dropout)
 
         self.init_params()
@@ -56,18 +51,13 @@ class EvoGAN_D(CNNDiscriminator):
 
         cons = [F.relu(conv(emb)) for conv in self.convs]  # [batch_size * num_filter * (seq_len-k_h+1) * num_rep]
         pools = [F.max_pool2d(con, (con.size(2), 1)).squeeze(2) for con in cons]  # [batch_size * num_filter * num_rep]
-        # convs = [F.relu(conv(emb)).squeeze(3) for conv in self.convs]  # [batch_size * num_filter * length]
-        # pools = [F.max_pool1d(conv, conv.size(2)).squeeze(2) for conv in convs]  # [batch_size * num_filter]
 
-        pred = torch.cat(pools, 1)  # SeqGAN: batch_size * feature_dim; RelGAN: batch_size * feature_dim * num_rep
+        pred = torch.cat(pools, 1)  # batch_size * feature_dim * num_rep
         pred = pred.permute(0, 2, 1).contiguous().view(-1, self.feature_dim)  # (batch_size * num_rep) * feature_dim
         highway = self.highway(pred)
         pred = torch.sigmoid(highway) * F.relu(highway) + (1. - torch.sigmoid(highway)) * pred  # highway, same dim
 
         pred = self.feature2out(self.dropout(pred))
         logits = self.out2logits(pred).squeeze(1)  # [batch_size * num_rep]
-        # logits = self.out2logits(pred.view(inp.size(0), -1)).squeeze(1)  # batch_size * 2
-
-        # logits = self.feature2out(self.dropout(pred))  # batch_size * 1, Cross Entropy
 
         return logits
