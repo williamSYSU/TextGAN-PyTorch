@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
 # @Project      : TextGAN-william
-# @FileName     : EvocatGAN_G.py
+# @FileName     : CatGAN_G.py
 # @Time         : Created at 2019-07-18
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
@@ -21,7 +21,7 @@ class CatGAN_G(LSTMGenerator):
                  padding_idx,
                  gpu=False):
         super(CatGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
-        self.name = 'evocatgan'
+        self.name = 'catgan'
 
         self.k_label = k_label
         self.temperature = nn.Parameter(torch.Tensor([1.0]), requires_grad=False)  # init value is 1.0

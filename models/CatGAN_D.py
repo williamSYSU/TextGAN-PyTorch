@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
 # @Project      : TextGAN-william
-# @FileName     : EvocatGAN_D.py
+# @FileName     : CatGAN_D.py
 # @Time         : Created at 2019-07-18
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
