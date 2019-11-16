@@ -274,7 +274,7 @@ class CatGANInstructor(BasicInstructor):
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    _, _, t_score = self.evaluation('-Ra')  # for temp evolutionary # TODO: need to change to bleu3
+                    _, _, t_score = self.evaluation('bleu3')  # for temp evolutionary
                     loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
 
                     if t_score > temp_score:
@@ -379,6 +379,7 @@ class CatGANInstructor(BasicInstructor):
         eval_samples = [self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size, label_i=i) for i
                         in range(cfg.k_label)]
 
+        # Fd
         if cfg.lambda_fd != 0:
             nll_div = []
             for label_i in range(cfg.k_label):
@@ -401,10 +402,6 @@ class CatGANInstructor(BasicInstructor):
             for i in range(cfg.k_label):
                 g_loss.append(-torch.sum(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).pow(2))
             Fq = sum(g_loss).item()
-
-            # TODO: need to delete
-            if eval_type == '-Ra':
-                Fq = -Fq
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
