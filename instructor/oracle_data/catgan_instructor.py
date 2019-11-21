@@ -497,7 +497,7 @@ class CatGANInstructor(BasicInstructor):
         elif eval_type == 'Ra':
             g_loss = 0
             for i in range(cfg.k_label):
-                g_loss += torch.sum(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).pow(2)
+                g_loss += torch.sigmoid(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).sum()
             Fq = g_loss.item()
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)

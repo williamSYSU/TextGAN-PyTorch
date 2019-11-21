@@ -26,7 +26,7 @@ else:
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = 'python'
+executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'  # TODO: change to python
 rootdir = '../'
 
 # ===Program===
@@ -43,13 +43,13 @@ ADV_train_epoch = 2000
 if_real_data = [int(False), int(True), int(True), int(False), int(True), int(True)]
 dataset = ['oracle', 'mr15', 'amazon_app_book', 'oracle', 'image_coco', 'emnlp_news']
 temp_adpt = 'exp'
-temperature = [1, 100, 100, 1, 100, 100]
+temperature = [1, 100, 100, 2, 100, 100]
 tips = '{} experiments'
 
 # === Basic Param ===
 if_test = int(False)
 ora_pretrain = int(True)
-gen_pretrain = int(False)
+gen_pretrain = int(True)  # TODO: change to False
 data_shuffle = int(False)
 gen_init = 'truncated_normal'
 dis_init = 'uniform'

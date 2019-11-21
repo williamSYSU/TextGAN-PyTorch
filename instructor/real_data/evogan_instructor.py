@@ -253,7 +253,7 @@ class EvoGANInstructor(BasicInstructor):
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    _, _, t_score = self.evaluation('-Ra')  # for temp evolutionary # TODO: need to change to bleu3
+                    _, _, t_score = self.evaluation('Ra')  # for temp evolutionary
                     loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
 
                     if t_score > temp_score:
@@ -351,12 +351,8 @@ class EvoGANInstructor(BasicInstructor):
             else:
                 Fq = 0
         elif 'Ra' in eval_type:
-            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
+            g_loss = torch.sigmoid(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).sum()
             Fq = g_loss.item()
-
-            # TODO: need to delete
-            if eval_type == '-Ra':
-                Fq = -Fq
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 

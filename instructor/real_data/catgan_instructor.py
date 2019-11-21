@@ -170,8 +170,8 @@ class CatGANInstructor(BasicInstructor):
                         self._save('MLE', epoch, label_i)
 
     def train_classifier(self, epochs):
-        # self.clas_data.reset(self.test_samples_list)  # TODO: bug: have to reset
-        # self.eval_clas_data.reset(self.train_samples_list)
+        self.clas_data.reset(self.test_samples_list)  # TODO: bug: have to reset
+        self.eval_clas_data.reset(self.train_samples_list)
         for epoch in range(epochs):
             c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
 
@@ -400,7 +400,7 @@ class CatGANInstructor(BasicInstructor):
         elif 'Ra' in eval_type:
             g_loss = 0
             for i in range(cfg.k_label):
-                g_loss += torch.sum(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).pow(2)
+                g_loss += torch.sigmoid(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).sum()
             Fq = g_loss.item()
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)

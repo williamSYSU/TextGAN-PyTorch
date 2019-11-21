@@ -262,7 +262,7 @@ class EvoGANInstructor(BasicInstructor):
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    _, _, t_score = self.evaluation('nll')  # for temp evolutionary
+                    _, _, t_score = self.evaluation('Ra')  # for temp evolutionary
                     loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
 
                     if t_score > temp_score:
@@ -297,7 +297,6 @@ class EvoGANInstructor(BasicInstructor):
         self.best_fake_samples = torch.cat(best_fake_samples, dim=0)
         return best_score, np.array(best_fit), selected_mutation
 
-    # TODO: about to abandon
     def evolve_generator_population(self, evo_g_step):
         """
         1. randomly choose a parent from population;
@@ -414,14 +413,21 @@ class EvoGANInstructor(BasicInstructor):
 
     def evaluation(self, eval_type):
         """Evaluation all children, update child score. Note that the eval data should be the same"""
+
+        eval_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size)
+        self.gen_data.reset(eval_samples)
+
+        # Fd
+        if cfg.lambda_fd != 0:
+            Fd = self.eval_gen(self.gen, self.gen_data.loader, self.mle_criterion)  # NLL_div
+        else:
+            Fd = 0
+
         if eval_type == 'standard':
             Fq = self.eval_d_out_fake.mean().cpu().item()
-            Fd = 0
         elif eval_type == 'rsgan':
             g_loss, d_loss = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'rsgan')
-
             Fq = d_loss.item()
-            Fd = 0
         elif eval_type == 'nll':
             self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
 
@@ -432,24 +438,9 @@ class EvoGANInstructor(BasicInstructor):
             else:
                 Fq = 0
 
-            if cfg.lambda_fd != 0:
-                Fd = self.eval_gen(self.gen,
-                                   self.gen_data.loader,
-                                   self.mle_criterion)  # NLL_div
-            else:
-                Fd = 0
         elif eval_type == 'Ra':
-            g_loss = -torch.sum(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).pow(2)
-            # g_loss = -torch.mean(self.eval_d_out_fake - torch.mean(self.eval_d_out_real))
+            g_loss = torch.sigmoid(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).sum()
             Fq = g_loss.item()
-
-            self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
-            if cfg.lambda_fd != 0:
-                Fd = self.eval_gen(self.gen,
-                                   self.gen_data.loader,
-                                   self.mle_criterion)  # NLL_div
-            else:
-                Fd = 0
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
 
