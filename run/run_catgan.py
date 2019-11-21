@@ -49,7 +49,7 @@ tips = '{} experiments'
 # === Basic Param ===
 if_test = int(False)
 ora_pretrain = int(True)
-gen_pretrain = int(True)
+gen_pretrain = int(False)
 data_shuffle = int(False)
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
