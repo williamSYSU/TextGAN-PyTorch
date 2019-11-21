@@ -285,7 +285,7 @@ class CatGANInstructor(BasicInstructor):
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    _, _, t_score = self.evaluation('nll')  # for temp evolutionary
+                    _, _, t_score = self.evaluation('Ra')  # for temp evolutionary
                     loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
 
                     if t_score > temp_score:
@@ -491,9 +491,9 @@ class CatGANInstructor(BasicInstructor):
                     self.gen_data_list[label_i].reset(
                         self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size, label_i=label_i))
 
-                    nll_div.append(self.eval_gen(self.gen,
-                                                 self.gen_data_list[label_i].loader,
-                                                 self.mle_criterion, label_i))  # NLL_div
+                    nll_div.append(-self.eval_gen(self.gen,
+                                                  self.gen_data_list[label_i].loader,
+                                                  self.mle_criterion, label_i))  # NLL_div
                 Fd = sum(nll_div)
             else:
                 Fd = 0

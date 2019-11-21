@@ -21,7 +21,7 @@ elif len(sys.argv) > 1:
     gpu_id = 0
     print('job_id: {}, missing gpu_id (use default {})'.format(job_id, gpu_id))
 else:
-    job_id = 0
+    job_id = 3
     gpu_id = 0
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
@@ -47,9 +47,9 @@ temperature = [1, 100, 100, 1, 100, 100]
 tips = '{} experiments'
 
 # === Basic Param ===
-if_test = int(True)
+if_test = int(False)
 ora_pretrain = int(True)
-gen_pretrain = int(False)
+gen_pretrain = int(True)
 data_shuffle = int(False)
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
