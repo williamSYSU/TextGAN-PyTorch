@@ -2,7 +2,7 @@
 
 TextGAN is a PyTorch framework for Generative Adversarial Networks (GANs) based text generation models. TextGAN serves as a benchmarking platform to support research on GAN-based text generation models. Since most GAN-based text generation models are implemented by Tensorflow, TextGAN can help those who get used to PyTorch to enter the text generation field faster.
 
-For now, only few GANs-based models are implemented, including [SeqGAN (Yu et. al, 2017)](https://arxiv.org/abs/1609.05473), [LeakGAN (Guo et. al, 2018)](https://arxiv.org/abs/1709.08624) and [RelGAN (Nie et. al, 2018)](https://openreview.net/forum?id=rJedV3R5tm). If you find any mistake in my implementation, please let me know! Also, please feel free to contribute to this repository if you want to add other models.
+For now, only few GANs-based models are implemented. If you find any mistake in my implementation, please let me know! Also, please feel free to contribute to this repository if you want to add other models.
 
 ## Requirements
 
@@ -19,6 +19,8 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 
 - **SeqGAN** - [SeqGAN: Sequence Generative Adversarial Nets with Policy Gradient](https://arxiv.org/abs/1609.05473)
 - **LeakGAN** - [Long Text Generation via Adversarial Training with Leaked Information](https://arxiv.org/abs/1709.08624)
+- **MaliGAN** - [Maximum-Likelihood Augmented Discrete Generative Adversarial Networks](https://arxiv.org/abs/1702.07983)
+- **JSDGAN** - [Adversarial Discrete Sequence Generation without Explicit Neural Networks as Discriminators](http://proceedings.mlr.press/v89/li19g.html)
 - **RelGAN** - [RelGAN: Relational Generative Adversarial Networks for Text Generation](https://openreview.net/forum?id=rJedV3R5tm)
 
 ## Get Started
@@ -31,25 +33,14 @@ cd TextGAN-PyTorch
 ```
 
 - For real data experiments, `Image COCO` and `EMNLP news` dataset can be downloaded from [here](https://drive.google.com/drive/folders/1XvT3GqbK1wh3XhTgqBLWUtH_mLzGnKZP?usp=sharing). 
-- Run with `SeqGAN`
+- Run with a specific model
 
 ```bash
 cd run
-python3 run_seqgan.py 0 0	# The first 0 is job_id, the second 0 is gpu_id
-```
+python3 run_[model_name].py 0 0	# The first 0 is job_id, the second 0 is gpu_id
 
-- Run with `LeakGAN`
-
-```bash
-cd run
-python3 run_leakgan.py 0 0
-```
-
-- Run with `RelGAN`
-
-```bash
-cd run
-python3 run_relgan.py 0 0
+# For example
+python3 run_seqgan.py 0 0
 ```
 
 ## Features
@@ -76,38 +67,48 @@ python3 run_relgan.py 0 0
 
    In `config.py`, the program would automatically select a GPU device with the least `GPU-Util` in `nvidia-smi`. This feature is enabled by default. If you want to manually select a GPU device, please uncomment the `--device` args in `run_[run_model].py` and specify a GPU device with command.
 
-## Reproduction Results
+## Implementation Details
 
- Please note the log step of each model is different. See `run_[run_model].py` for details of log step.
+### SeqGAN
 
-### Synthetic data:  Oracle data
+- run file: [run_seqgan.py](run/run_seqgan.py)
+- Instructors: [oracle_data](instructor/oracle_data/seqgan_instructor.py), [real_data](instructor/real_data/seqgan_instructor.py)
+- Models: [generator](models/SeqGAN_G.py), [discriminator](models/SeqGAN_D.py)
 
-- NLL_oracle
+- Structure
 
-  > LeakGAN suprisely outperforms RelGAN due to its temperature control, but LeakGAN’s samples suffered from severe mode collapse.
-  >
-  > Though both LeakGAN and RelGAN would suffer from mode collapse, the pattern of collapse is different. LeakGAN will generate a sentence with only a few words. RelGAN will generate repeated sentences with different words.
+### LeakGAN
 
-  ![Oracle data-NLL_oracle](assets/oracle_exp_oracle_nll.png)
+- run file: [run_leakgan.py](run/run_leakgan.py)
+- Instructors: [oracle_data](instructor/oracle_data/leakgan_instructor.py), [real_data](instructor/real_data/leakgan_instructor.py)
+- Models: [generator](models/LeakGAN_G.py), [discriminator](models/LeakGAN_D.py)
 
-- NLL_gen
+- Structure
 
-  ![Oracle data-NLL_gen](assets/coco_exp_gen_nll.png)
+### MaliGAN
 
-### Real data: Image COCO data
+- run file: [run_maligan.py](run/run_maligan.py)
+- Instructors: [oracle_data](instructor/oracle_data/maligan_instructor.py), [real_data](instructor/real_data/maligan_instructor.py)
+- Models: [generator](models/MaliGAN_G.py), [discriminator](models/MaliGAN_D.py)
 
-- BLEU-3​
+- Structure
 
-  ![Image COCO-BLEU-3](assets/coco_exp_bleu3.png)
+### JSDGAN
 
-- NLL_gen
+- run file: [run_jsdgan.py](run/run_jsdgan.py)
+- Instructors: [oracle_data](instructor/oracle_data/jsdgan_instructor.py), [real_data](instructor/real_data/jsdgan_instructor.py)
+- Models: [generator](models/JSDGAN_G.py) (No discriminator)
 
-  ![Image COCO-NLL_gen](assets/coco_exp_gen_nll.png)
+- Structure
+
+### RelGAN
+
+- run file: [run_relgan.py](run/run_relgan.py)
+- Instructors: [oracle_data](instructor/oracle_data/relgan_instructor.py), [real_data](instructor/real_data/relgan_instructor.py)
+- Models: [generator](models/RelGAN_G.py), [discriminator](models/RelGAN_D.py)
+
+- Structure
 
 ## TODO
 
-- [x] Add Experiment Results
-- [x] Fix bugs in `LeakGAN` model
-- [x] Add instructors of `SeqGAN` and `LeakGAN` in `instrutor/real_data`
-- [x] Fix logging bugs for `save_root`
-- [x] Fix issues of $NLL_{oracle}$ in `SeqGAN` model
+- [ ] 
