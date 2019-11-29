@@ -89,6 +89,7 @@ if __name__ == '__main__':
     if cfg.if_real_data:
         from instructor.real_data.seqgan_instructor import SeqGANInstructor
         from instructor.real_data.leakgan_instructor import LeakGANInstructor
+        from instructor.real_data.maligan_instructor import MaliGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
 
     else:
