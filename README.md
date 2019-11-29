@@ -2,7 +2,7 @@
 
 TextGAN is a PyTorch framework for Generative Adversarial Networks (GANs) based text generation models. TextGAN serves as a benchmarking platform to support research on GAN-based text generation models. Since most GAN-based text generation models are implemented by Tensorflow, TextGAN can help those who get used to PyTorch to enter the text generation field faster.
 
-For now, only few GANs-based models are implemented. If you find any mistake in my implementation, please let me know! Also, please feel free to contribute to this repository if you want to add other models.
+If you find any mistake in my implementation, please let me know! Also, please feel free to contribute to this repository if you want to add other models.
 
 ![LICENSE](https://img.shields.io/packagist/l/doctrine/orm.svg)
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)
@@ -135,4 +135,5 @@ python3 run_seqgan.py 0 0
 
 ## Licence
 
-MIT lincense
+**MIT lincense**
+
