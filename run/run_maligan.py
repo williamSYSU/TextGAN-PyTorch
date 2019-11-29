@@ -61,16 +61,16 @@ pre_log_step = 20
 adv_log_step = 1
 
 # =====Generator=====
-ADV_g_step = 20
+ADV_g_step = 50
 rollout_num = 16
 gen_embed_dim = 32
 gen_hidden_dim = 32
 
 # =====Discriminator=====
-d_step = 10
+d_step = 5
 d_epoch = 3
-ADV_d_step = 5
-ADV_d_epoch = 3
+ADV_d_step = 4
+ADV_d_epoch = 2
 dis_embed_dim = 64
 dis_hidden_dim = 64
 
