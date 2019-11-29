@@ -22,7 +22,7 @@ oracle_pretrain = True  # True
 gen_pretrain = False
 dis_pretrain = False
 
-run_model = 'relgan'  # seqgan, leakgan, relgan
+run_model = 'relgan'  # seqgan, leakgan, relgan, maligan, jsdgan
 gen_init = 'normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
 
