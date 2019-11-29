@@ -49,7 +49,8 @@ class LeakGANInstructor(BasicInstructor):
 
         # Metrics
         self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict), gram=3)
+                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict),
+                         gram=[2, 3, 4, 5])
         self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
                               real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
                               gram=3)

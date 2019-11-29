@@ -33,7 +33,7 @@ class CNNDiscriminator(nn.Module):
         """
         Get final predictions of discriminator
         :param inp: batch_size * seq_len
-        :return: pred: batch_size * seq_len * vocab_size
+        :return: pred: batch_size * 2
         """
         feature = self.get_feature(inp)
         pred = self.feature2out(self.dropout(feature))
@@ -98,7 +98,7 @@ class GRUDiscriminator(nn.Module):
         """
         Get final feature of discriminator
         :param inp: batch_size * seq_len
-        :return pred: batch_size * seq_len * vocab_size
+        :return pred: batch_size * 2
         """
         feature = self.get_feature(inp)
         pred = self.feature2out(self.dropout(feature))

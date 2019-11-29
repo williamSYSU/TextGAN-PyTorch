@@ -14,7 +14,7 @@ import torch.nn as nn
 import config as cfg
 from models.Oracle import Oracle
 from utils.data_loader import GenDataIter
-from utils.helpers import Signal, create_logger, create_oracle
+from utils.helpers import Signal, create_logger, create_oracle, get_fixed_temperature
 from utils.text_process import write_tensor
 
 
@@ -189,3 +189,8 @@ class BasicInstructor:
         save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size)
         write_tensor(save_sample_path, samples)
+
+    def update_temperature(self, i, N):
+        self.gen.temperature.data = torch.Tensor([get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)])
+        if cfg.CUDA:
+            self.gen.temperature.data = self.gen.temperature.data.cuda()

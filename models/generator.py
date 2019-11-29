@@ -42,7 +42,7 @@ class LSTMGenerator(nn.Module):
 
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
         out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
-        out = self.lstm2out(out)  # batch_size * seq_len * vocab_size
+        out = self.lstm2out(out)  # (batch_size * seq_len) * vocab_size
         out = self.temperature * out  # temperature
         pred = self.softmax(out)
 
@@ -59,7 +59,7 @@ class LSTMGenerator(nn.Module):
         num_batch = num_samples // batch_size + 1 if num_samples != batch_size else 1
         samples = torch.zeros(num_batch * batch_size, self.max_seq_len).long()
 
-        # 用LSTM随机生成batch_size个句子，生成下一个词的时候是按多项式分布来选择的，而不是概率最大那个
+        # Generate sentences with multinomial sampling strategy
         for b in range(num_batch):
             hidden = self.init_hidden(batch_size)
             inp = torch.LongTensor([start_letter] * batch_size)

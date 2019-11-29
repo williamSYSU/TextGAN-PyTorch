@@ -88,6 +88,7 @@ class RelGANInstructor(BasicInstructor):
         """
         Max Likelihood Pre-training for the generator
         """
+        global epoch
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:

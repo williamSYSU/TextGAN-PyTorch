@@ -165,6 +165,7 @@ class LeakGANInstructor(BasicInstructor):
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
         """
         # prepare loader for validate
+        global d_loss, train_acc
         pos_val = self.oracle.sample(8 * cfg.batch_size, cfg.batch_size)
         neg_val = self.gen.sample(8 * cfg.batch_size, cfg.batch_size, self.dis)
         self.dis_eval_data.reset(pos_val, neg_val)

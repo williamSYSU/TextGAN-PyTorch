@@ -94,10 +94,12 @@ if __name__ == '__main__':
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
+        from instructor.oracle_data.maligan_instructor import MaliGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
     instruction_dict = {
-        'leakgan': LeakGANInstructor,
         'seqgan': SeqGANInstructor,
+        'leakgan': LeakGANInstructor,
+        'maligan': MaliGANInstructor,
         'relgan': RelGANInstructor,
     }
 

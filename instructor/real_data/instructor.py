@@ -12,7 +12,7 @@ import torch.nn as nn
 
 import config as cfg
 from utils.data_loader import GenDataIter
-from utils.helpers import Signal, create_logger
+from utils.helpers import Signal, create_logger, get_fixed_temperature
 from utils.text_process import load_dict, write_tokens, tensor_to_tokens
 
 
@@ -185,3 +185,8 @@ class BasicInstructor:
         save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size)
         write_tokens(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))
+
+    def update_temperature(self, i, N):
+        self.gen.temperature.data = torch.Tensor([get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)])
+        if cfg.CUDA:
+            self.gen.temperature.data = self.gen.temperature.data.cuda()

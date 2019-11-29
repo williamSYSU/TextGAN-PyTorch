@@ -1,32 +1,36 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
 # @Project      : TextGAN-william
-# @FileName     : seqgan_instructor.py
-# @Time         : Created at 2019-04-25
+# @FileName     : maligan_instructor.py
+# @Time         : Created at 2019/11/29
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 
 import config as cfg
-from instructor.oracle_data.instructor import BasicInstructor
-from models.SeqGAN_D import SeqGAN_D
-from models.SeqGAN_G import SeqGAN_G
+from instructor.real_data.instructor import BasicInstructor
+from metrics.bleu import BLEU
+from models.MaliGAN_D import MaliGAN_D
+from models.MaliGAN_G import MaliGAN_G
 from utils import rollout
 from utils.data_loader import GenDataIter, DisDataIter
+from utils.text_process import tensor_to_tokens
 
 
-class SeqGANInstructor(BasicInstructor):
+class MaliGANInstructor(BasicInstructor):
     def __init__(self, opt):
-        super(SeqGANInstructor, self).__init__(opt)
+        super(MaliGANInstructor, self).__init__(opt)
 
         # generator, discriminator
-        self.gen = SeqGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                            cfg.padding_idx, cfg.temperature, gpu=cfg.CUDA)
-        self.dis = SeqGAN_D(cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
+        self.gen = MaliGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
+                             cfg.padding_idx, cfg.temperature, gpu=cfg.CUDA)
+        self.dis = MaliGAN_D(cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
 
         # Optimizer
@@ -40,9 +44,15 @@ class SeqGANInstructor(BasicInstructor):
 
         # DataLoader
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
-        self.dis_data = DisDataIter(self.oracle_data.random_batch()['target'], self.gen_data.random_batch()['target'])
-        self.dis_eval_data = DisDataIter(self.oracle_data.random_batch()['target'],
-                                         self.gen_data.random_batch()['target'])
+        self.dis_data = DisDataIter(self.train_data.random_batch()['target'], self.gen_data.random_batch()['target'])
+
+        # Metrics
+        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict),
+                         gram=[2, 3, 4, 5])
+        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+                              gram=3)
 
     def _run(self):
         # =====PRE-TRAINING=====
@@ -94,7 +104,7 @@ class SeqGANInstructor(BasicInstructor):
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
-                pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
+                pre_loss = self.train_gen_epoch(self.gen, self.train_data.loader, self.mle_criterion, self.gen_opt)
 
                 # =====Test=====
                 if epoch % cfg.pre_log_step == 0:
@@ -110,17 +120,15 @@ class SeqGANInstructor(BasicInstructor):
 
     def adv_train_generator(self, g_step):
         """
-        The gen is trained using policy gradients, using the reward from the discriminator.
-        Training is done for num_batches batches.
+        The gen is trained by MLE-like objective.
         """
-        rollout_func = rollout.ROLLOUT(self.gen, cfg.CUDA)
         total_g_loss = 0
         for step in range(g_step):
             inp, target = self.gen_data.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
             # =====Train=====
-            rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
-            adv_loss = self.gen.batchPGLoss(inp, target, rewards)
+            rewards = self.get_mali_reward(target)
+            adv_loss = self.gen.adv_loss(inp, target, rewards)
             self.optimize(self.gen_adv_opt, adv_loss)
             total_g_loss += adv_loss.item()
 
@@ -134,13 +142,10 @@ class SeqGANInstructor(BasicInstructor):
         """
         # prepare loader for validate
         global d_loss, train_acc
-        pos_val = self.oracle.sample(8 * cfg.batch_size, 4 * cfg.batch_size)
-        neg_val = self.gen.sample(8 * cfg.batch_size, 4 * cfg.batch_size)
-        self.dis_eval_data.reset(pos_val, neg_val)
 
         for step in range(d_step):
             # prepare loader for training
-            pos_samples = self.oracle_samples  # not re-sample the Oracle data
+            pos_samples = self.train_data.target  # not re-sample the Oracle data
             neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
             self.dis_data.reset(pos_samples, neg_samples)
 
@@ -150,9 +155,22 @@ class SeqGANInstructor(BasicInstructor):
                                                          self.dis_opt)
 
             # =====Test=====
-            _, eval_acc = self.eval_dis(self.dis, self.dis_eval_data.loader, self.dis_criterion)
-            self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
-                phrase, step, d_loss, train_acc, eval_acc))
+            self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f,' % (
+                phrase, step, d_loss, train_acc))
 
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
+
+    def get_mali_reward(self, samples):
+        rewards = []
+        for _ in range(cfg.rollout_num):
+            dis_out = self.dis(samples)[:, 1]
+            rewards.append(dis_out)
+
+        rewards = torch.mean(torch.stack(rewards, dim=0), dim=0)  # batch_size
+        rewards = torch.div(rewards, 1 - rewards)
+        rewards = torch.div(rewards, torch.sum(rewards))
+        rewards -= torch.mean(rewards)
+        rewards = rewards.unsqueeze(1).expand(samples.size())  # batch_size * seq_len
+
+        return rewards

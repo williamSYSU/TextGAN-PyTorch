@@ -40,6 +40,7 @@ dis_init = 'uniform'
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
+tips = 'SeqGAN experiments'
 
 # =====Oracle  or Real=====
 dataset = ['oracle', 'image_coco']
@@ -56,7 +57,7 @@ batch_size = 64
 max_seq_len = 20
 gen_lr = 0.01
 dis_lr = 1e-4
-pre_log_step = 5
+pre_log_step = 20
 adv_log_step = 1
 
 # =====Generator=====
@@ -91,6 +92,7 @@ args = [
     '--shuffle', data_shuffle,
     '--gen_init', gen_init,
     '--dis_init', dis_init,
+    '--tips', tips.format(run_model),
 
     # Basic Train
     '--samples_num', samples_num,

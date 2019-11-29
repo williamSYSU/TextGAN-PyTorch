@@ -31,11 +31,12 @@ class RelGAN_G(LSTMGenerator):
         self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
 
         # LSTM
-        # self.hidden_dim = 512
+        # self.hidden_dim = 32
         # self.lstm = nn.LSTM(embedding_dim, self.hidden_dim, batch_first=True)
         # self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
 
         self.init_params()
+        pass
 
     def step(self, inp, hidden):
         """

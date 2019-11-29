@@ -40,6 +40,7 @@ dis_init = 'uniform'
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
+tips = 'RelGAN experiments'
 
 # =====Oracle  or Real=====
 dataset = ['oracle', 'image_coco']
@@ -93,6 +94,7 @@ args = [
     '--shuffle', data_shuffle,
     '--gen_init', gen_init,
     '--dis_init', dis_init,
+    '--tips', tips.format(run_model),
 
     # Basic Train
     '--samples_num', samples_num,

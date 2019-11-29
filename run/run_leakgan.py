@@ -40,6 +40,7 @@ dis_init = 'uniform'
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
+tips = 'LeakGAN experiments'
 
 # =====Oracle  or Real=====
 dataset = ['oracle', 'image_coco']
