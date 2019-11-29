@@ -28,6 +28,8 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 - **MaliGAN** - [Maximum-Likelihood Augmented Discrete Generative Adversarial Networks](https://arxiv.org/abs/1702.07983)
 - **JSDGAN** - [Adversarial Discrete Sequence Generation without Explicit Neural Networks as Discriminators](http://proceedings.mlr.press/v89/li19g.html)
 - **RelGAN** - [RelGAN: Relational Generative Adversarial Networks for Text Generation](https://openreview.net/forum?id=rJedV3R5tm)
+- **SentiGAN** - [SentiGAN: Generating Sentimental Texts via Mixture Adversarial Networks](https://www.ijcai.org/proceedings/2018/618)
+- **CatGAN** (ours) - [CatGAN: Category-aware Generative Adversarial Networks with Hierarchical Evolutionary Learning for Category Text Generation](https://arxiv.org/abs/1911.06641)
 
 ### Category Text Generation
 
@@ -50,7 +52,7 @@ cd run
 python3 run_[model_name].py 0 0	# The first 0 is job_id, the second 0 is gpu_id
 
 # For example
-python3 run_seqgan.py 0 0
+python3 run_catgan.py 0 0
 ```
 
 ## Features
@@ -78,6 +80,18 @@ python3 run_seqgan.py 0 0
    In `config.py`, the program would automatically select a GPU device with the least `GPU-Util` in `nvidia-smi`. This feature is enabled by default. If you want to manually select a GPU device, please uncomment the `--device` args in `run_[run_model].py` and specify a GPU device with command.
 
 ## Implementation Details
+
+### CatGAN
+
+- run file: [run_catgan.py](run/run_catgan.py)
+
+- Instructors: [oracle_data](instructor/oracle_data/catgan_instructor.py), [real_data](instructor/real_data/catgan_instructor.py)
+
+- Models: [generator](models/CatGAN_G.py), [discriminator](models/CatGAN_D.py)
+
+- Structure (from [CatGAN](https://arxiv.org/pdf/1609.05473.pdf))
+
+  ![model_catgan](assets/model_catgan.png)
 
 ### SeqGAN
 
