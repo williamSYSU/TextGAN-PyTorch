@@ -82,6 +82,7 @@ args = [
     '--eval_type', eval_type,
     '--adv_epoch', ADV_train_epoch,
     '--tips', tips.format(run_model[job_id]),
+
     # Basic Param
     '--if_test', if_test,
     '--if_real_data', if_real_data[job_id],

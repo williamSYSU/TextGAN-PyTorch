@@ -93,7 +93,6 @@ def program_config(parser):
 
 # MAIN
 if __name__ == '__main__':
-
     # Hyper Parameters
     parser = argparse.ArgumentParser()
     parser = program_config(parser)

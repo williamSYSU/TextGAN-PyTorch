@@ -199,28 +199,33 @@ class BasicInstructor:
         oracle_nll = self.eval_gen(self.oracle_list[label_i],
                                    self.gen_data_list[label_i].loader,
                                    self.mle_criterion, label_i)
+        gen_nll = self.eval_gen(self.gen,
+                                self.oracle_data_list[label_i].loader,
+                                self.mle_criterion, label_i)
         div_nll = self.eval_gen(self.gen,
                                 self.gen_data_list[label_i].loader,
                                 self.mle_criterion, label_i)
+        # oracle_nll, gen_nll, div_nll = 0, 0, 0
 
         # Evaluation Classifier accuracy
         self.clas_data.reset([eval_samples], label_i)
         _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
 
-        return oracle_nll, div_nll, c_acc
+        return oracle_nll, gen_nll, div_nll, c_acc
 
     def comb_metrics(self, fmt_str=False):
-        oracle_nll, div_nll, clas_acc = [], [], []
+        oracle_nll, gen_nll, div_nll, clas_acc = [], [], [], []
         for label_i in range(cfg.k_label):
-            o_nll, s_nll, acc = self.cal_metrics_with_label(label_i)
+            o_nll, g_nll, s_nll, acc = self.cal_metrics_with_label(label_i)
             oracle_nll.append(round(o_nll, 4))
+            gen_nll.append(round(g_nll, 4))
             div_nll.append(round(s_nll, 4))
             clas_acc.append(round(acc, 4))
 
         if fmt_str:
-            return 'oracle_NLL = %s, div_NLL = %s, clas_acc = %s' % (
-                oracle_nll, div_nll, clas_acc)
-        return oracle_nll, div_nll, clas_acc
+            return 'oracle_NLL = %s, gen_NLL = %s, div_NLL = %s, clas_acc = %s' % (
+                oracle_nll, gen_nll, div_nll, clas_acc)
+        return oracle_nll, gen_nll, div_nll, clas_acc
 
     def cal_metrics_with_label(self, label_i=None):
         assert type(label_i) == int, 'missing label'

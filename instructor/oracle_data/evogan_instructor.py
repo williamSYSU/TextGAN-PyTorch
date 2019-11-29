@@ -427,6 +427,7 @@ class EvoGANInstructor(BasicInstructor):
             Fq = self.eval_d_out_fake.mean().cpu().item()
         elif eval_type == 'rsgan':
             g_loss, d_loss = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'rsgan')
+
             Fq = d_loss.item()
         elif eval_type == 'nll':
             self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))

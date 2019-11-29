@@ -97,7 +97,7 @@ head_size = 256  # RelGAN-256
 # =====Discriminator=====
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
-ADV_d_step = 3  # SeqGAN,LeakGAN,RelGAN-5
+ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
 ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
 
 dis_embed_dim = 64
@@ -130,6 +130,7 @@ else:
     device = -1
 # device = 1
 # print('device: ', device)
+
 if multi_gpu:
     devices = '0,1'
     devices = list(map(int, devices.split(',')))
