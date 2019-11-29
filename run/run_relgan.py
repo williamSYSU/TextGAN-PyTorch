@@ -45,7 +45,7 @@ tips = 'RelGAN experiments'
 # =====Oracle  or Real=====
 dataset = ['oracle', 'image_coco', 'emnlp_news']
 model_type = 'vanilla'
-loss_type = 'RSGAN'
+loss_type = 'rsgan'
 vocab_size = [5000, 4683, 5256]
 temp_adpt = 'exp'
 temperature = [2, 100]
