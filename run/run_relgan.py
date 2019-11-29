@@ -33,7 +33,7 @@ executable = 'python'
 if_test = int(False)
 run_model = 'relgan'
 CUDA = int(True)
-if_real_data = [int(False), int(True)]
+if_real_data = [int(False), int(True), int(True)]
 data_shuffle = int(False)
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
@@ -43,10 +43,10 @@ dis_pretrain = int(False)
 tips = 'RelGAN experiments'
 
 # =====Oracle  or Real=====
-dataset = ['oracle', 'image_coco']
+dataset = ['oracle', 'image_coco', 'emnlp_news']
 model_type = 'vanilla'
 loss_type = 'RSGAN'
-vocab_size = [5000, 6613]
+vocab_size = [5000, 4683, 5256]
 temp_adpt = 'exp'
 temperature = [2, 100]
 

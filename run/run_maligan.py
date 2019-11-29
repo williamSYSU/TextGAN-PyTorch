@@ -33,7 +33,7 @@ executable = 'python'
 if_test = int(False)
 run_model = 'maligan'
 CUDA = int(True)
-if_real_data = [int(False), int(True)]
+if_real_data = [int(False), int(True), int(True)]
 data_shuffle = int(False)
 gen_init = 'normal'
 dis_init = 'uniform'
@@ -43,10 +43,10 @@ dis_pretrain = int(False)
 tips = 'MaliGAN experiments'
 
 # =====Oracle  or Real=====
-dataset = ['oracle', 'image_coco']
+dataset = ['oracle', 'image_coco', 'emnlp_news']
 model_type = 'vanilla'
 loss_type = 'JS'
-vocab_size = [5000, 6613]
+vocab_size = [5000, 4683, 5256]
 temperature = 1
 
 # =====Basic Train=====
