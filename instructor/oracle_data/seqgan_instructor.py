@@ -60,7 +60,7 @@ class SeqGANInstructor(BasicInstructor):
             self.train_discriminator(cfg.d_step, cfg.d_epoch)
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
-                print('Save pretrain_generator discriminator: {}'.format(cfg.pretrained_dis_path))
+                print('Save pre-trained discriminator: {}'.format(cfg.pretrained_dis_path))
 
         # =====ADVERSARIAL TRAINING=====
         self.log.info('Starting Adversarial Training...')

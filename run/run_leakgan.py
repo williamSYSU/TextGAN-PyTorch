@@ -95,6 +95,7 @@ args = [
     '--shuffle', data_shuffle,
     '--gen_init', gen_init,
     '--dis_init', dis_init,
+    '--tips', tips,
 
     # Basic Train
     '--samples_num', samples_num,
@@ -128,9 +129,6 @@ args = [
     '--adv_d_epoch', ADV_d_epoch,
     '--dis_embed_dim', dis_embed_dim,
     '--dis_hidden_dim', dis_hidden_dim,
-
-    # Log
-    '--tips', 'vanilla LeakGAN',
 ]
 
 args = list(map(str, args))
