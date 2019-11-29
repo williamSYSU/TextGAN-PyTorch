@@ -90,17 +90,20 @@ if __name__ == '__main__':
         from instructor.real_data.seqgan_instructor import SeqGANInstructor
         from instructor.real_data.leakgan_instructor import LeakGANInstructor
         from instructor.real_data.maligan_instructor import MaliGANInstructor
+        from instructor.real_data.JSDGAN_instructor import JSDGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
 
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
         from instructor.oracle_data.maligan_instructor import MaliGANInstructor
+        from instructor.oracle_data.JSDGAN_instructor import JSDGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
     instruction_dict = {
         'seqgan': SeqGANInstructor,
         'leakgan': LeakGANInstructor,
         'maligan': MaliGANInstructor,
+        'jsdgan': JSDGANInstructor,
         'relgan': RelGANInstructor,
     }
 
