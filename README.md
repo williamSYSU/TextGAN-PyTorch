@@ -4,6 +4,10 @@ TextGAN is a PyTorch framework for Generative Adversarial Networks (GANs) based 
 
 For now, only few GANs-based models are implemented. If you find any mistake in my implementation, please let me know! Also, please feel free to contribute to this repository if you want to add other models.
 
+![LICENSE](https://img.shields.io/packagist/l/doctrine/orm.svg)
+![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)
+[![Gitter](https://badges.gitter.im/ABSA-PyTorch/community.svg)](https://gitter.im/ABSA-PyTorch/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 ## Requirements
 
 - PyTorch >= 1.0.0
@@ -129,6 +133,6 @@ python3 run_seqgan.py 0 0
 
   ![model_relgan](assets/model_relgan.png)
 
-## TODO
+## Licence
 
-- [ ] 
+MIT lincense
