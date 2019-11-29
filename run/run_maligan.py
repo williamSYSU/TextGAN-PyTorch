@@ -67,10 +67,10 @@ gen_embed_dim = 32
 gen_hidden_dim = 32
 
 # =====Discriminator=====
-d_step = 5
-d_epoch = 3
-ADV_d_step = 4
-ADV_d_epoch = 2
+d_step = 4
+d_epoch = 2
+ADV_d_step = 1
+ADV_d_epoch = 3
 dis_embed_dim = 64
 dis_hidden_dim = 64
 
