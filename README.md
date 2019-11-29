@@ -72,42 +72,62 @@ python3 run_seqgan.py 0 0
 ### SeqGAN
 
 - run file: [run_seqgan.py](run/run_seqgan.py)
+
 - Instructors: [oracle_data](instructor/oracle_data/seqgan_instructor.py), [real_data](instructor/real_data/seqgan_instructor.py)
+
 - Models: [generator](models/SeqGAN_G.py), [discriminator](models/SeqGAN_D.py)
 
-- Structure
+- Structure (from [SeqGAN](https://arxiv.org/pdf/1609.05473.pdf))
+
+  ![model_seqgan](./assets/model_seqgan.png)
 
 ### LeakGAN
 
 - run file: [run_leakgan.py](run/run_leakgan.py)
+
 - Instructors: [oracle_data](instructor/oracle_data/leakgan_instructor.py), [real_data](instructor/real_data/leakgan_instructor.py)
+
 - Models: [generator](models/LeakGAN_G.py), [discriminator](models/LeakGAN_D.py)
 
-- Structure
+- Structure (from [LeakGAN](https://arxiv.org/pdf/1709.08624.pdf))
+
+  ![model_leakgan](assets/model_leakgan.png)
 
 ### MaliGAN
 
 - run file: [run_maligan.py](run/run_maligan.py)
+
 - Instructors: [oracle_data](instructor/oracle_data/maligan_instructor.py), [real_data](instructor/real_data/maligan_instructor.py)
+
 - Models: [generator](models/MaliGAN_G.py), [discriminator](models/MaliGAN_D.py)
 
-- Structure
+- Structure (from my understanding)
+
+  ![model_maligan](assets/model_maligan.png)
 
 ### JSDGAN
 
 - run file: [run_jsdgan.py](run/run_jsdgan.py)
+
 - Instructors: [oracle_data](instructor/oracle_data/jsdgan_instructor.py), [real_data](instructor/real_data/jsdgan_instructor.py)
+
 - Models: [generator](models/JSDGAN_G.py) (No discriminator)
 
-- Structure
+- Structure (from my understanding)
+
+  ![model_jsdgan](assets/model_jsdgan.png)
 
 ### RelGAN
 
 - run file: [run_relgan.py](run/run_relgan.py)
+
 - Instructors: [oracle_data](instructor/oracle_data/relgan_instructor.py), [real_data](instructor/real_data/relgan_instructor.py)
+
 - Models: [generator](models/RelGAN_G.py), [discriminator](models/RelGAN_D.py)
 
-- Structure
+- Structure  (from my understanding)
+
+  ![model_relgan](assets/model_relgan.png)
 
 ## TODO
 
