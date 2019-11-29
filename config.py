@@ -224,7 +224,7 @@ def init_param(opt):
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
-                'pretrain/oracle_data', 'pretrain/real_data', 'pretrain/{}'.format(dataset)]
+                'pretrain/{}'.format(dataset if if_real_data else 'oracle_data')]
     if not if_test:
         dir_list.extend([save_root, save_samples_root, save_model_root])
     for d in dir_list:
