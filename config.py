@@ -10,10 +10,11 @@ import time
 from time import strftime, localtime
 
 import os
+import re
 import torch
 
 # =====Program=====
-if_test = True
+if_test = False
 CUDA = True
 multi_gpu = False
 if_save = True
@@ -116,12 +117,15 @@ if os.path.exists(log_filename + '.txt'):
 log_filename = log_filename + '.txt'
 
 # Automatically choose GPU or CPU
-if torch.cuda.is_available():
-    os.system('nvidia-smi -q -d Utilization | grep Gpu > gpu')
-    util_gpu = [int(line.strip().split()[2]) for line in open('gpu', 'r')]
+if torch.cuda.is_available() and torch.cuda.device_count() > 0:
+    os.system('nvidia-smi -q -d Utilization > gpu')
+    with open('gpu', 'r') as _tmpfile:
+        util_gpu = list(map(int, re.findall(r'Gpu\s+:\s*(\d+)\s*%', _tmpfile.read())))
     os.remove('gpu')
-    gpu_count = torch.cuda.device_count()
-    device = util_gpu.index(min(util_gpu))
+    if len(util_gpu):
+        device = util_gpu.index(min(util_gpu))
+    else:
+        device = 0
 else:
     device = -1
 # device = 1
@@ -299,7 +303,7 @@ def init_param(opt):
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
-                'pretrain/oracle_data', 'pretrain/real_data', 'pretrain/{}'.format(dataset)]
+                'pretrain/{}'.format(dataset if if_real_data else 'oracle_data')]
     if not if_test:
         dir_list.extend([save_root, save_samples_root, save_model_root])
     for d in dir_list:

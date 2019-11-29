@@ -101,7 +101,6 @@ if __name__ == '__main__':
 
     if opt.if_real_data:
         opt.max_seq_len, opt.vocab_size = text_process('dataset/' + opt.dataset + '.txt')
-        # opt.max_seq_len, opt.vocab_size = 40, 6418
     cfg.init_param(opt)
     opt.save_root = cfg.save_root
 
@@ -109,29 +108,32 @@ if __name__ == '__main__':
     if cfg.if_real_data:
         from instructor.real_data.seqgan_instructor import SeqGANInstructor
         from instructor.real_data.leakgan_instructor import LeakGANInstructor
+        from instructor.real_data.maligan_instructor import MaliGANInstructor
+        from instructor.real_data.jsdgan_instructor import JSDGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
+        from instructor.real_data.sentigan_instructor import SentiGANInstructor
         from instructor.real_data.evogan_instructor import EvoGANInstructor
         from instructor.real_data.catgan_instructor import CatGANInstructor
-        from instructor.real_data.sentigan_instructor import SentiGANInstructor
 
-        MaliGANInstructor = None
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
         from instructor.oracle_data.leakgan_instructor import LeakGANInstructor
         from instructor.oracle_data.maligan_instructor import MaliGANInstructor
+        from instructor.oracle_data.jsdgan_instructor import JSDGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
+        from instructor.oracle_data.sentigan_instructor import SentiGANInstructor
         from instructor.oracle_data.evogan_instructor import EvoGANInstructor
         from instructor.oracle_data.catgan_instructor import CatGANInstructor
-        from instructor.oracle_data.sentigan_instructor import SentiGANInstructor
 
     instruction_dict = {
         'seqgan': SeqGANInstructor,
         'leakgan': LeakGANInstructor,
         'maligan': MaliGANInstructor,
+        'jsdgan': JSDGANInstructor,
         'relgan': RelGANInstructor,
+        'sentigan': SentiGANInstructor,
         'evogan': EvoGANInstructor,
         'catgan': CatGANInstructor,
-        'sentigan': SentiGANInstructor,
     }
 
     inst = instruction_dict[cfg.run_model](opt)

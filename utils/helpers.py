@@ -66,7 +66,8 @@ def create_oracle():
     print('Creating Oracle...')
     oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
                     cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-    oracle = oracle.cuda()
+    if cfg.CUDA:
+        oracle = oracle.cuda()
 
     torch.save(oracle.state_dict(), cfg.oracle_state_dict_path)
 
