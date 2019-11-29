@@ -21,12 +21,12 @@ elif len(sys.argv) > 1:
     gpu_id = 0
     print('job_id: {}, missing gpu_id (use default {})'.format(job_id, gpu_id))
 else:
-    job_id = 3
+    job_id = 0
     gpu_id = 0
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = '/home/zhiwei/.virtualenvs/zhiwei/bin/python'  # TODO: change to python
+executable = 'python'
 rootdir = '../'
 
 # ===Program===
