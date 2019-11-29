@@ -22,7 +22,7 @@ title_dict = {
     'BLEU-3': 'BLEU-3',
 }
 
-color_list = ['green', 'red', 'skyblue', 'blue', 'violet', 'sienna', 'blueviolet']
+color_list = ['#e74c3c', '#e67e22', '#f1c40f', '#8e44ad', '#2980b9', '#27ae60', '#16a085']
 
 
 def plt_data(data, step, title, c_id, savefig=False):

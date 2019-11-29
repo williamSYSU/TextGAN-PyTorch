@@ -6,7 +6,7 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-
+import math
 import time
 
 import torch
@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import config as cfg
+from utils.helpers import truncated_normal_
 
 dis_num_filters = [100, 200, 200, 200, 200, 100, 100, 100, 100, 100, 160, 160]
 goal_out_size = sum(dis_num_filters)
@@ -377,3 +378,14 @@ class LeakGAN_G(nn.Module):
         work_params += list(self.goal2goal.parameters())
 
         return mana_params, work_params
+
+    def init_params(self):
+        for param in self.parameters():
+            if param.requires_grad and len(param.shape) > 0:
+                stddev = 1 / math.sqrt(param.shape[0])
+                if cfg.gen_init == 'uniform':
+                    torch.nn.init.uniform_(param, a=-0.05, b=0.05)
+                elif cfg.gen_init == 'normal':
+                    torch.nn.init.normal_(param, std=stddev)
+                elif cfg.gen_init == 'truncated_normal':
+                    truncated_normal_(param, std=stddev)
