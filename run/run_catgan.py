@@ -43,7 +43,7 @@ ADV_train_epoch = 2000
 if_real_data = [int(False), int(True), int(True), int(False), int(True), int(True)]
 dataset = ['oracle', 'mr15', 'amazon_app_book', 'oracle', 'image_coco', 'emnlp_news']
 temp_adpt = 'exp'
-temperature = [1, 100, 100, 2, 100, 100]
+temperature = [1, 100, 100, 5, 100, 100]
 tips = '{} experiments'
 
 # === Basic Param ===
