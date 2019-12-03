@@ -1,6 +1,6 @@
 # TextGAN-PyTorch
 
-TextGAN is a PyTorch framework for Generative Adversarial Networks (GANs) based text generation models. TextGAN serves as a benchmarking platform to support research on GAN-based text generation models. Since most GAN-based text generation models are implemented by Tensorflow, TextGAN can help those who get used to PyTorch to enter the text generation field faster.
+TextGAN is a PyTorch framework for Generative Adversarial Networks (GANs) based text generation models, including general text generation models and category text generation models. TextGAN serves as a benchmarking platform to support research on GAN-based text generation models. Since most GAN-based text generation models are implemented by Tensorflow, TextGAN can help those who get used to PyTorch to enter the text generation field faster.
 
 If you find any mistake in my implementation, please let me know! Also, please feel free to contribute to this repository if you want to add other models.
 
@@ -21,11 +21,17 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 
 ## Implemented Models and Original Papers
 
+### General Text Generation
+
 - **SeqGAN** - [SeqGAN: Sequence Generative Adversarial Nets with Policy Gradient](https://arxiv.org/abs/1609.05473)
 - **LeakGAN** - [Long Text Generation via Adversarial Training with Leaked Information](https://arxiv.org/abs/1709.08624)
 - **MaliGAN** - [Maximum-Likelihood Augmented Discrete Generative Adversarial Networks](https://arxiv.org/abs/1702.07983)
 - **JSDGAN** - [Adversarial Discrete Sequence Generation without Explicit Neural Networks as Discriminators](http://proceedings.mlr.press/v89/li19g.html)
 - **RelGAN** - [RelGAN: Relational Generative Adversarial Networks for Text Generation](https://openreview.net/forum?id=rJedV3R5tm)
+
+### Category Text Generation
+
+- **SentiGAN** - [SentiGAN: Generating Sentimental Texts via Mixture Adversarial Networks](https://www.ijcai.org/proceedings/2018/618)
 
 ## Get Started
 
@@ -36,7 +42,7 @@ git clone https://github.com/williamSYSU/TextGAN-PyTorch.git
 cd TextGAN-PyTorch
 ```
 
-- For real data experiments, `Image COCO` and `EMNLP news` dataset can be downloaded from [here](https://drive.google.com/drive/folders/1XvT3GqbK1wh3XhTgqBLWUtH_mLzGnKZP?usp=sharing). 
+- For real data experiments, all datasets (`Image COCO`, `EMNLP NEWs`, `Movie Review`, `Amazon Review`) can be downloaded from [here](https://drive.google.com/drive/folders/1XvT3GqbK1wh3XhTgqBLWUtH_mLzGnKZP?usp=sharing). 
 - Run with a specific model
 
 ```bash
@@ -132,6 +138,18 @@ python3 run_seqgan.py 0 0
 - Structure  (from my understanding)
 
   ![model_relgan](assets/model_relgan.png)
+
+### SentiGAN
+
+- run file: [run_sentigan.py](run/run_sentigan.py)
+
+- Instructors: [oracle_data](instructor/oracle_data/sentigan_instructor.py), [real_data](instructor/real_data/sentigan_instructor.py)
+
+- Models: [generator](models/SentiGAN_G.py), [discriminator](models/SentiGAN_D.py)
+
+- Structure (from [SentiGAN](https://www.ijcai.org/proceedings/2018/0618.pdf))
+
+  ![model_sentigan](assets/model_sentigan.png)
 
 ## Licence
 
