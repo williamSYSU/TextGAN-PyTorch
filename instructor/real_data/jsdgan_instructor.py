@@ -6,7 +6,6 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-import os
 
 import torch
 import torch.nn as nn
@@ -17,7 +16,6 @@ from instructor.real_data.instructor import BasicInstructor
 from metrics.bleu import BLEU
 from models.JSDGAN_G import JSDGAN_G
 from utils.data_loader import GenDataIter
-from utils.helpers import create_oracle
 from utils.text_process import tensor_to_tokens
 
 
@@ -40,11 +38,11 @@ class JSDGANInstructor(BasicInstructor):
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
         # Metrics
-        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict),
+        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
+                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict),
                          gram=[2, 3, 4, 5])
-        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
+                              real_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
                               gram=3)
 
     def init_model(self):
@@ -83,16 +81,13 @@ class JSDGANInstructor(BasicInstructor):
         """
         Max Likelihood Pre-training for the generator
         """
-        global epoch
-        if epochs <= 0:
-            return
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
                 pre_loss = self.train_gen_epoch(self.gen, self.train_data.loader, self.mle_criterion, self.gen_opt)
 
                 # =====Test=====
-                if epoch % cfg.pre_log_step == 0:
+                if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
                     if cfg.if_save and not cfg.if_test:
@@ -100,8 +95,6 @@ class JSDGANInstructor(BasicInstructor):
             else:
                 self.log.info('>>> Stop by pre signal, skip to adversarial training...')
                 break
-        if cfg.if_save and not cfg.if_test:
-            self._save('MLE', epoch)
 
     def adv_train_generator(self, g_step):
         """

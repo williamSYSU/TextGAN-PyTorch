@@ -11,13 +11,11 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.MaliGAN_D import MaliGAN_D
 from models.MaliGAN_G import MaliGAN_G
-from utils import rollout
 from utils.data_loader import GenDataIter, DisDataIter
 
 
@@ -92,14 +90,13 @@ class MaliGANInstructor(BasicInstructor):
         """
         Max Likelihood Pre-training for the generator
         """
-        global epoch
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
                 pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
 
                 # =====Test=====
-                if epoch % cfg.pre_log_step == 0:
+                if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
                     if cfg.if_save and not cfg.if_test:
@@ -107,8 +104,6 @@ class MaliGANInstructor(BasicInstructor):
             else:
                 self.log.info('>>> Stop by pre signal, skip to adversarial training...')
                 break
-        if cfg.if_save and not cfg.if_test:
-            self._save('MLE', epoch)
 
     def adv_train_generator(self, g_step):
         """

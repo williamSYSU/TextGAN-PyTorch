@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+# @Author       : William
+# @Project      : TextGAN-william
+# @FileName     : config.py
+# @Time         : Created at 2019-03-18
+# @Blog         : http://zhiweil.ml/
+# @Description  :
+# Copyrights (C) 2018. All Rights Reserved.
 import math
 
 import torch
@@ -132,3 +140,61 @@ class GRUDiscriminator(nn.Module):
                     torch.nn.init.normal_(param, std=stddev)
                 elif cfg.dis_init == 'truncated_normal':
                     truncated_normal_(param, std=stddev)
+
+
+# Classifier
+class CNNClassifier(CNNDiscriminator):
+    def __init__(self, k_label, embed_dim, max_seq_len, num_rep, vocab_size, filter_sizes, num_filters, padding_idx,
+                 gpu=False, dropout=0.25):
+        super(CNNClassifier, self).__init__(embed_dim, vocab_size, filter_sizes, num_filters, padding_idx,
+                                            gpu, dropout)
+
+        self.k_label = k_label
+        self.embed_dim = embed_dim
+        self.max_seq_len = max_seq_len
+        self.feature_dim = sum(num_filters)
+        self.emb_dim_single = int(embed_dim / num_rep)
+
+        self.embeddings = nn.Embedding(vocab_size, embed_dim, padding_idx=padding_idx)
+
+        self.convs = nn.ModuleList([
+            nn.Conv2d(1, n, (f, embed_dim)) for (n, f) in zip(num_filters, filter_sizes)
+        ])  # vanilla
+        # self.convs = nn.ModuleList([
+        #     nn.Conv2d(1, n, (f, self.emb_dim_single), stride=(1, self.emb_dim_single)) for (n, f) in
+        #     zip(num_filters, filter_sizes)
+        # ])  # RelGAN
+
+        self.highway = nn.Linear(self.feature_dim, self.feature_dim)
+        self.feature2out = nn.Linear(self.feature_dim, 100)
+        self.out2logits = nn.Linear(100, k_label)  # vanilla
+        # self.out2logits = nn.Linear(num_rep * 100, k_label) # RelGAN
+        self.dropout = nn.Dropout(dropout)
+
+        self.init_params()
+
+    def forward(self, inp):
+        """
+        Get logits of discriminator
+        :param inp: batch_size * seq_len * vocab_size
+        :return logits: [batch_size * num_rep] (1-D tensor)
+        """
+        emb = self.embeddings(inp).unsqueeze(1)  # batch_size * 1 * max_seq_len * embed_dim
+
+        # vanilla
+        convs = [F.relu(conv(emb)).squeeze(3) for conv in self.convs]  # [batch_size * num_filter * length]
+        pools = [F.max_pool1d(conv, conv.size(2)).squeeze(2) for conv in convs]  # [batch_size * num_filter]
+        # RelGAN
+        # cons = [F.relu(conv(emb)) for conv in self.convs]  # [batch_size * num_filter * (seq_len-k_h+1) * num_rep]
+        # pools = [F.max_pool2d(con, (con.size(2), 1)).squeeze(2) for con in cons]  # [batch_size * num_filter * num_rep]
+
+        pred = torch.cat(pools, 1)  # batch_size * feature_dim
+        # pred = pred.permute(0, 2, 1).contiguous().view(-1, self.feature_dim)    # RelGAN
+        highway = self.highway(pred)
+        pred = torch.sigmoid(highway) * F.relu(highway) + (1. - torch.sigmoid(highway)) * pred  # highway, same dim
+
+        pred = self.feature2out(self.dropout(pred))
+        logits = self.out2logits(self.dropout(pred)).squeeze(1)  # vanilla, batch_size * k_label
+        # logits = self.out2logits(self.dropout(pred.view(inp.size(0), -1))).squeeze(1)  # RelGAN, batch_size * k_label
+
+        return logits

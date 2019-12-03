@@ -21,28 +21,32 @@ data_shuffle = False  # False
 oracle_pretrain = True  # True
 gen_pretrain = False
 dis_pretrain = False
+clas_pretrain = False
 
-run_model = 'relgan'  # seqgan, leakgan, relgan, maligan, jsdgan
-gen_init = 'normal'  # normal, uniform, truncated_normal
+run_model = 'relgan'  # seqgan, leakgan, relgan, maligan, jsdgan, sentigan
+k_label = 2  # num of labels, >=2
+gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
 
 # =====Oracle or Real, type=====
 if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news
-model_type = 'vanilla'  # vanilla, noRMC, noGumbel (custom)
+dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_movie, mr15
+model_type = 'vanilla'  # vanilla, RMC (custom)
 loss_type = 'rsgan'  # standard, JS, KL, hinge, tv, LS, rsgan (for RelGAN)
-vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255
+vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, amazon_app_book: 6418, mr15: 6289
+max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_movie: 40
+ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
+extend_vocab_size = 0  # plus test data, only used for Classifier
 
-temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt (for RelGAN)
-temperature = 2
+temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt
+temperature = 1
 
 # =====Basic Train=====
-samples_num = 10000  # 10000
+samples_num = 10000  # 10000, mr15: 2000,
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
-ADV_train_epoch = 3000  # SeqGAN, LeakGAN-200, RelGAN-3000
-inter_epoch = 10  # LeakGAN-10
+PRE_clas_epoch = 10
+inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
-max_seq_len = 20  # 20
 start_letter = 1
 padding_idx = 0
 start_token = 'BOS'
@@ -50,6 +54,7 @@ padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
 gen_adv_lr = 1e-4  # RelGAN-1e-4
 dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
+clas_lr = 1e-3
 clip_norm = 5.0
 
 pre_log_step = 10
@@ -57,10 +62,12 @@ adv_log_step = 20
 
 train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
+cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
+cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
 # =====Generator=====
 ADV_g_step = 1  # 1
-rollout_num = 4  # 4
+rollout_num = 16  # 4
 gen_embed_dim = 32  # 32
 gen_hidden_dim = 32  # 32
 goal_size = 16  # LeakGAN-16
@@ -119,12 +126,16 @@ save_model_root = save_root + 'models/'
 
 oracle_state_dict_path = 'pretrain/oracle_data/oracle_lstm.pt'
 oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}.pt'
+multi_oracle_state_dict_path = 'pretrain/oracle_data/oracle{}_lstm.pt'
+multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}.pt'
 
 pretrain_root = 'pretrain/{}/'.format(dataset if if_real_data else 'oracle_data')
 pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                    samples_num)
 pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                samples_num)
+pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                                 samples_num)
 signal_file = 'run_signal.txt'
 
 tips = ''
@@ -139,10 +150,13 @@ def init_param(opt):
         gen_hidden_dim, goal_size, step_size, mem_slots, num_heads, head_size, d_step, d_epoch, \
         ADV_d_step, ADV_d_epoch, dis_embed_dim, dis_hidden_dim, num_rep, log_filename, save_root, \
         signal_file, tips, save_samples_root, save_model_root, if_real_data, pretrained_gen_path, \
-        pretrained_dis_path, pretrain_root, if_test, dataset, gen_init, dis_init, oracle_samples_path
+        pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, oracle_samples_path, \
+        pretrained_clas_path, gen_init, dis_init, \
+        multi_oracle_samples_path, k_label, cat_train_data, cat_test_data
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
+    k_label = opt.k_label
     dataset = opt.dataset
     model_type = opt.model_type
     loss_type = opt.loss_type
@@ -156,6 +170,7 @@ def init_param(opt):
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size
     MLE_train_epoch = opt.mle_epoch
+    PRE_clas_epoch = opt.clas_pre_epoch
     ADV_train_epoch = opt.adv_epoch
     inter_epoch = opt.inter_epoch
     batch_size = opt.batch_size
@@ -212,15 +227,23 @@ def init_param(opt):
 
     train_data = 'dataset/' + dataset + '.txt'
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
+    cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
+    cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
     if max_seq_len == 40:
         oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}_sl40.pt'
+        multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}_sl40.pt'
 
     pretrain_root = 'pretrain/{}/'.format(dataset if if_real_data else 'oracle_data')
     pretrained_gen_path = pretrain_root + 'gen_MLE_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type,
                                                                                        max_seq_len, samples_num)
     pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                    samples_num)
+    pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
+                                                                                     samples_num)
+
+    # Assertion
+    assert k_label > 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',

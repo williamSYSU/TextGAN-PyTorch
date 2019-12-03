@@ -47,11 +47,11 @@ class RelGANInstructor(BasicInstructor):
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
         # Metrics
-        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict),
+        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
+                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict),
                          gram=[2, 3, 4, 5])
-        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
+                              real_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
                               gram=3)
 
     def _run(self):
@@ -114,8 +114,6 @@ class RelGANInstructor(BasicInstructor):
             else:
                 self.log.info('>>> Stop by pre signal, skip to adversarial training...')
                 break
-        if cfg.if_save and not cfg.if_test:
-            self._save('MLE', epoch)
 
     def adv_train_generator(self, g_step):
         total_loss = 0

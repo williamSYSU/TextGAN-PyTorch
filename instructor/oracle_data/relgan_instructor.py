@@ -6,7 +6,6 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -82,13 +81,13 @@ class RelGANInstructor(BasicInstructor):
         print('>>> Begin test...')
 
         self._run()
+
         pass
 
     def pretrain_generator(self, epochs):
         """
         Max Likelihood Pre-training for the generator
         """
-        global epoch
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
@@ -105,8 +104,6 @@ class RelGANInstructor(BasicInstructor):
             else:
                 self.log.info('>>> Stop by pre signal, skip to adversarial training...')
                 break
-        if cfg.if_save and not cfg.if_test:
-            self._save('MLE', epoch)
 
     def adv_train_generator(self, g_step):
         total_loss = 0

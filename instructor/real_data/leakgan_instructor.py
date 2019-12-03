@@ -48,11 +48,11 @@ class LeakGANInstructor(BasicInstructor):
         self.dis_data = DisDataIter(self.gen_data.random_batch()['target'], self.train_data.random_batch()['target'])
 
         # Metrics
-        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.index_word_dict),
+        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
+                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict),
                          gram=[2, 3, 4, 5])
-        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
-                              real_text=tensor_to_tokens(self.gen_data.target, self.index_word_dict),
+        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
+                              real_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
                               gram=3)
 
     def _run(self):
@@ -128,7 +128,7 @@ class LeakGANInstructor(BasicInstructor):
                 pre_work_loss = pre_work_loss / len(self.train_data.loader)
 
                 # =====Test=====
-                if epoch % cfg.pre_log_step == 0:
+                if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info('[MLE-GEN] epoch %d : pre_mana_loss = %.4f, pre_work_loss = %.4f, %s' % (
                         epoch, pre_mana_loss, pre_work_loss, self.cal_metrics(fmt_str=True)))
 
@@ -188,7 +188,7 @@ class LeakGANInstructor(BasicInstructor):
 
     def cal_metrics(self, fmt_str=False):
         self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis))
-        self.bleu.test_text = tensor_to_tokens(self.gen_data.target, self.index_word_dict)
+        self.bleu.test_text = tensor_to_tokens(self.gen_data.target, self.idx2word_dict)
         bleu_score = self.bleu.get_score(ignore=False)
 
         with torch.no_grad():
@@ -209,4 +209,4 @@ class LeakGANInstructor(BasicInstructor):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis)
-        write_tokens(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))
+        write_tokens(save_sample_path, tensor_to_tokens(samples, self.idx2word_dict))

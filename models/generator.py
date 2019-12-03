@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+# @Author       : William
+# @Project      : TextGAN-william
+# @FileName     : config.py
+# @Time         : Created at 2019-03-18
+# @Blog         : http://zhiweil.ml/
+# @Description  :
+# Copyrights (C) 2018. All Rights Reserved.
 import math
 
 import torch

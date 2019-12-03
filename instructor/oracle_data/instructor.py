@@ -29,7 +29,9 @@ class BasicInstructor:
         # oracle, generator, discriminator
         self.oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                              cfg.padding_idx, gpu=cfg.CUDA)
+        self.oracle_list = None
         self.dis = None
+        self.clas = None
 
         self.show_config()
 
@@ -41,11 +43,15 @@ class BasicInstructor:
         self.oracle_data = GenDataIter(self.oracle_samples)
 
         self.gen_data = None
+        self.gen_data_list = None
         self.dis_data = None
+        self.clas_data = None
+        self.oracle_data_list = None
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = None
+        self.clas_criterion = None
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -178,14 +184,53 @@ class BasicInstructor:
         gen_nll = self.eval_gen(self.gen,
                                 self.oracle_data.loader,
                                 self.mle_criterion)
+        div_nll = self.eval_gen(self.gen,
+                                self.gen_data.loader,
+                                self.mle_criterion)
 
         if fmt_str:
-            return 'oracle_NLL = %.4f, gen_NLL = %.4f,' % (oracle_nll, gen_nll)
-        return oracle_nll, gen_nll
+            return 'oracle_NLL = %.4f, gen_NLL = %.4f, div_NLL = %.4f' % (oracle_nll, gen_nll, div_nll)
+        return oracle_nll, gen_nll, div_nll
+
+    def cal_metrics_with_label(self, label_i=None):
+        assert type(label_i) == int, 'missing label'
+        eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+        self.gen_data_list[label_i].reset(eval_samples)
+        oracle_nll = self.eval_gen(self.oracle_list[label_i],
+                                   self.gen_data_list[label_i].loader,
+                                   self.mle_criterion, label_i)
+        gen_nll = self.eval_gen(self.gen,
+                                self.oracle_data_list[label_i].loader,
+                                self.mle_criterion, label_i)
+        div_nll = self.eval_gen(self.gen,
+                                self.gen_data_list[label_i].loader,
+                                self.mle_criterion, label_i)
+        # oracle_nll, gen_nll, div_nll = 0, 0, 0
+
+        # Evaluation Classifier accuracy
+        self.clas_data.reset([eval_samples], label_i)
+        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
+
+        return oracle_nll, gen_nll, div_nll, c_acc
+
+    def comb_metrics(self, fmt_str=False):
+        oracle_nll, gen_nll, div_nll, clas_acc = [], [], [], []
+        for label_i in range(cfg.k_label):
+            o_nll, g_nll, s_nll, acc = self.cal_metrics_with_label(label_i)
+            oracle_nll.append(round(o_nll, 4))
+            gen_nll.append(round(g_nll, 4))
+            div_nll.append(round(s_nll, 4))
+            clas_acc.append(round(acc, 4))
+
+        if fmt_str:
+            return 'oracle_NLL = %s, gen_NLL = %s, div_NLL = %s, clas_acc = %s' % (
+                oracle_nll, gen_nll, div_nll, clas_acc)
+        return oracle_nll, gen_nll, div_nll, clas_acc
 
     def _save(self, phrase, epoch):
         """Save model state dict and generator's samples"""
-        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
+        if phrase != 'ADV':
+            torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size)
         write_tensor(save_sample_path, samples)

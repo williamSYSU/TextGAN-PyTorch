@@ -25,15 +25,15 @@ class GANDataset(Dataset):
 
 
 class GenDataIter:
-    def __init__(self, samples, if_test_data=False):
+    def __init__(self, samples, if_test_data=False, shuffle=None):
         self.batch_size = cfg.batch_size
         self.max_seq_len = cfg.max_seq_len
         self.start_letter = cfg.start_letter
-        self.shuffle = cfg.data_shuffle
+        self.shuffle = cfg.data_shuffle if not shuffle else shuffle
         if cfg.if_real_data:
-            self.word_index_dict, self.index_word_dict = load_dict(cfg.dataset)
-        if if_test_data:
-            self.word_index_dict, self.index_word_dict = get_test_dict(cfg.dataset)
+            self.word2idx_dict, self.idx2word_dict = load_dict(cfg.dataset)
+        if if_test_data:  # used for the classifier
+            self.word2idx_dict, self.idx2word_dict = load_test_dict(cfg.dataset)
 
         self.loader = DataLoader(
             dataset=GANDataset(self.__read_data__(samples)),
@@ -89,16 +89,16 @@ class GenDataIter:
     def load_data(self, filename):
         """Load real data from local file"""
         tokens = get_tokenlized(filename)
-        samples_index = tokens_to_tensor(tokens, self.word_index_dict)
+        samples_index = tokens_to_tensor(tokens, self.word2idx_dict)
         return self.prepare(samples_index)
 
 
 class DisDataIter:
-    def __init__(self, pos_samples, neg_samples):
+    def __init__(self, pos_samples, neg_samples, shuffle=None):
         self.batch_size = cfg.batch_size
         self.max_seq_len = cfg.max_seq_len
         self.start_letter = cfg.start_letter
-        self.shuffle = cfg.data_shuffle
+        self.shuffle = cfg.data_shuffle if not shuffle else shuffle
 
         self.loader = DataLoader(
             dataset=GANDataset(self.__read_data__(pos_samples, neg_samples)),

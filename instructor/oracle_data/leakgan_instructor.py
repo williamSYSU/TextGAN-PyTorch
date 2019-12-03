@@ -121,7 +121,7 @@ class LeakGANInstructor(BasicInstructor):
                 pre_work_loss = pre_work_loss / len(self.oracle_data.loader)
 
                 # =====Test=====
-                if epoch % cfg.pre_log_step == 0:
+                if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info('[MLE-GEN] epoch %d : pre_mana_loss = %.4f, pre_work_loss = %.4f, %s' % (
                         epoch, pre_mana_loss, pre_work_loss, self.cal_metrics(fmt_str=True)))
 

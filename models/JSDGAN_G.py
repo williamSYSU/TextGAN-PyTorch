@@ -9,12 +9,9 @@
 
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import config as cfg
 
 from models.generator import LSTMGenerator
-from models.relational_rnn_general import RelationalMemory
 
 
 class JSDGAN_G(LSTMGenerator):
@@ -24,7 +21,6 @@ class JSDGAN_G(LSTMGenerator):
         self.name = 'jsdgan'
 
         # RMC
-
     #     self.hidden_dim = mem_slots * num_heads * head_size
     #     self.lstm = RelationalMemory(mem_slots=mem_slots, head_size=head_size, input_size=embedding_dim,
     #                                  num_heads=num_heads, return_all_outputs=True)
