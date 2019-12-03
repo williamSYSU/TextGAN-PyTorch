@@ -101,7 +101,7 @@ class SentiGANInstructor(BasicInstructor):
                     torch.save(self.gen_list[i].state_dict(), cfg.pretrained_gen_path + '%d' % i)
                     print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path + '%d' % i))
 
-        # =====TRAIN DISCRIMINATOR======
+        # ===TRAIN DISCRIMINATOR====
         if not cfg.dis_pretrain:
             self.log.info('Starting Discriminator Training...')
             self.train_discriminator(cfg.d_step, cfg.d_epoch)
@@ -109,7 +109,7 @@ class SentiGANInstructor(BasicInstructor):
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
                 print('Save pre-trained discriminator: {}'.format(cfg.pretrained_dis_path))
 
-        # =====ADVERSARIAL TRAINING=====
+        # ===ADVERSARIAL TRAINING===
         self.log.info('Starting Adversarial Training...')
         self.log.info('Initial generator: %s', self.comb_metrics(fmt_str=True))
 
@@ -144,7 +144,7 @@ class SentiGANInstructor(BasicInstructor):
                     pre_loss = self.train_gen_epoch(self.gen_list[i], self.train_data_list[i].loader,
                                                     self.mle_criterion, self.gen_opt_list[i])
 
-                    # =====Test=====
+                    # ===Test===
                     if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                         if i == cfg.k_label - 1:
                             self.log.info('[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (
@@ -167,13 +167,13 @@ class SentiGANInstructor(BasicInstructor):
                 inp, target = self.gen_data_list[i].prepare(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size),
                                                             gpu=cfg.CUDA)
 
-                # =====Train=====
+                # ===Train===
                 rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
                 adv_loss = self.gen_list[i].batchPGLoss(inp, target, rewards)
                 self.optimize(self.gen_opt_list[i], adv_loss)
                 total_g_loss += adv_loss.item()
 
-        # =====Test=====
+        # ===Test===
         self.log.info('[ADV-GEN]: %s', self.comb_metrics(fmt_str=True))
 
     def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
@@ -196,11 +196,11 @@ class SentiGANInstructor(BasicInstructor):
             self.dis_data.reset(dis_samples_list)
 
             for epoch in range(d_epoch):
-                # =====Train=====
+                # ===Train===
                 d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
-            # =====Test=====
+            # ===Test===
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f' % (
                 phrase, step, d_loss, train_acc))
 

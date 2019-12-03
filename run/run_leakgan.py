@@ -27,33 +27,33 @@ else:
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = 'python'
+executable = 'python'  # specify your own python interpreter path here
+rootdir = '../'
+scriptname = 'main.py'
 
-# =====Program=====
+# ===Program===
 if_test = int(False)
 run_model = 'leakgan'
 CUDA = int(True)
-if_real_data = [int(False), int(True), int(True)]
-data_shuffle = int(False)
-gen_init = 'normal'
-dis_init = 'uniform'
 oracle_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
-tips = 'LeakGAN experiments'
-
-# =====Oracle  or Real=====
-dataset = ['oracle', 'image_coco', 'emnlp_news']
-model_type = 'vanilla'
-loss_type = 'JS'
-vocab_size = [5000, 4683, 5256]
-temperature = 1
-
-# =====Basic Train=====
-samples_num = 10000
 MLE_train_epoch = 8
 ADV_train_epoch = 200
 inter_epoch = 10
+tips = 'LeakGAN experiments'
+
+# ===Oracle  or Real===
+if_real_data = [int(False), int(True), int(True)]
+dataset = ['oracle', 'image_coco', 'emnlp_news']
+vocab_size = [5000, 0, 0]
+
+# ===Basic Param===
+data_shuffle = int(False)
+model_type = 'vanilla'
+gen_init = 'normal'
+dis_init = 'uniform'
+samples_num = 10000
 batch_size = 64
 max_seq_len = 20
 gen_lr = 0.0015
@@ -61,7 +61,7 @@ dis_lr = 5e-5
 pre_log_step = 1
 adv_log_step = 1
 
-# =====Generator=====
+# ===Generator===
 ADV_g_step = 1
 rollout_num = 4
 gen_embed_dim = 32
@@ -69,7 +69,7 @@ gen_hidden_dim = 32
 goal_size = 16
 step_size = 4
 
-# =====Discriminator=====
+# ===Discriminator===
 d_step = 5
 d_epoch = 3
 ADV_d_step = 5
@@ -77,42 +77,37 @@ ADV_d_epoch = 3
 dis_embed_dim = 64
 dis_hidden_dim = 64
 
-# =====Run=====
-rootdir = '../'
-scriptname = 'main.py'
-cwd = os.path.dirname(os.path.abspath(__file__))
-
 args = [
     # Program
     '--if_test', if_test,
     '--run_model', run_model,
-    '--dataset', dataset[job_id],
-    '--if_real_data', if_real_data[job_id],
-    '--model_type', model_type,
-    '--loss_type', loss_type,
     '--cuda', CUDA,
-    # '--device', gpu_id,   # comment for auto GPU
-    '--shuffle', data_shuffle,
-    '--gen_init', gen_init,
-    '--dis_init', dis_init,
-    '--tips', tips,
-
-    # Basic Train
-    '--samples_num', samples_num,
-    '--vocab_size', vocab_size[job_id],
+    # '--device', gpu_id,  # comment for auto GPU
+    '--ora_pretrain', oracle_pretrain,
+    '--gen_pretrain', gen_pretrain,
+    '--dis_pretrain', dis_pretrain,
     '--mle_epoch', MLE_train_epoch,
     '--adv_epoch', ADV_train_epoch,
     '--inter_epoch', inter_epoch,
+    '--tips', tips,
+
+    # Oracle or Real
+    '--if_real_data', if_real_data[job_id],
+    '--dataset', dataset[job_id],
+    '--vocab_size', vocab_size[job_id],
+
+    # Basic Param
+    '--shuffle', data_shuffle,
+    '--model_type', model_type,
+    '--gen_init', gen_init,
+    '--dis_init', dis_init,
+    '--samples_num', samples_num,
     '--batch_size', batch_size,
     '--max_seq_len', max_seq_len,
     '--gen_lr', gen_lr,
     '--dis_lr', dis_lr,
     '--pre_log_step', pre_log_step,
     '--adv_log_step', adv_log_step,
-    '--temperature', temperature,
-    '--ora_pretrain', oracle_pretrain,
-    '--gen_pretrain', gen_pretrain,
-    '--dis_pretrain', dis_pretrain,
 
     # Generator
     '--adv_g_step', ADV_g_step,

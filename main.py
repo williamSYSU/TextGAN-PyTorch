@@ -96,7 +96,7 @@ if __name__ == '__main__':
     cfg.init_param(opt)
     opt.save_root = cfg.save_root
 
-    # =====Dict=====
+    # ===Dict===
     if cfg.if_real_data:
         from instructor.real_data.seqgan_instructor import SeqGANInstructor
         from instructor.real_data.leakgan_instructor import LeakGANInstructor

@@ -176,7 +176,7 @@ class LeakGAN_G(nn.Module):
 
         :return cos_loss: batch_size * (seq_len / step_size)
         """
-        # =====My implements=====
+        # ===My implements===
         # offset_feature = feature_array[:, 4:, :]
         # # 不记录最后四个feature的变化
         # all_feature = feature_array[:, :-4, :]
@@ -191,7 +191,7 @@ class LeakGAN_G(nn.Module):
         #
         # return cos_loss
 
-        # =====LeakGAN origin=====
+        # ===LeakGAN origin===
         # get sub_feature and real_goal
         # batch_size, seq_len = sentences.size()
         sub_feature = torch.zeros(batch_size, self.max_seq_len // self.step_size, self.goal_out_size)
@@ -308,7 +308,7 @@ class LeakGAN_G(nn.Module):
                                                                    real_goal, no_log=no_log, train=train)
             leak_out_array[:, i, :] = out
 
-            # =====My implement according to paper=====
+            # ===My implement according to paper===
             # Update real_goal and save goal
             # if 0 < i < 4:  # not update when i=0
             #     real_goal = torch.sum(goal_array, dim=1)  # num_samples * goal_out_size
@@ -316,7 +316,7 @@ class LeakGAN_G(nn.Module):
             #     real_goal = torch.sum(goal_array[:, i - 4:i, :], dim=1)
             # if i > 0:
             #     goal_array[:, i, :] = cur_goal.squeeze(1)  # !!!note: save goal after update last_goal
-            # =====LeakGAN origin=====
+            # ===LeakGAN origin===
             # Save goal and update real_goal
             goal_array[:, i, :] = cur_goal.squeeze(1)
             if i > 0 and i % self.step_size == 0:

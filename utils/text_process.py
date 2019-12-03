@@ -70,7 +70,7 @@ def text_process(train_text_loc, test_text_loc=None):
     return sequence_len, len(word2idx_dict)
 
 
-# ========================================================================
+# ============================================
 def init_dict(dataset):
     """
     Initialize dictionaries of dataset, please note that '0': padding_idx, '1': start_letter.

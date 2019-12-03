@@ -44,7 +44,7 @@ class RelGANInstructor(BasicInstructor):
         self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def _run(self):
-        # =====PRE-TRAINING (GENERATOR)=====
+        # ===PRE-TRAINING (GENERATOR)===
         if not cfg.gen_pretrain:
             self.log.info('Starting Generator MLE Training...')
             self.pretrain_generator(cfg.MLE_train_epoch)
@@ -52,7 +52,7 @@ class RelGANInstructor(BasicInstructor):
                 torch.save(self.gen.state_dict(), cfg.pretrained_gen_path)
                 print('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path))
 
-        # # =====ADVERSARIAL TRAINING=====
+        # # ===ADVERSARIAL TRAINING===
         self.log.info('Starting Adversarial Training...')
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
@@ -91,10 +91,10 @@ class RelGANInstructor(BasicInstructor):
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
-                # =====Train=====
+                # ===Train===
                 pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
 
-                # =====Test=====
+                # ===Test===
                 if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
@@ -113,7 +113,7 @@ class RelGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
 
-            # =====Train=====
+            # ===Train===
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
             g_loss, _ = get_losses(d_out_real, d_out_fake, cfg.loss_type)
@@ -131,7 +131,7 @@ class RelGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
 
-            # =====Train=====
+            # ===Train===
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
             _, d_loss = get_losses(d_out_real, d_out_fake, cfg.loss_type)

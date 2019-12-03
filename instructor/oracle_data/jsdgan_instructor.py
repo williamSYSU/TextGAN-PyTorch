@@ -51,11 +51,11 @@ class JSDGANInstructor(BasicInstructor):
             self.gen = self.gen.cuda()
 
     def _run(self):
-        # =====PRE-TRAINING=====
+        # ===PRE-TRAINING===
         self.log.info('Starting Generator MLE Training...')
         self.pretrain_generator(cfg.MLE_train_epoch)
 
-        # =====ADVERSARIAL TRAINING=====
+        # ===ADVERSARIAL TRAINING===
         self.log.info('Starting Adversarial Training...')
 
         for adv_epoch in range(cfg.ADV_train_epoch):
@@ -82,7 +82,7 @@ class JSDGANInstructor(BasicInstructor):
             if self.sig.pre_sig:
                 pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
 
-                # =====Test=====
+                # ===Test===
                 if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
@@ -105,7 +105,7 @@ class JSDGANInstructor(BasicInstructor):
                 if cfg.CUDA:
                     inp, target = inp.cuda(), target.cuda()
 
-                # =====Train=====
+                # ===Train===
                 adv_loss = self.gen.JSD_loss(inp, target)
                 self.optimize(self.gen_opt, adv_loss, self.gen)
                 total_loss += adv_loss.item()

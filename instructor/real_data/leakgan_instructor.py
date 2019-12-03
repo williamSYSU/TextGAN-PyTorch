@@ -60,7 +60,7 @@ class LeakGANInstructor(BasicInstructor):
             self.log.info('>>> Interleaved Round %d...' % inter_num)
             self.sig.update()  # update signal
             if self.sig.pre_sig:
-                # =====DISCRIMINATOR PRE-TRAINING=====
+                # ===DISCRIMINATOR PRE-TRAINING===
                 if not cfg.dis_pretrain:
                     self.log.info('Starting Discriminator Training...')
                     self.train_discriminator(cfg.d_step, cfg.d_epoch)
@@ -68,7 +68,7 @@ class LeakGANInstructor(BasicInstructor):
                         torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
                         print('Save pre-trained discriminator: {}'.format(cfg.pretrained_dis_path))
 
-                # =====GENERATOR MLE TRAINING=====
+                # ===GENERATOR MLE TRAINING===
                 if not cfg.gen_pretrain:
                     self.log.info('Starting Generator MLE Training...')
                     self.pretrain_generator(cfg.MLE_train_epoch)
@@ -79,7 +79,7 @@ class LeakGANInstructor(BasicInstructor):
                 self.log.info('>>> Stop by pre_signal! Skip to adversarial training...')
                 break
 
-        # =====ADVERSARIAL TRAINING=====
+        # ===ADVERSARIAL TRAINING===
         self.log.info('Starting Adversarial Training...')
         self.log.info('Initial generator: %s' % (str(self.cal_metrics(fmt_str=True))))
 
@@ -114,7 +114,7 @@ class LeakGANInstructor(BasicInstructor):
                 pre_mana_loss = 0
                 pre_work_loss = 0
 
-                # =====Train=====
+                # ===Train===
                 for i, data in enumerate(self.train_data.loader):
                     inp, target = data['input'], data['target']
                     if cfg.CUDA:
@@ -127,7 +127,7 @@ class LeakGANInstructor(BasicInstructor):
                 pre_mana_loss = pre_mana_loss / len(self.train_data.loader)
                 pre_work_loss = pre_work_loss / len(self.train_data.loader)
 
-                # =====Test=====
+                # ===Test===
                 if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info('[MLE-GEN] epoch %d : pre_mana_loss = %.4f, pre_work_loss = %.4f, %s' % (
                         epoch, pre_mana_loss, pre_work_loss, self.cal_metrics(fmt_str=True)))
@@ -153,7 +153,7 @@ class LeakGANInstructor(BasicInstructor):
                                               train=True)  # !!! train=True, the only place
                 inp, target = self.gen_data.prepare(gen_samples, gpu=cfg.CUDA)
 
-            # =====Train=====
+            # ===Train===
             rewards = rollout_func.get_reward_leakgan(target, cfg.rollout_num, self.dis,
                                                       current_k).cpu()  # reward with MC search
             mana_loss, work_loss = self.gen.adversarial_loss(target, rewards, self.dis)
@@ -162,7 +162,7 @@ class LeakGANInstructor(BasicInstructor):
             self.optimize_multi(self.gen_opt, [mana_loss, work_loss])
             adv_mana_loss += mana_loss.data.item()
             adv_work_loss += work_loss.data.item()
-        # =====Test=====
+        # ===Test===
         self.log.info('[ADV-GEN] adv_mana_loss = %.4f, adv_work_loss = %.4f, %s' % (
             adv_mana_loss / g_step, adv_work_loss / g_step, self.cal_metrics(fmt_str=True)))
 
@@ -178,11 +178,11 @@ class LeakGANInstructor(BasicInstructor):
             self.dis_data.reset(pos_samples, neg_samples)
 
             for epoch in range(d_epoch):
-                # =====Train=====
+                # ===Train===
                 d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
-            # =====Test=====
+            # ===Test===
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f,' % (
                 phrase, step, d_loss, train_acc))
 

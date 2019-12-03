@@ -13,7 +13,7 @@ import os
 import re
 import torch
 
-# =====Program=====
+# ===Program===
 if_test = False
 CUDA = True
 if_save = True
@@ -28,7 +28,7 @@ k_label = 2  # num of labels, >=2
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
 
-# =====Oracle or Real, type=====
+# ===Oracle or Real, type===
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_movie, mr15
 model_type = 'vanilla'  # vanilla, RMC (custom)
@@ -41,7 +41,7 @@ extend_vocab_size = 0  # plus test data, only used for Classifier
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt
 temperature = 1
 
-# =====Basic Train=====
+# ===Basic Train===
 samples_num = 10000  # 10000, mr15: 2000,
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 10
@@ -65,7 +65,7 @@ test_data = 'dataset/testdata/' + dataset + '_test.txt'
 cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
 cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
-# =====Generator=====
+# ===Generator===
 ADV_g_step = 1  # 1
 rollout_num = 16  # 4
 gen_embed_dim = 32  # 32
@@ -77,7 +77,7 @@ mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
 head_size = 256  # RelGAN-256
 
-# =====Discriminator=====
+# ===Discriminator===
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
 ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
@@ -87,7 +87,7 @@ dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 
-# =====log=====
+# ===log===
 log_time_str = strftime("%m%d_%H%M_%S", localtime())
 log_filename = strftime("log/log_%s" % log_time_str)
 if os.path.exists(log_filename + '.txt'):
@@ -115,7 +115,7 @@ else:
 # print('device: ', device)
 torch.cuda.set_device(device)
 
-# =====Save Model and samples=====
+# ===Save Model and samples===
 save_root = 'save/{}/{}/{}_{}_lt-{}_sl{}_temp{}_T{}/'.format(time.strftime("%Y%m%d"),
                                                              dataset, run_model, model_type,
                                                              loss_type, max_seq_len,

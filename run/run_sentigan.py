@@ -28,69 +28,103 @@ else:
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = 'python'
+executable = 'python'  # specify your own python interpreter path here
 rootdir = '../'
+scriptname = 'main.py'
 
 # ===Program===
+if_test = int(False)
 run_model = 'sentigan'
+k_label = 2
+CUDA = int(True)
+oracle_pretrain = int(True)
+gen_pretrain = int(False)
+dis_pretrain = int(False)
 MLE_train_epoch = 120
-PRE_clas_epoch = 5
-samples_num = 10000
-gen_pretrain = 1
+clas_pre_epoch = 5
 ADV_train_epoch = 100
+tips = 'SentiGAN experiments'
 
 # ===Oracle or Real===
 if_real_data = [int(False), int(True), int(True)]
 dataset = ['oracle', 'mr15', 'amazon_app_book']
-tips = 'SentiGAN experiments'
+vocab_size = [5000, 0, 0]
 
-# === Basic Param ===
-if_test = int(False)
-ora_pretrain = int(True)
+# ===Basic Param===
 data_shuffle = int(False)
+model_type = 'vanilla'
 gen_init = 'normal'
 dis_init = 'uniform'
-model_type = 'vanilla'
-loss_type = 'JS'
-n_parent = 1
-ADV_d_step = 5
-ADV_d_epoch = 1
-mem_slots = 1
-num_heads = 2
-head_size = 256
+samples_num = 10000
+batch_size = 64
+max_seq_len = 20
+gen_lr = 0.01
+dis_lr = 1e-4
 pre_log_step = 10
 adv_log_step = 1
 
+# ===Generator===
+ADV_g_step = 1
+rollout_num = 16
+gen_embed_dim = 32
+gen_hidden_dim = 32
+
+# ===Discriminator===
+d_step = 5
+d_epoch = 3
+ADV_d_step = 4
+ADV_d_epoch = 2
+dis_embed_dim = 64
+dis_hidden_dim = 64
+
 args = [
-    # Compare Param
-    '--device', gpu_id,
+    # Program
+    '--if_test', if_test,
     '--run_model', run_model,
-    '--mle_epoch', MLE_train_epoch,
-    '--clas_pre_epoch', PRE_clas_epoch,
-    '--ora_pretrain', ora_pretrain,
+    '--k_label', k_label,
+    '--cuda', CUDA,
+    # '--device', gpu_id,  # comment for auto GPU
+    '--ora_pretrain', oracle_pretrain,
     '--gen_pretrain', gen_pretrain,
-    '--loss_type', loss_type,
+    '--dis_pretrain', dis_pretrain,
+    '--mle_epoch', MLE_train_epoch,
+    '--clas_pre_epoch', clas_pre_epoch,
     '--adv_epoch', ADV_train_epoch,
     '--tips', tips,
 
-    # Basic Param
-    '--if_test', if_test,
+    # Oracle or Real
     '--if_real_data', if_real_data[job_id],
-    '--dataset', dataset,
+    '--dataset', dataset[job_id],
+    '--vocab_size', vocab_size[job_id],
+
+    # Basic Param
     '--shuffle', data_shuffle,
+    '--model_type', model_type,
     '--gen_init', gen_init,
     '--dis_init', dis_init,
-    '--model_type', model_type,
     '--samples_num', samples_num,
-    '--adv_d_step', ADV_d_step,
-    '--adv_d_epoch', ADV_d_epoch,
-    '--mem_slots', mem_slots,
-    '--num_heads', num_heads,
-    '--head_size', head_size,
+    '--batch_size', batch_size,
+    '--max_seq_len', max_seq_len,
+    '--gen_lr', gen_lr,
+    '--dis_lr', dis_lr,
     '--pre_log_step', pre_log_step,
     '--adv_log_step', adv_log_step,
+
+    # Generator
+    '--adv_g_step', ADV_g_step,
+    '--rollout_num', rollout_num,
+    '--gen_embed_dim', gen_embed_dim,
+    '--gen_hidden_dim', gen_hidden_dim,
+
+    # Discriminator
+    '--d_step', d_step,
+    '--d_epoch', d_epoch,
+    '--adv_d_step', ADV_d_step,
+    '--adv_d_epoch', ADV_d_epoch,
+    '--dis_embed_dim', dis_embed_dim,
+    '--dis_hidden_dim', dis_hidden_dim,
 ]
 
 args = list(map(str, args))
 my_env = os.environ.copy()
-call([executable, 'main.py'] + args, env=my_env, cwd=rootdir)
+call([executable, scriptname] + args, env=my_env, cwd=rootdir)
