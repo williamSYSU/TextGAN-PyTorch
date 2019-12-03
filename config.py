@@ -243,7 +243,7 @@ def init_param(opt):
                                                                                      samples_num)
 
     # Assertion
-    assert k_label > 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)
+    assert k_label >= 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',
