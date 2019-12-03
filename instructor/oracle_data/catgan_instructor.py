@@ -145,7 +145,7 @@ class CatGANInstructor(BasicInstructor):
             progress.set_description('mu: %s, d_loss = %.4f, temp = %.4f' % (
                 ' '.join(select_mu), d_loss, self.parents[best_id]['temperature'].item()))
 
-            # =====Test=====
+            # ===Test===
             if adv_epoch % cfg.adv_log_step == 0:
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
@@ -168,10 +168,10 @@ class CatGANInstructor(BasicInstructor):
         Max Likelihood Pre-training for the generator
         """
         for epoch in range(epochs):
-            # =====Train=====
+            # ===Train===
             pre_loss = self.train_gen_epoch(self.gen, self.all_oracle_data.loader, self.mle_criterion, self.gen_opt)
 
-            # =====Test=====
+            # ===Test===
             if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                 self.log.info(
                     '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (
@@ -182,7 +182,7 @@ class CatGANInstructor(BasicInstructor):
                         self._save('MLE', epoch, label_i)
 
     def train_classifier(self, epochs):
-        self.clas_data.reset(self.oracle_samples_list)  # TODO: bug: have to reset
+        self.clas_data.reset(self.oracle_samples_list)  # Need to reset! The clas_data has changed in self.comb_metrics
         for epoch in range(epochs):
             c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
             self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', epoch, c_loss, c_acc)
@@ -423,7 +423,7 @@ class CatGANInstructor(BasicInstructor):
         for step in range(g_step):
             dis_real_samples, dis_gen_samples = self.prepare_train_data('G')
 
-            # =====Train=====
+            # ===Train===
             g_loss = 0
             all_d_out_real = []
             all_d_out_fake = []

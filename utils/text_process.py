@@ -120,13 +120,6 @@ def load_test_dict(dataset):
     return word2idx_dict, idx2word_dict
 
 
-def get_test_dict(dataset):
-    tokens = get_tokenlized('dataset/testdata/{}_test.txt'.format(dataset))
-    word_set = get_word_list(tokens)
-    word_index_dict, index_word_dict = get_dict(word_set)
-    return word_index_dict, index_word_dict
-
-
 def tensor_to_tokens(tensor, dictionary):
     """transform Tensor to word tokens"""
     tokens = []

@@ -92,7 +92,7 @@ class EvoGANInstructor(BasicInstructor):
             self.gen_adv_opt.zero_grad()
 
     def _run(self):
-        # =====PRE-TRAINING (GENERATOR)=====
+        # ===PRE-TRAINING (GENERATOR)===
         if not cfg.gen_pretrain:
             for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_mle_opts)):
                 self.log.info('Starting Generator-{} MLE Training...'.format(i))
@@ -103,7 +103,7 @@ class EvoGANInstructor(BasicInstructor):
                     torch.save(self.gen.state_dict(), cfg.pretrained_gen_path + '%d' % i)
                     self.log.info('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path + '%d' % i))
 
-        # # =====ADVERSARIAL TRAINING=====
+        # # ===ADVERSARIAL TRAINING===
         self.log.info('Starting Adversarial Training...')
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
@@ -144,10 +144,10 @@ class EvoGANInstructor(BasicInstructor):
         for epoch in range(epochs):
             self.sig.update()
             if self.sig.pre_sig:
-                # =====Train=====
+                # ===Train===
                 pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
 
-                # =====Test=====
+                # ===Test===
                 if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
@@ -157,8 +157,6 @@ class EvoGANInstructor(BasicInstructor):
             else:
                 self.log.info('>>> Stop by pre signal, skip to adversarial training...')
                 break
-        if cfg.if_save and not cfg.if_test:
-            self._save('MLE', epoch)
 
     def evolve_generator(self, evo_g_step):
         # evaluation real data
@@ -368,7 +366,7 @@ class EvoGANInstructor(BasicInstructor):
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
 
-            # =====Train=====
+            # ===Train===
             d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
             d_loss = self.D_criterion(d_out_real, d_out_fake)
@@ -388,7 +386,7 @@ class EvoGANInstructor(BasicInstructor):
                 # real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
                 gen_samples = gen_samples.cuda()
 
-            # =====Train=====
+            # ===Train===
             # d_out_real = self.dis(real_samples)
             d_out_fake = self.dis(gen_samples)
             if type(criterionG) == list:  # multiple loss

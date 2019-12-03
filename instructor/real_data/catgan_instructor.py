@@ -41,7 +41,7 @@ class CatGANInstructor(BasicInstructor):
                         for _ in range(cfg.n_parent)]  # list of Generator state_dict
         self.dis = CatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
                             cfg.padding_idx, gpu=cfg.CUDA)
-        self.clas = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
+        self.clas = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.extend_vocab_size,
                              cfg.padding_idx, gpu=cfg.CUDA)
 
         self.init_model()
@@ -65,21 +65,25 @@ class CatGANInstructor(BasicInstructor):
         # DataLoader
         self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
         self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i), if_test_data=True) for i in range(cfg.k_label)]
-        self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
-        self.test_samples_list = [self.test_data_list[i].target for i in range(cfg.k_label)]
-        self.all_train_data = CatGenDataIter(self.train_samples_list)
+        self.clas_data_list = [GenDataIter(cfg.cat_test_data.format(str(i) + '_clas'), if_test_data=True) for i in
+                               range(cfg.k_label)]
         self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
                               for i in range(cfg.k_label)]
-        self.clas_data = CatClasDataIter(self.test_samples_list)  # init classifier train data
+
+        self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
+        self.clas_samples_list = [self.clas_data_list[i].target for i in range(cfg.k_label)]
+
+        self.all_train_data = CatGenDataIter(self.train_samples_list)
+        self.clas_data = CatClasDataIter(self.clas_samples_list, shuffle=True)  # init classifier train data
         self.eval_clas_data = CatClasDataIter(self.train_samples_list)
 
         # Metrics
-        self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+        self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
                           real_text=tensor_to_tokens(self.test_data_list[i].target,
-                                                     self.test_data_list[i].index_word_dict), gram=[2, 3, 4, 5])
+                                                     self.test_data_list[i].idx2word_dict), gram=[2, 3, 4, 5])
                      for i in range(cfg.k_label)]
-        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
-                               real_text=tensor_to_tokens(self.gen_data_list[i].target, self.index_word_dict),
+        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
+                               real_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
                                gram=3) for i in range(cfg.k_label)]
 
     def init_model(self):
@@ -133,7 +137,7 @@ class CatGANInstructor(BasicInstructor):
             progress.set_description('mu: %s, d_loss = %.4f, temp = %.4f' % (
                 ' '.join(select_mu), d_loss, self.parents[best_id]['temperature'].item()))
 
-            # =====Test=====
+            # ===Test===
             if adv_epoch % cfg.adv_log_step == 0:
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
@@ -156,10 +160,10 @@ class CatGANInstructor(BasicInstructor):
         Max Likelihood Pre-training for the generator
         """
         for epoch in range(epochs):
-            # =====Train=====
+            # ===Train===
             pre_loss = self.train_gen_epoch(self.gen, self.all_train_data.loader, self.mle_criterion, self.gen_opt)
 
-            # =====Test=====
+            # ===Test===
             if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                 self.log.info(
                     '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (
@@ -168,16 +172,6 @@ class CatGANInstructor(BasicInstructor):
                 if not cfg.if_test and cfg.if_save:
                     for label_i in range(cfg.k_label):
                         self._save('MLE', epoch, label_i)
-
-    def train_classifier(self, epochs):
-        self.clas_data.reset(self.test_samples_list)  # TODO: bug: have to reset
-        self.eval_clas_data.reset(self.train_samples_list)
-        for epoch in range(epochs):
-            c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
-
-            _, eval_acc = self.eval_dis(self.clas, self.eval_clas_data.loader, self.clas_criterion)
-            self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f, eval_acc = %.4f', epoch, c_loss, c_acc,
-                          eval_acc)
 
     def evolve_generator(self, evo_g_step):
         # evaluation real data
@@ -348,7 +342,7 @@ class CatGANInstructor(BasicInstructor):
         for step in range(g_step):
             dis_real_samples, dis_gen_samples = self.prepare_train_data('G')
 
-            # =====Train=====
+            # ===Train===
             g_loss = 0
             all_d_out_real = []
             all_d_out_fake = []
@@ -444,7 +438,7 @@ class CatGANInstructor(BasicInstructor):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
         save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
-        write_tokens(save_sample_path, tensor_to_tokens(samples, self.index_word_dict))
+        write_tokens(save_sample_path, tensor_to_tokens(samples, self.idx2word_dict))
 
     @staticmethod
     def merge(*args):

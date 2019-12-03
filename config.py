@@ -13,7 +13,7 @@ import os
 import re
 import torch
 
-# =====Program=====
+# ===Program===
 if_test = False
 CUDA = True
 multi_gpu = False
@@ -24,12 +24,12 @@ gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, evogan, sentigan, maligan
-k_label = 2  # num of labels
+run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, evogan, sentigan, maligan, jsdgan
+k_label = 2  # num of labels, >=2
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
 
-# =====EvoGAN=====
+# ===CatGAN===
 n_parent = 1
 eval_b_num = 8  # >= n_parent*ADV_d_step
 max_bn = 1 if eval_b_num > 1 else eval_b_num
@@ -41,27 +41,28 @@ freeze_clas = False
 use_all_real_fake = False
 use_population = False
 
-# =====Oracle or Real, type=====
+# ===Oracle or Real, type===
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, mr15
-model_type = 'vanilla'  # vanilla, noRMC
-loss_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (EvoGAN)
-mu_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge
+model_type = 'vanilla'  # vanilla, RMC (custom)
+loss_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (CatGAN)
+mu_type = 'rsgan ragan'  # rsgan lsgan ragan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra, bleu3, bleu-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_book: 6418, mr15: 6289
 max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_book: 40
 ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
+extend_vocab_size = 0  # plus test data, only used for Classifier
 
 temp_adpt = 'exp'  # no, lin, exp, log, sigmoid, quad, sqrt
 mu_temp = 'exp'  # lin exp log sigmoid quad sqrt
 evo_temp_step = 1
 temperature = 1
 
-# =====Basic Train=====
-samples_num = 10000  # 10000, mr15: 1500,
+# ===Basic Train===
+samples_num = 10000  # 10000, mr15: 2000,
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
-PRE_clas_epoch = 5
+PRE_clas_epoch = 10
 inter_epoch = 15  # LeakGAN-10
 batch_size = 64  # 64
 start_letter = 1
@@ -71,7 +72,7 @@ padding_token = 'EOS'
 gen_lr = 0.01  # 0.01
 gen_adv_lr = 1e-4  # RelGAN-1e-4
 dis_lr = 1e-4  # SeqGAN,LeakGAN-1e-2, RelGAN-1e-4
-clas_lr = 1e-4  # CatGAN
+clas_lr = 1e-3
 clip_norm = 5.0
 
 pre_log_step = 10
@@ -82,7 +83,7 @@ test_data = 'dataset/testdata/' + dataset + '_test.txt'
 cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
 cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
-# =====Generator=====
+# ===Generator===
 ADV_g_step = 1  # 1
 rollout_num = 16  # 4
 gen_embed_dim = 32  # 32
@@ -94,7 +95,7 @@ mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
 head_size = 256  # RelGAN-256
 
-# =====Discriminator=====
+# ===Discriminator===
 d_step = 5  # SeqGAN-50, LeakGAN-5
 d_epoch = 3  # SeqGAN,LeakGAN-3
 ADV_d_step = 5  # SeqGAN,LeakGAN,RelGAN-5
@@ -104,7 +105,7 @@ dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64  # RelGAN
 
-# =====log=====
+# ===log===
 log_time_str = strftime("%m%d_%H%M_%S", localtime())
 log_filename = strftime("log/log_%s" % log_time_str)
 if os.path.exists(log_filename + '.txt'):
@@ -128,7 +129,7 @@ if torch.cuda.is_available() and torch.cuda.device_count() > 0:
         device = 0
 else:
     device = -1
-# device = 1
+# device=1
 # print('device: ', device)
 
 if multi_gpu:
@@ -141,7 +142,7 @@ else:
     devices = str(device)
     torch.cuda.set_device(device)
 
-# =====Save Model and samples=====
+# ===Save Model and samples===
 save_root = 'save/{}/{}/{}_{}_dt-{}_lt-{}_mt-{}_et-{}_sl{}_temp{}_lfd{}_T{}/'.format(time.strftime("%Y%m%d"),
                                                                                      dataset, run_model, model_type,
                                                                                      d_type,
@@ -301,6 +302,11 @@ def init_param(opt):
                                                                                    samples_num)
     pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                      samples_num)
+
+    # Assertion
+    assert k_label >= 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)
+    assert eval_b_num >= n_parent * ADV_d_step, 'Error: eval_b_num = {}, which should be >= n_parent * ADV_d_step ({})!'.format(
+        eval_b_num, n_parent * ADV_d_step)
 
     # Create Directory
     dir_list = ['save', 'savefig', 'log', 'pretrain', 'dataset',

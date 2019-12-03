@@ -1,9 +1,17 @@
+# -*- coding: utf-8 -*-
+# @Author       : William
+# @Project      : TextGAN-william
+# @FileName     : config.py
+# @Time         : Created at 2019-03-18
+# @Blog         : http://zhiweil.ml/
+# @Description  :
+# Copyrights (C) 2018. All Rights Reserved.
 from __future__ import print_function
 
 import argparse
 
 import config as cfg
-from utils.text_process import text_process
+from utils.text_process import text_process, load_test_dict
 
 
 def program_config(parser):
@@ -100,10 +108,11 @@ if __name__ == '__main__':
 
     if opt.if_real_data:
         opt.max_seq_len, opt.vocab_size = text_process('dataset/' + opt.dataset + '.txt')
+        cfg.extend_vocab_size = len(load_test_dict(opt.dataset)[0])  # init classifier vocab_size
     cfg.init_param(opt)
     opt.save_root = cfg.save_root
 
-    # =====Dict=====
+    # ===Dict===
     if cfg.if_real_data:
         from instructor.real_data.seqgan_instructor import SeqGANInstructor
         from instructor.real_data.leakgan_instructor import LeakGANInstructor
