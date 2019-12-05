@@ -30,11 +30,11 @@ dis_init = 'uniform'  # normal, uniform, truncated_normal
 
 # ===Oracle or Real, type===
 if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_movie, mr15
+dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, mr15
 model_type = 'vanilla'  # vanilla, RMC (custom)
 loss_type = 'rsgan'  # standard, JS, KL, hinge, tv, LS, rsgan (for RelGAN)
 vocab_size = 5000  # oracle: 5000, coco: 6613, emnlp: 5255, amazon_app_book: 6418, mr15: 6289
-max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_movie: 40
+max_seq_len = 20  # oracle: 20, coco: 37, emnlp: 51, amazon_app_book: 40
 ADV_train_epoch = 2000  # SeqGAN, LeakGAN-200, RelGAN-3000
 extend_vocab_size = 0  # plus test data, only used for Classifier
 
