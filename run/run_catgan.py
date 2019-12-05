@@ -101,7 +101,8 @@ args = [
     '--head_size', head_size[job_id],
     '--pre_log_step', pre_log_step,
     '--adv_log_step', adv_log_step,
-    # EvoGAN Param
+
+    # CatGAN Param
     '--d_out_mean', d_out_mean,
     '--n_parent', n_parent,
     '--lambda_fq', lambda_fq,
