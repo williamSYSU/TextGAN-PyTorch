@@ -33,7 +33,7 @@ def program_config(parser):
     parser.add_argument('--gen_init', default=cfg.gen_init, type=str)
     parser.add_argument('--dis_init', default=cfg.dis_init, type=str)
 
-    # EvoGAN
+    # CatGAN
     parser.add_argument('--n_parent', default=cfg.n_parent, type=int)
     parser.add_argument('--eval_b_num', default=cfg.eval_b_num, type=int)
     parser.add_argument('--lambda_fq', default=cfg.lambda_fq, type=float)

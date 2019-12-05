@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from metrics.bleu import BLEU
+from metrics.nll import NLL
 from models.CatGAN_D import CatGAN_D, CatGAN_C
 from models.CatGAN_G import CatGAN_G
 from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
@@ -65,10 +65,8 @@ class CatGANInstructor(BasicInstructor):
         # DataLoader
         self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
         self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i), if_test_data=True) for i in range(cfg.k_label)]
-        self.clas_data_list = [GenDataIter(cfg.cat_test_data.format(str(i) + '_clas'), if_test_data=True) for i in
+        self.clas_data_list = [GenDataIter(cfg.cat_test_data.format(str(i)), if_test_data=True) for i in
                                range(cfg.k_label)]
-        self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
-                              for i in range(cfg.k_label)]
 
         self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
         self.clas_samples_list = [self.clas_data_list[i].target for i in range(cfg.k_label)]
@@ -77,14 +75,10 @@ class CatGANInstructor(BasicInstructor):
         self.clas_data = CatClasDataIter(self.clas_samples_list, shuffle=True)  # init classifier train data
         self.eval_clas_data = CatClasDataIter(self.train_samples_list)
 
+        self.test_tokens_list = [tensor_to_tokens(self.test_data_list[i].target, self.test_data_list[i].idx2word_dict)
+                                 for i in range(cfg.k_label)]
         # Metrics
-        self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
-                          real_text=tensor_to_tokens(self.test_data_list[i].target,
-                                                     self.test_data_list[i].idx2word_dict), gram=[2, 3, 4, 5])
-                     for i in range(cfg.k_label)]
-        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
-                               real_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
-                               gram=3) for i in range(cfg.k_label)]
+        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.clas_acc]
 
     def init_model(self):
         if cfg.gen_pretrain:
@@ -377,9 +371,8 @@ class CatGANInstructor(BasicInstructor):
         if cfg.lambda_fd != 0:
             nll_div = []
             for label_i in range(cfg.k_label):
-                self.gen_data_list[label_i].reset(eval_samples[label_i])
-                nll_div.append(self.eval_gen(self.gen, self.gen_data_list[label_i].loader, self.mle_criterion,
-                                             label_i))  # NLL_div
+                gen_data = GenDataIter(eval_samples[label_i])
+                nll_div.append(NLL.cal_nll_with_label(self.gen, gen_data.loader, label_i, self.mle_criterion))
             Fd = sum(nll_div)
         else:
             Fd = 0
@@ -414,23 +407,6 @@ class CatGANInstructor(BasicInstructor):
             loss = criterion(pred, target.view(-1))
             self.optimize(optimizer, loss, model)
             total_loss += loss.item()
-        return total_loss / len(data_loader)
-
-    @staticmethod
-    def eval_gen(model, data_loader, criterion, label_i=None):
-        assert type(label_i) == int, 'missing label'
-        total_loss = 0
-        with torch.no_grad():
-            for i, data in enumerate(data_loader):
-                inp, target = data['input'], data['target']
-                label = torch.LongTensor([label_i] * data_loader.batch_size)
-                if cfg.CUDA:
-                    inp, target, label = inp.cuda(), target.cuda(), label.cuda()
-
-                hidden = model.init_hidden(data_loader.batch_size)
-                pred = model.forward(inp, hidden, label)
-                loss = criterion(pred, target.view(-1))
-                total_loss += loss.item()
         return total_loss / len(data_loader)
 
     def _save(self, phase, epoch, label_i=None):

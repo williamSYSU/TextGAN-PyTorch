@@ -19,10 +19,11 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.CatGAN_D import CatGAN_D, CatGAN_C
+from metrics.nll import NLL
+from models.CatGAN_D import CatGAN_D
 from models.CatGAN_G import CatGAN_G
 from models.Oracle import Oracle
-from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
+from utils.cat_data_loader import CatGenDataIter
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
 from utils.gan_loss import GANLoss
@@ -47,8 +48,6 @@ class CatGANInstructor(BasicInstructor):
                         for _ in range(cfg.n_parent)]  # list of Generator state_dict
         self.dis = CatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
                             cfg.padding_idx, gpu=cfg.CUDA)
-        self.clas = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
-                             cfg.padding_idx, gpu=cfg.CUDA)
 
         self.init_model()
 
@@ -56,7 +55,6 @@ class CatGANInstructor(BasicInstructor):
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
-        self.clas_opt = optim.Adam(self.clas.parameters(), lr=cfg.clas_lr)
         self.parent_mle_opts = [copy.deepcopy(self.gen_opt.state_dict())
                                 for _ in range(cfg.n_parent)]
         self.parent_adv_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
@@ -64,7 +62,6 @@ class CatGANInstructor(BasicInstructor):
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
-        self.clas_criterion = nn.CrossEntropyLoss()
         self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
         self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
@@ -79,9 +76,6 @@ class CatGANInstructor(BasicInstructor):
                                     for i in range(cfg.k_label)]
         self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
         self.all_oracle_data = CatGenDataIter(self.oracle_samples_list)  # Shuffled all oracle data
-        self.gen_data_list = [GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=i))
-                              for i in range(cfg.k_label)]
-        self.clas_data = CatClasDataIter(self.oracle_samples_list)  # init classifier train data
 
     def init_model(self):
         if cfg.oracle_pretrain:
@@ -96,16 +90,11 @@ class CatGANInstructor(BasicInstructor):
                 self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
                 self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
 
-        if cfg.clas_pretrain:
-            self.log.info('Load  pretrained classifier: {}'.format(cfg.pretrained_clas_path))
-            self.clas.load_state_dict(torch.load(cfg.pretrained_clas_path, map_location='cuda:%d' % cfg.device))
-
         if cfg.CUDA:
             for i in range(cfg.k_label):
                 self.oracle_list[i] = self.oracle_list[i].cuda()
             self.gen = self.gen.cuda()
             self.dis = self.dis.cuda()
-            self.clas = self.clas.cuda()
 
     def load_gen(self, parent, parent_opt, mle=False):
         self.gen.load_state_dict(copy.deepcopy(parent))
@@ -117,10 +106,6 @@ class CatGANInstructor(BasicInstructor):
             self.gen_adv_opt.zero_grad()
 
     def _run(self):
-        # ===Pre-train Classifier with real data===
-        self.log.info('Start training Classifier...')
-        self.train_classifier(cfg.PRE_clas_epoch)
-
         # ===Pre-train Generator===
         if not cfg.gen_pretrain:
             for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_mle_opts)):
@@ -180,15 +165,6 @@ class CatGANInstructor(BasicInstructor):
                 if not cfg.if_test and cfg.if_save:
                     for label_i in range(cfg.k_label):
                         self._save('MLE', epoch, label_i)
-
-    def train_classifier(self, epochs):
-        self.clas_data.reset(self.oracle_samples_list)  # Need to reset! The clas_data has changed in self.comb_metrics
-        for epoch in range(epochs):
-            c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
-            self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', epoch, c_loss, c_acc)
-
-        if not cfg.if_test and cfg.if_save:
-            torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
 
     def evolve_generator(self, evo_g_step):
         # evaluation real data
@@ -458,10 +434,8 @@ class CatGANInstructor(BasicInstructor):
         if cfg.lambda_fd != 0:
             nll_div = []
             for label_i in range(cfg.k_label):
-                self.gen_data_list[label_i].reset(eval_samples[label_i])
-                nll_div.append(self.eval_gen(self.gen,
-                                             self.gen_data_list[label_i].loader,
-                                             self.mle_criterion, label_i))  # NLL_div
+                gen_data = GenDataIter(eval_samples[label_i])
+                nll_div.append(NLL.cal_nll_with_label(self.gen, gen_data.loader, label_i, self.mle_criterion))
             if 'f1' in eval_type:
                 if cfg.k_label == 1:
                     Fd = nll_div[0] if len(nll_div) > 0 else 0
@@ -478,12 +452,11 @@ class CatGANInstructor(BasicInstructor):
         if 'nll' in eval_type:
             nll_oracle = []
             for label_i in range(cfg.k_label):
-                self.gen_data_list[label_i].reset(eval_samples[label_i])
+                gen_data = GenDataIter(eval_samples[label_i])
 
                 if cfg.lambda_fq != 0:
-                    nll_oracle.append(-self.eval_gen(self.oracle_list[label_i],
-                                                     self.gen_data_list[label_i].loader,
-                                                     self.mle_criterion, label_i))  # NLL_Oracle
+                    nll_oracle.append(-NLL.cal_nll_with_label(self.oracle_list[label_i], gen_data.loader, label_i,
+                                                              self.mle_criterion))
 
             if 'f1' in eval_type:
                 if cfg.k_label == 1:
@@ -517,26 +490,6 @@ class CatGANInstructor(BasicInstructor):
             loss = criterion(pred, target.view(-1))
             self.optimize(optimizer, loss, model)
             total_loss += loss.item()
-        return total_loss / len(data_loader)
-
-    @staticmethod
-    def eval_gen(model, data_loader, criterion, label_i=None):
-        assert type(label_i) == int, 'missing label'
-        total_loss = 0
-        with torch.no_grad():
-            for i, data in enumerate(data_loader):
-                inp, target = data['input'], data['target']
-                label = torch.LongTensor([label_i] * data_loader.batch_size)
-                if cfg.CUDA:
-                    inp, target, label = inp.cuda(), target.cuda(), label.cuda()
-
-                hidden = model.init_hidden(data_loader.batch_size)
-                if model.name == 'oracle':
-                    pred = model.forward(inp, hidden)
-                else:
-                    pred = model.forward(inp, hidden, label)
-                loss = criterion(pred, target.view(-1))
-                total_loss += loss.item()
         return total_loss / len(data_loader)
 
     def _save(self, phrase, epoch, label_i=None):

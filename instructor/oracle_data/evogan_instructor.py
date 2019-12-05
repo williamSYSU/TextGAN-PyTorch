@@ -18,6 +18,7 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
+from metrics.nll import NLL
 from models.EvoGAN_D import EvoGAN_D
 from models.EvoGAN_G import EvoGAN_G
 from utils.data_loader import GenDataIter
@@ -54,9 +55,6 @@ class EvoGANInstructor(BasicInstructor):
         self.cross_entro_cri = nn.CrossEntropyLoss()
         self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
         self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
-
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def init_model(self):
         if cfg.oracle_pretrain:
@@ -413,11 +411,11 @@ class EvoGANInstructor(BasicInstructor):
         """Evaluation all children, update child score. Note that the eval data should be the same"""
 
         eval_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size)
-        self.gen_data.reset(eval_samples)
+        gen_data = GenDataIter(eval_samples)
 
         # Fd
         if cfg.lambda_fd != 0:
-            Fd = self.eval_gen(self.gen, self.gen_data.loader, self.mle_criterion)  # NLL_div
+            Fd = NLL.cal_nll(self.gen, gen_data.loader, self.mle_criterion)  # NLL_div
         else:
             Fd = 0
 
@@ -425,18 +423,12 @@ class EvoGANInstructor(BasicInstructor):
             Fq = self.eval_d_out_fake.mean().cpu().item()
         elif eval_type == 'rsgan':
             g_loss, d_loss = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'rsgan')
-
             Fq = d_loss.item()
         elif eval_type == 'nll':
-            self.gen_data.reset(self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size))
-
             if cfg.lambda_fq != 0:
-                Fq = -self.eval_gen(self.oracle,
-                                    self.gen_data.loader,
-                                    self.mle_criterion)  # NLL_Oracle
+                Fq = -NLL.cal_nll(self.oracle, gen_data.loader, self.mle_criterion)  # NLL_Oracle
             else:
                 Fq = 0
-
         elif eval_type == 'Ra':
             g_loss = torch.sigmoid(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).sum()
             Fq = g_loss.item()

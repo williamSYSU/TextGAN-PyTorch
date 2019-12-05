@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from metrics.bleu import BLEU
+from metrics.nll import NLL
 from models.EvoGAN_D import EvoGAN_D
 from models.EvoGAN_G import EvoGAN_G
 from utils.data_loader import GenDataIter
@@ -56,16 +56,7 @@ class EvoGANInstructor(BasicInstructor):
         self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
         self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
-
-        # Metrics
-        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict),
-                         gram=[2, 3, 4, 5])
-        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                              real_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                              gram=3)
+        self.test_tokens = tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict)
 
     def init_model(self):
         if cfg.dis_pretrain:
@@ -327,11 +318,11 @@ class EvoGANInstructor(BasicInstructor):
     def evaluation(self, eval_type):
         """Evaluation all children, update child score. Note that the eval data should be the same"""
         eval_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size)
-        self.gen_data.reset(eval_samples)
+        gen_data = GenDataIter(eval_samples)
 
         # Fd
         if cfg.lambda_fd != 0:
-            Fd = self.eval_gen(self.gen, self.gen_data.loader, self.mle_criterion)  # NLL_div
+            Fd = NLL.cal_nll(self.gen, gen_data.loader, self.mle_criterion)  # NLL_div
         else:
             Fd = 0
 
@@ -342,7 +333,7 @@ class EvoGANInstructor(BasicInstructor):
             g_loss, d_loss = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'rsgan')
             Fq = d_loss.item()
         elif 'bleu' in eval_type:
-            self.bleu.test_text = tensor_to_tokens(eval_samples, self.idx2word_dict)
+            self.bleu.reset(test_text=tensor_to_tokens(eval_samples, self.idx2word_dict))
 
             if cfg.lambda_fq != 0:
                 Fq = self.bleu.get_score(given_gram=int(eval_type[-1]))
