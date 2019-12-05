@@ -15,10 +15,8 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from metrics.bleu import BLEU
 from models.RelGAN_D import RelGAN_D
 from models.RelGAN_G import RelGAN_G
-from utils.data_loader import GenDataIter
 from utils.helpers import get_fixed_temperature, get_losses
 from utils.text_process import tensor_to_tokens
 
@@ -43,16 +41,7 @@ class RelGANInstructor(BasicInstructor):
         self.mle_criterion = nn.NLLLoss()
         self.adv_criterion = nn.BCEWithLogitsLoss()
 
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
-
-        # Metrics
-        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict),
-                         gram=[2, 3, 4, 5])
-        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                              real_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                              gram=3)
+        self.test_tokens = tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict)
 
     def _run(self):
         # ===PRE-TRAINING (GENERATOR)===

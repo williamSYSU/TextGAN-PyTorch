@@ -23,3 +23,7 @@ class Metrics:
     @abstractmethod
     def get_score(self):
         pass
+
+    @abstractmethod
+    def reset(self):
+        pass

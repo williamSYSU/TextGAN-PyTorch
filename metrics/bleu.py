@@ -17,14 +17,11 @@ from metrics.basic import Metrics
 
 
 class BLEU(Metrics):
-    def __init__(self, test_text=None, real_text=None, gram=3, portion=1):
-        if type(gram) == int:
-            super(BLEU, self).__init__('BLEU-%d' % gram)
-        elif type(gram) == list:
-            super(BLEU, self).__init__('BLEU-%s' % gram)
-        else:
-            raise AssertionError('Gram format error!')
+    def __init__(self, name=None, test_text=None, real_text=None, gram=3, portion=1, if_use=False):
+        assert type(gram) == int or type(gram) == list, 'Gram format error!'
+        super(BLEU, self).__init__('%s-%s' % (name, gram))
 
+        self.if_use = if_use
         self.test_text = test_text
         self.real_text = real_text
         self.gram = [gram] if type(gram) == int else gram
@@ -33,8 +30,15 @@ class BLEU(Metrics):
         self.is_first = True
         self.portion = portion  # how many portions to use in the evaluation, default to use the whole test dataset
 
-    def get_score(self, is_fast=True, ignore=False, given_gram=None, fmt_str=True):
-        if ignore:
+    def get_score(self, is_fast=True, given_gram=None):
+        """
+        Get BLEU scores.
+        :param is_fast: Fast mode
+        :param if_use: if calculate
+        :param given_gram: Calculate specific n-gram BLEU score
+        :return: BLEU score(s)
+        """
+        if not self.if_use:
             return 0
         if self.is_first:
             self.get_reference()
@@ -42,6 +46,10 @@ class BLEU(Metrics):
         if is_fast:
             return self.get_bleu_fast(given_gram)
         return self.get_bleu(given_gram)
+
+    def reset(self, test_text=None, real_text=None):
+        self.test_text = test_text if test_text else self.test_text
+        self.real_text = real_text if real_text else self.real_text
 
     def get_reference(self):
         reference = self.real_text.copy()

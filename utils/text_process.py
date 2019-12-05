@@ -107,7 +107,8 @@ def load_dict(dataset):
 def load_test_dict(dataset):
     """Build test data dictionary, extend from train data. For the classifier."""
     word2idx_dict, idx2word_dict = load_dict(dataset)  # train dict
-    tokens = get_tokenlized('dataset/testdata/{}_clas_test.txt'.format(dataset))
+    # tokens = get_tokenlized('dataset/testdata/{}_clas_test.txt'.format(dataset))
+    tokens = get_tokenlized('dataset/testdata/{}_test.txt'.format(dataset))
     word_set = get_word_list(tokens)
     index = len(word2idx_dict)  # current index
 

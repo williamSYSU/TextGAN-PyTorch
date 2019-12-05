@@ -51,15 +51,6 @@ class CatGenDataIter:
         all_data = [{'input': i, 'target': t, 'label': l} for (i, t, l) in zip(inp, target, label)]
         return all_data
 
-    def reset(self, samples_list):
-        data = GANDataset(self.__read_data__(samples_list))
-        self.loader.dataset = data
-        self.loader.sampler.data_source.data = data
-        self.input = self._all_data_('input')
-        self.target = self._all_data_('target')
-        self.label = self._all_data_('label')
-        return self.loader
-
     def random_batch(self):
         """Randomly choose a batch from loader, please note that the data should not be shuffled."""
         idx = random.randint(0, len(self.loader) - 1)
@@ -123,12 +114,6 @@ class CatClasDataIter:
         inp, target = self.prepare(samples_list, given_target)
         all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
         return all_data
-
-    def reset(self, samples_list, given_target=None):
-        data = GANDataset(self.__read_data__(samples_list, given_target))
-        self.loader.dataset = data
-        self.loader.sampler.data_source.data = data
-        return self.loader
 
     def random_batch(self):
         idx = random.randint(0, len(self.loader) - 1)

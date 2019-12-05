@@ -17,8 +17,8 @@ title_dict = {
     'dis_loss': 'd_loss',
     'dis_train_acc': 'train_acc',
     'dis_eval_acc': 'eval_acc',
-    'oracle_NLL': 'oracle_NLL',
-    'gen_NLL': 'gen_NLL',
+    'NLL_oracle': 'NLL_oracle',
+    'NLL_gen': 'NLL_gen',
     'BLEU-3': 'BLEU-3',
 }
 
@@ -36,8 +36,8 @@ def get_log_data(filename):
     with open(filename, 'r') as fin:
         all_lines = fin.read().strip().split('\n')
         data_dict = {'pre_loss': [], 'g_loss': [], 'mana_loss': [], 'work_loss': [],
-                     'd_loss': [], 'train_acc': [], 'eval_acc': [], 'oracle_NLL': [],
-                     'gen_NLL': [], 'BLEU-3': []}
+                     'd_loss': [], 'train_acc': [], 'eval_acc': [], 'NLL_oracle': [],
+                     'NLL_gen': [], 'BLEU-3': []}
 
         for line in all_lines:
             items = line.split()
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     legend_text = ['SeqGAN', 'LeakGAN', 'RelGAN']
 
     color_id = 0
-    data_name = 'oracle_NLL'
+    data_name = 'NLL_oracle'
     if_save = False
     # legend_text = log_file_list
 

@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from metrics.nll import NLL
 from utils.data_loader import GenDataIter
 
 
@@ -61,7 +62,6 @@ def create_oracle():
     """Create a new Oracle model and Oracle's samples"""
     import config as cfg
     from models.Oracle import Oracle
-    from instructor.oracle_data.instructor import BasicInstructor
 
     print('Creating Oracle...')
     oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size,
@@ -80,7 +80,7 @@ def create_oracle():
 
     oracle_data = GenDataIter(big_samples)
     mle_criterion = nn.NLLLoss()
-    groud_truth = BasicInstructor.eval_gen(oracle, oracle_data.loader, mle_criterion)
+    groud_truth = NLL.cal_nll(oracle, oracle_data.loader, mle_criterion)
     print('NLL_Oracle Groud Truth: %.4f' % groud_truth)
 
 

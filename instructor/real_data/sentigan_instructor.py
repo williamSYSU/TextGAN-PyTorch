@@ -13,7 +13,6 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from metrics.bleu import BLEU
 from models.SentiGAN_D import SentiGAN_D, SentiGAN_C
 from models.SentiGAN_G import SentiGAN_G
 from utils import rollout
@@ -47,26 +46,16 @@ class SentiGANInstructor(BasicInstructor):
         # DataLoader
         self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
         self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i), if_test_data=True) for i in range(cfg.k_label)]
-        self.clas_data_list = [GenDataIter(cfg.cat_test_data.format(str(i) + '_clas'), if_test_data=True) for i in
+        self.clas_data_list = [GenDataIter(cfg.cat_test_data.format(str(i)), if_test_data=True) for i in
                                range(cfg.k_label)]
-        self.gen_data_list = [GenDataIter(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size))
-                              for i in range(cfg.k_label)]
 
         self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
         self.clas_samples_list = [self.clas_data_list[i].target for i in range(cfg.k_label)]
 
-        self.dis_data = CatClasDataIter(self.train_samples_list)  # fake init (reset during training)
-        self.clas_data = CatClasDataIter(self.clas_samples_list, shuffle=True)  # init classifier train data
-        self.eval_clas_data = CatClasDataIter(self.train_samples_list)
-
-        # Others
-        self.bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
-                          real_text=tensor_to_tokens(self.test_data_list[i].target,
-                                                     self.test_data_list[i].idx2word_dict), gram=[2, 3, 4, 5])
-                     for i in range(cfg.k_label)]
-        self.self_bleu = [BLEU(test_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
-                               real_text=tensor_to_tokens(self.gen_data_list[i].target, self.idx2word_dict),
-                               gram=3) for i in range(cfg.k_label)]
+        self.test_tokens_list = [tensor_to_tokens(self.test_data_list[i].target, self.test_data_list[i].idx2word_dict)
+                                 for i in range(cfg.k_label)]
+        # Metrics
+        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.clas_acc]
 
     def init_model(self):
         if cfg.dis_pretrain:
@@ -164,8 +153,7 @@ class SentiGANInstructor(BasicInstructor):
             rollout_func = rollout.ROLLOUT(self.gen_list[i], cfg.CUDA)
             total_g_loss = 0
             for step in range(g_step):
-                inp, target = self.gen_data_list[i].prepare(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size),
-                                                            gpu=cfg.CUDA)
+                inp, target = GenDataIter.prepare(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
                 # ===Train===
                 rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
@@ -193,11 +181,11 @@ class SentiGANInstructor(BasicInstructor):
                 fake_samples.append(self.gen_list[i].sample(cfg.samples_num // cfg.k_label, 8 * cfg.batch_size))
 
             dis_samples_list = [torch.cat(fake_samples, dim=0)] + real_samples
-            self.dis_data.reset(dis_samples_list)
+            dis_data = CatClasDataIter(dis_samples_list)
 
             for epoch in range(d_epoch):
                 # ===Train===
-                d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
+                d_loss, train_acc = self.train_dis_epoch(self.dis, dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
             # ===Test===
@@ -207,37 +195,25 @@ class SentiGANInstructor(BasicInstructor):
             if cfg.if_save and not cfg.if_test and phrase == 'MLE':
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
 
-    def cal_metrics_with_label(self, label_i=None):
+    def cal_metrics_with_label(self, label_i):
         assert type(label_i) == int, 'missing label'
-        eval_samples = self.gen_list[label_i].sample(cfg.samples_num, 8 * cfg.batch_size)
-        self.gen_data_list[label_i].reset(eval_samples)
-        new_gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-        self.bleu[label_i].test_text = new_gen_tokens
-        self.self_bleu[label_i].real_text = new_gen_tokens
-        self.self_bleu[label_i].test_text = tensor_to_tokens(self.gen_list[label_i].sample(200, 200),
-                                                             self.idx2word_dict)
 
-        # BLEU-[2,3,4,5]
-        bleu_score = self.bleu[label_i].get_score(ignore=False)
+        with torch.no_grad():
+            # Prepare data for evaluation
+            eval_samples = self.gen_list[label_i].sample(cfg.samples_num, 8 * cfg.batch_size)
+            gen_data = GenDataIter(eval_samples)
+            gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
+            gen_tokens_s = tensor_to_tokens(self.gen_list[label_i].sample(200, 200), self.idx2word_dict)
+            clas_data = CatClasDataIter([eval_samples], label_i)
 
-        # NLL_gen
-        gen_nll = self.eval_gen(self.gen_list[label_i],
-                                self.train_data_list[label_i].loader,
-                                self.mle_criterion)
+            # Reset metrics
+            self.bleu.reset(test_text=gen_tokens, real_text=self.test_tokens_list[label_i])
+            self.nll_gen.reset(self.gen_list[label_i], self.train_data_list[label_i].loader)
+            self.nll_div.reset(self.gen_list[label_i], gen_data.loader)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            self.clas_acc.reset(self.clas, clas_data.loader)
 
-        # NLL_div
-        div_nll = self.eval_gen(self.gen_list[label_i],
-                                self.gen_data_list[label_i].loader,
-                                self.mle_criterion)
-
-        # Self-BLEU
-        self_bleu_score = self.self_bleu[label_i].get_score(ignore=True)
-
-        # Evaluation Classifier accuracy
-        self.clas_data.reset([eval_samples], label_i)
-        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
-
-        return bleu_score, gen_nll, div_nll, self_bleu_score, c_acc
+        return [metric.get_score() for metric in self.all_metrics]
 
     def _save(self, phrase, epoch):
         """Save model state dict and generator's samples"""
