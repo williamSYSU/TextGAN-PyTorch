@@ -42,12 +42,6 @@ class LeakGANInstructor(BasicInstructor):
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = nn.CrossEntropyLoss()
 
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis))
-        self.dis_data = DisDataIter(self.gen_data.random_batch()['target'], self.oracle_data.random_batch()['target'])
-        self.dis_eval_data = DisDataIter(self.gen_data.random_batch()['target'],
-                                         self.oracle_data.random_batch()['target'])
-
     def _run(self):
         for inter_num in range(cfg.inter_epoch):
             self.log.info('>>> Interleaved Round %d...' % inter_num)
@@ -144,7 +138,7 @@ class LeakGANInstructor(BasicInstructor):
             with torch.no_grad():
                 gen_samples = self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis,
                                               train=True)  # !!! train=True, the only place
-                inp, target = self.gen_data.prepare(gen_samples, gpu=cfg.CUDA)
+                inp, target = GenDataIter.prepare(gen_samples, gpu=cfg.CUDA)
 
             # ===Train===
             rewards = rollout_func.get_reward_leakgan(target, cfg.rollout_num, self.dis,
@@ -168,43 +162,37 @@ class LeakGANInstructor(BasicInstructor):
         global d_loss, train_acc
         pos_val = self.oracle.sample(8 * cfg.batch_size, cfg.batch_size)
         neg_val = self.gen.sample(8 * cfg.batch_size, cfg.batch_size, self.dis)
-        self.dis_eval_data.reset(pos_val, neg_val)
+        dis_eval_data = DisDataIter(pos_val, neg_val)
 
         for step in range(d_step):
             # prepare loader for training
             pos_samples = self.oracle.sample(cfg.samples_num, cfg.batch_size)  # re-sample the Oracle Data
             neg_samples = self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis)
-            self.dis_data.reset(pos_samples, neg_samples)
+            dis_data = DisDataIter(pos_samples, neg_samples)
 
             for epoch in range(d_epoch):
                 # ===Train===
-                d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
+                d_loss, train_acc = self.train_dis_epoch(self.dis, dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
             # ===Test===
-            _, eval_acc = self.eval_dis(self.dis, self.dis_eval_data.loader, self.dis_criterion)
+            _, eval_acc = self.eval_dis(self.dis, dis_eval_data.loader, self.dis_criterion)
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
                 phrase, step, d_loss, train_acc, eval_acc))
 
     def cal_metrics(self, fmt_str=False):
-        self.gen_data.reset(self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis))
-        oracle_nll = self.eval_gen(self.oracle,
-                                   self.gen_data.loader,
-                                   self.mle_criterion)
+        # Prepare data for evaluation
+        gen_data = GenDataIter(self.gen.sample(cfg.samples_num, cfg.batch_size, self.dis))
 
-        with torch.no_grad():
-            gen_nll = 0
-            for data in self.oracle_data.loader:
-                inp, target = data['input'], data['target']
-                if cfg.CUDA:
-                    inp, target = inp.cuda(), target.cuda()
-                loss = self.gen.batchNLLLoss(target, self.dis)
-                gen_nll += loss.item()
-            gen_nll /= len(self.oracle_data.loader)
+        # Reset metrics
+        self.nll_oracle.reset(self.oracle, gen_data.loader)
+        self.nll_gen.reset(self.gen, self.oracle_data.loader, leak_dis=self.dis)
+        self.nll_div.reset(self.gen, gen_data.loader, leak_dis=self.dis)
 
         if fmt_str:
-            return 'oracle_NLL = %.4f, gen_NLL = %.4f,' % (oracle_nll, gen_nll)
-        return oracle_nll, gen_nll
+            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+        else:
+            return [metric.get_score() for metric in self.all_metrics]
 
     def _save(self, phrase, epoch):
         torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))

@@ -10,44 +10,89 @@
 import torch
 import torch.nn as nn
 
+import config as cfg
 from metrics.basic import Metrics
 
 
 class NLL(Metrics):
-    def __init__(self, name, model, loader, gpu=True):
+    def __init__(self, name, if_use=False, gpu=True):
         super(NLL, self).__init__(name)
 
-        self.model = model
-        self.loader = loader
+        self.if_use = if_use
+        self.model = None
+        self.data_loader = None
+        self.label_i = None
+        self.leak_dis = None
         self.gpu = gpu
-        self.need_reset = True
+        self.criterion = nn.NLLLoss()
 
-    def get_score(self, model=None, loader=None, ignore=False):
+    def get_score(self):
         """note that NLL score need the updated model and data loader each time, use reset() before get_score()"""
-        if ignore:
+        if not self.if_use:
             return 0
-        if model and loader:
-            self.reset(model, loader)
-        assert not self.need_reset, 'need reset model and loader before calculating NLL'
-        self.need_reset = True
-        return self.cal_nll()
+        assert self.model and self.data_loader, 'Need to reset() before get_score()!'
 
-    def reset(self, model, loader):
+        if self.leak_dis is not None:  # For LeakGAN
+            return self.cal_nll_with_leak_dis(self.model, self.data_loader, self.leak_dis, self.gpu)
+        elif self.label_i is not None:  # For category text generation
+            return self.cal_nll_with_label(self.model, self.data_loader, self.label_i,
+                                           self.criterion, self.gpu)
+        else:
+            return self.cal_nll(self.model, self.data_loader, self.criterion, self.gpu)
+
+    def reset(self, model=None, data_loader=None, label_i=None, leak_dis=None):
         self.model = model
-        self.loader = loader
-        self.need_reset = False
+        self.data_loader = data_loader
+        self.label_i = label_i
+        self.leak_dis = leak_dis
 
-    def cal_nll(self):
+    @staticmethod
+    def cal_nll(model, data_loader, criterion, gpu=cfg.CUDA):
+        """NLL score for general text generation model."""
         total_loss = 0
-        criterion = nn.NLLLoss()
         with torch.no_grad():
-            for i, data in enumerate(self.loader):
+            for i, data in enumerate(data_loader):
                 inp, target = data['input'], data['target']
-                if self.gpu:
+                if gpu:
                     inp, target = inp.cuda(), target.cuda()
 
-                hidden = self.model.init_hidden(self.loader.batch_size)
-                pred = self.model.forward(inp, hidden)
+                hidden = model.init_hidden(data_loader.batch_size)
+                pred = model.forward(inp, hidden)
                 loss = criterion(pred, target.view(-1))
                 total_loss += loss.item()
-        return total_loss / len(self.loader)
+        return round(total_loss / len(data_loader), 4)
+
+    @staticmethod
+    def cal_nll_with_label(model, data_loader, label_i, criterion, gpu=cfg.CUDA):
+        """NLL score for category text generation model."""
+        assert type(label_i) == int, 'missing label'
+        total_loss = 0
+        with torch.no_grad():
+            for i, data in enumerate(data_loader):
+                inp, target = data['input'], data['target']
+                label = torch.LongTensor([label_i] * data_loader.batch_size)
+                if gpu:
+                    inp, target, label = inp.cuda(), target.cuda(), label.cuda()
+
+                hidden = model.init_hidden(data_loader.batch_size)
+                if model.name == 'oracle':
+                    pred = model.forward(inp, hidden)
+                else:
+                    pred = model.forward(inp, hidden, label)
+                loss = criterion(pred, target.view(-1))
+                total_loss += loss.item()
+        return round(total_loss / len(data_loader), 4)
+
+    @staticmethod
+    def cal_nll_with_leak_dis(model, data_loader, leak_dis, gpu=cfg.CUDA):
+        """NLL score for LeakGAN."""
+        total_loss = 0
+        with torch.no_grad():
+            for i, data in enumerate(data_loader):
+                inp, target = data['input'], data['target']
+                if gpu:
+                    inp, target = inp.cuda(), target.cuda()
+
+                loss = model.batchNLLLoss(target, leak_dis)
+                total_loss += loss.item()
+        return round(total_loss / len(data_loader), 4)

@@ -16,7 +16,6 @@ import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.RelGAN_D import RelGAN_D
 from models.RelGAN_G import RelGAN_G
-from utils.data_loader import GenDataIter
 from utils.helpers import get_fixed_temperature, get_losses
 
 
@@ -39,9 +38,6 @@ class RelGANInstructor(BasicInstructor):
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
-
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def _run(self):
         # ===PRE-TRAINING (GENERATOR)===

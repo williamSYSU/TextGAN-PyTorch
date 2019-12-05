@@ -59,14 +59,6 @@ class GenDataIter:
             all_data = None
         return all_data
 
-    def reset(self, samples):
-        data = GANDataset(self.__read_data__(samples))
-        self.loader.dataset = data
-        self.loader.sampler.data_source.data = data
-        self.input = self._all_data_('input')
-        self.target = self._all_data_('target')
-        return self.loader
-
     def random_batch(self):
         """Randomly choose a batch from loader, please note that the data should not be shuffled."""
         idx = random.randint(0, len(self.loader) - 1)
@@ -75,12 +67,13 @@ class GenDataIter:
     def _all_data_(self, col):
         return torch.cat([data[col].unsqueeze(0) for data in self.loader.dataset.data], 0)
 
-    def prepare(self, samples, gpu=False):
+    @staticmethod
+    def prepare(samples, gpu=False):
         """Add start_letter to samples as inp, target same as samples"""
         inp = torch.zeros(samples.size()).long()
         target = samples
-        inp[:, 0] = self.start_letter
-        inp[:, 1:] = target[:, :self.max_seq_len - 1]
+        inp[:, 0] = cfg.start_letter
+        inp[:, 1:] = target[:, :cfg.max_seq_len - 1]
 
         if gpu:
             return inp.cuda(), target.cuda()
@@ -113,12 +106,6 @@ class DisDataIter:
         inp, target = self.prepare(pos_samples, neg_samples)
         all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
         return all_data
-
-    def reset(self, pos_samples, neg_samples):
-        data = GANDataset(self.__read_data__(pos_samples, neg_samples))
-        self.loader.dataset = data
-        self.loader.sampler.data_source.data = data
-        return self.loader
 
     def random_batch(self):
         idx = random.randint(0, len(self.loader) - 1)

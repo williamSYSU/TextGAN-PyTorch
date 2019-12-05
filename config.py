@@ -24,7 +24,7 @@ gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, relgan, catgan, evogan, sentigan, maligan, jsdgan
+run_model = 'catgan'  # seqgan, leakgan, maligan, jsdgan, relgan, catgan, evogan, sentigan
 k_label = 2  # num of labels, >=2
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -82,6 +82,14 @@ train_data = 'dataset/' + dataset + '.txt'
 test_data = 'dataset/testdata/' + dataset + '_test.txt'
 cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
 cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
+
+# ===Metrics===
+use_nll_oracle = True
+use_nll_gen = True
+use_nll_div = True
+use_bleu = True
+use_self_bleu = True
+use_clas_acc = True
 
 # ===Generator===
 ADV_g_step = 1  # 1
@@ -184,7 +192,8 @@ def init_param(opt):
         pretrained_dis_path, pretrain_root, if_test, dataset, PRE_clas_epoch, oracle_samples_path, \
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
         lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
-        multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices
+        multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices, \
+        use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -255,6 +264,13 @@ def init_param(opt):
     dis_embed_dim = opt.dis_embed_dim
     dis_hidden_dim = opt.dis_hidden_dim
     num_rep = opt.num_rep
+
+    use_nll_oracle = True if opt.use_nll_oracle == 1 else False
+    use_nll_gen = True if opt.use_nll_gen == 1 else False
+    use_nll_div = True if opt.use_nll_div == 1 else False
+    use_bleu = True if opt.use_bleu == 1 else False
+    use_self_bleu = True if opt.use_self_bleu == 1 else False
+    use_clas_acc = True if opt.use_clas_acc == 1 else False
 
     log_filename = opt.log_file
     signal_file = opt.signal_file

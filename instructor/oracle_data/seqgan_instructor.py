@@ -38,12 +38,6 @@ class SeqGANInstructor(BasicInstructor):
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = nn.CrossEntropyLoss()
 
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
-        self.dis_data = DisDataIter(self.oracle_data.random_batch()['target'], self.gen_data.random_batch()['target'])
-        self.dis_eval_data = DisDataIter(self.oracle_data.random_batch()['target'],
-                                         self.gen_data.random_batch()['target'])
-
     def _run(self):
         # ===PRE-TRAINING===
         # TRAIN GENERATOR
@@ -113,7 +107,7 @@ class SeqGANInstructor(BasicInstructor):
         rollout_func = rollout.ROLLOUT(self.gen, cfg.CUDA)
         total_g_loss = 0
         for step in range(g_step):
-            inp, target = self.gen_data.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
+            inp, target = GenDataIter.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
             # ===Train===
             rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
@@ -133,21 +127,21 @@ class SeqGANInstructor(BasicInstructor):
         global d_loss, train_acc
         pos_val = self.oracle.sample(8 * cfg.batch_size, 4 * cfg.batch_size)
         neg_val = self.gen.sample(8 * cfg.batch_size, 4 * cfg.batch_size)
-        self.dis_eval_data.reset(pos_val, neg_val)
+        dis_eval_data = DisDataIter(pos_val, neg_val)
 
         for step in range(d_step):
             # prepare loader for training
             pos_samples = self.oracle_samples  # not re-sample the Oracle data
             neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
-            self.dis_data.reset(pos_samples, neg_samples)
+            dis_data = DisDataIter(pos_samples, neg_samples)
 
             for epoch in range(d_epoch):
                 # ===Train===
-                d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
+                d_loss, train_acc = self.train_dis_epoch(self.dis, dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
             # ===Test===
-            _, eval_acc = self.eval_dis(self.dis, self.dis_eval_data.loader, self.dis_criterion)
+            _, eval_acc = self.eval_dis(self.dis, dis_eval_data.loader, self.dis_criterion)
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f, eval_acc = %.4f,' % (
                 phrase, step, d_loss, train_acc, eval_acc))
 

@@ -7,11 +7,13 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
+import numpy as np
 import os
 import torch
 import torch.nn as nn
 
 import config as cfg
+from metrics.nll import NLL
 from models.Oracle import Oracle
 from utils.data_loader import GenDataIter
 from utils.helpers import Signal, create_logger, create_oracle, get_fixed_temperature
@@ -42,16 +44,18 @@ class BasicInstructor:
         self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
         self.oracle_data = GenDataIter(self.oracle_samples)
 
-        self.gen_data = None
-        self.gen_data_list = None
-        self.dis_data = None
-        self.clas_data = None
         self.oracle_data_list = None
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = None
         self.clas_criterion = None
+
+        # Metrics
+        self.nll_oracle = NLL('NLL_oracle', if_use=cfg.use_nll_oracle)
+        self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen)
+        self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div)
+        self.all_metrics = [self.nll_oracle, self.nll_gen, self.nll_div]
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -115,21 +119,6 @@ class BasicInstructor:
         return total_loss, total_acc
 
     @staticmethod
-    def eval_gen(model, data_loader, criterion):
-        total_loss = 0
-        with torch.no_grad():
-            for i, data in enumerate(data_loader):
-                inp, target = data['input'], data['target']
-                if cfg.CUDA:
-                    inp, target = inp.cuda(), target.cuda()
-
-                hidden = model.init_hidden(data_loader.batch_size)
-                pred = model.forward(inp, hidden)
-                loss = criterion(pred, target.view(-1))
-                total_loss += loss.item()
-        return total_loss / len(data_loader)
-
-    @staticmethod
     def eval_dis(model, data_loader, criterion):
         total_loss = 0
         total_acc = 0
@@ -177,55 +166,42 @@ class BasicInstructor:
         Calculate metrics
         :param fmt_str: if return format string for logging
         """
-        self.gen_data.reset(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
-        oracle_nll = self.eval_gen(self.oracle,
-                                   self.gen_data.loader,
-                                   self.mle_criterion)
-        gen_nll = self.eval_gen(self.gen,
-                                self.oracle_data.loader,
-                                self.mle_criterion)
-        div_nll = self.eval_gen(self.gen,
-                                self.gen_data.loader,
-                                self.mle_criterion)
+        with torch.no_grad():
+            # Prepare data for evaluation
+            gen_data = GenDataIter(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
+
+            # Reset metrics
+            self.nll_oracle.reset(self.oracle, gen_data.loader)
+            self.nll_gen.reset(self.gen, self.oracle_data.loader)
+            self.nll_div.reset(self.gen, gen_data.loader)
 
         if fmt_str:
-            return 'oracle_NLL = %.4f, gen_NLL = %.4f, div_NLL = %.4f' % (oracle_nll, gen_nll, div_nll)
-        return oracle_nll, gen_nll, div_nll
+            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+        else:
+            return [metric.get_score() for metric in self.all_metrics]
 
-    def cal_metrics_with_label(self, label_i=None):
+    def cal_metrics_with_label(self, label_i):
         assert type(label_i) == int, 'missing label'
-        eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
-        self.gen_data_list[label_i].reset(eval_samples)
-        oracle_nll = self.eval_gen(self.oracle_list[label_i],
-                                   self.gen_data_list[label_i].loader,
-                                   self.mle_criterion, label_i)
-        gen_nll = self.eval_gen(self.gen,
-                                self.oracle_data_list[label_i].loader,
-                                self.mle_criterion, label_i)
-        div_nll = self.eval_gen(self.gen,
-                                self.gen_data_list[label_i].loader,
-                                self.mle_criterion, label_i)
-        # oracle_nll, gen_nll, div_nll = 0, 0, 0
+        with torch.no_grad():
+            # Prepare data for evaluation
+            eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+            gen_data = GenDataIter(eval_samples)
 
-        # Evaluation Classifier accuracy
-        self.clas_data.reset([eval_samples], label_i)
-        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
+            # Reset metrics
+            self.nll_oracle.reset(self.oracle_list[label_i], gen_data.loader, label_i)
+            self.nll_gen.reset(self.gen, self.oracle_data_list[label_i].loader, label_i)
+            self.nll_div.reset(self.gen, gen_data.loader, label_i)
 
-        return oracle_nll, gen_nll, div_nll, c_acc
+        return [metric.get_score() for metric in self.all_metrics]
 
     def comb_metrics(self, fmt_str=False):
-        oracle_nll, gen_nll, div_nll, clas_acc = [], [], [], []
-        for label_i in range(cfg.k_label):
-            o_nll, g_nll, s_nll, acc = self.cal_metrics_with_label(label_i)
-            oracle_nll.append(round(o_nll, 4))
-            gen_nll.append(round(g_nll, 4))
-            div_nll.append(round(s_nll, 4))
-            clas_acc.append(round(acc, 4))
+        all_scores = [self.cal_metrics_with_label(label_i) for label_i in range(cfg.k_label)]
+        all_scores = np.array(all_scores).T.tolist()  # each row for each metric
 
         if fmt_str:
-            return 'oracle_NLL = %s, gen_NLL = %s, div_NLL = %s, clas_acc = %s' % (
-                oracle_nll, gen_nll, div_nll, clas_acc)
-        return oracle_nll, gen_nll, div_nll, clas_acc
+            return ', '.join(['%s = %s' % (metric.get_name(), score)
+                              for (metric, score) in zip(self.all_metrics, all_scores)])
+        return all_scores
 
     def _save(self, phrase, epoch):
         """Save model state dict and generator's samples"""

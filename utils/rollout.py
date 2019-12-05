@@ -134,19 +134,20 @@ class ROLLOUT:
         :param current_k: current training gen
         :return: reward: [batch_size]
         """
-        batch_size = sentences.size(0)
-        rewards = torch.zeros([rollout_num * self.max_seq_len, batch_size]).float()
-        if self.gpu:
-            rewards = rewards.cuda()
-        idx = 0
-        for i in range(rollout_num):
-            for given_num in range(1, self.max_seq_len + 1):
-                samples = self.rollout_mc_search(sentences, given_num)
-                out = dis.forward(samples)
-                out = F.softmax(out, dim=-1)
-                reward = out[:, current_k + 1]
-                rewards[idx] = reward
-                idx += 1
+        with torch.no_grad():
+            batch_size = sentences.size(0)
+            rewards = torch.zeros([rollout_num * self.max_seq_len, batch_size]).float()
+            if self.gpu:
+                rewards = rewards.cuda()
+            idx = 0
+            for i in range(rollout_num):
+                for given_num in range(1, self.max_seq_len + 1):
+                    samples = self.rollout_mc_search(sentences, given_num)
+                    out = dis.forward(samples)
+                    out = F.softmax(out, dim=-1)
+                    reward = out[:, current_k + 1]
+                    rewards[idx] = reward
+                    idx += 1
 
         # rewards = torch.mean(rewards, dim=0)
         rewards = torch.mean(rewards.view(batch_size, self.max_seq_len, rollout_num), dim=-1)
@@ -162,20 +163,21 @@ class ROLLOUT:
 
         :return: reward: batch_size * (max_seq_len / step_size)
         """
-        batch_size = sentences.size(0)
-        rewards = torch.zeros([rollout_num * (self.max_seq_len // self.step_size), batch_size]).float()
-        if self.gpu:
-            rewards = rewards.cuda()
-        idx = 0
-        for i in range(rollout_num):
-            for t in range(self.max_seq_len // self.step_size):
-                given_num = t * self.step_size + 1  # 1, 5, 9, ..
-                samples = self.rollout_mc_search_leakgan(sentences, dis, given_num)
-                out = dis(samples)
-                out = F.softmax(out, dim=-1)
-                reward = out[:, current_k + 1]
-                rewards[idx] = reward
-                idx += 1
+        with torch.no_grad():
+            batch_size = sentences.size(0)
+            rewards = torch.zeros([rollout_num * (self.max_seq_len // self.step_size), batch_size]).float()
+            if self.gpu:
+                rewards = rewards.cuda()
+            idx = 0
+            for i in range(rollout_num):
+                for t in range(self.max_seq_len // self.step_size):
+                    given_num = t * self.step_size + 1  # 1, 5, 9, ..
+                    samples = self.rollout_mc_search_leakgan(sentences, dis, given_num)
+                    out = dis(samples)
+                    out = F.softmax(out, dim=-1)
+                    reward = out[:, current_k + 1]
+                    rewards[idx] = reward
+                    idx += 1
 
         rewards = rewards.view(batch_size, self.max_seq_len // self.step_size, rollout_num)
         rewards = torch.mean(rewards, dim=-1)
@@ -185,16 +187,17 @@ class ROLLOUT:
         """
         get reward of each token in sequence via Monte Carlo search
         """
-        batch_size = sentences.size(0)
-        rewards = torch.zeros([rollout_num, batch_size]).float()
-        idx = 0
-        for i in range(rollout_num):
-            samples = self.rollout_mc_search(sentences, given_num)
-            out = dis(samples)
-            out = F.softmax(out, dim=-1)
-            reward = out[:, current_k + 1]
-            rewards[idx] = reward
-            idx += 1
+        with torch.no_grad():
+            batch_size = sentences.size(0)
+            rewards = torch.zeros([rollout_num, batch_size]).float()
+            idx = 0
+            for i in range(rollout_num):
+                samples = self.rollout_mc_search(sentences, given_num)
+                out = dis(samples)
+                out = F.softmax(out, dim=-1)
+                reward = out[:, current_k + 1]
+                rewards[idx] = reward
+                idx += 1
 
         rewards = torch.Tensor(rewards).cuda()
         rewards = torch.sum(rewards, dim=0) / rollout_num

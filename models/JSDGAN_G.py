@@ -21,6 +21,7 @@ class JSDGAN_G(LSTMGenerator):
         self.name = 'jsdgan'
 
         # RMC
+
     #     self.hidden_dim = mem_slots * num_heads * head_size
     #     self.lstm = RelationalMemory(mem_slots=mem_slots, head_size=head_size, input_size=embedding_dim,
     #                                  num_heads=num_heads, return_all_outputs=True)

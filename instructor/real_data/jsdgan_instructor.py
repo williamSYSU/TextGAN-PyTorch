@@ -13,9 +13,7 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from metrics.bleu import BLEU
 from models.JSDGAN_G import JSDGAN_G
-from utils.data_loader import GenDataIter
 from utils.text_process import tensor_to_tokens
 
 
@@ -34,16 +32,7 @@ class JSDGANInstructor(BasicInstructor):
         # Criterion
         self.mle_criterion = nn.NLLLoss()
 
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
-
-        # Metrics
-        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict),
-                         gram=[2, 3, 4, 5])
-        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                              real_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                              gram=3)
+        self.test_tokens = tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict)
 
     def init_model(self):
         if cfg.gen_pretrain:

@@ -15,7 +15,7 @@ import torch.optim as optim
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.Oracle import Oracle
-from models.SentiGAN_D import SentiGAN_D, SentiGAN_C
+from models.SentiGAN_D import SentiGAN_D
 from models.SentiGAN_G import SentiGAN_G
 from utils import rollout
 from utils.cat_data_loader import CatClasDataIter
@@ -35,28 +35,20 @@ class SentiGANInstructor(BasicInstructor):
         self.gen_list = [SentiGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                                     cfg.padding_idx, cfg.temperature, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
         self.dis = SentiGAN_D(cfg.k_label, cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
-        self.clas = SentiGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
-                               cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
 
         # Optimizer
         self.gen_opt_list = [optim.Adam(gen.parameters(), lr=cfg.gen_lr) for gen in self.gen_list]
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
-        self.clas_opt = optim.Adam(self.clas.parameters(), lr=cfg.clas_lr)
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = nn.CrossEntropyLoss()
-        self.clas_criterion = nn.CrossEntropyLoss()
 
         # DataLoader
         self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
                                     for i in range(cfg.k_label)]
         self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
-        self.gen_data_list = [GenDataIter(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size))
-                              for i in range(cfg.k_label)]
-        self.dis_data = CatClasDataIter(self.oracle_samples_list)  # fake init (reset during training)
-        self.clas_data = CatClasDataIter(self.oracle_samples_list)  # init classifier train data
 
     def init_model(self):
         if cfg.oracle_pretrain:
@@ -74,22 +66,14 @@ class SentiGANInstructor(BasicInstructor):
             for i in range(cfg.k_label):
                 self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
                 self.gen_list[i].load_state_dict(torch.load(cfg.pretrained_gen_path + '%d' % i))
-        if cfg.clas_pretrain:
-            self.log.info('Load  pretrained classifier: {}'.format(cfg.pretrained_clas_path))
-            self.clas.load_state_dict(torch.load(cfg.pretrained_clas_path, map_location='cuda:%d' % cfg.device))
 
         if cfg.CUDA:
             for i in range(cfg.k_label):
                 self.oracle_list[i] = self.oracle_list[i].cuda()
                 self.gen_list[i] = self.gen_list[i].cuda()
             self.dis = self.dis.cuda()
-            self.clas = self.clas.cuda()
 
     def _run(self):
-        # ===Pre-train Classifier with real data===
-        self.log.info('Start training Classifier...')
-        self.train_classifier(cfg.PRE_clas_epoch)
-
         # ===PRE-TRAIN GENERATOR===
         if not cfg.gen_pretrain:
             self.log.info('Starting Generator MLE Training...')
@@ -153,15 +137,6 @@ class SentiGANInstructor(BasicInstructor):
                 self.log.info('>>> Stop by pre signal, skip to adversarial training...')
                 break
 
-    def train_classifier(self, epochs):
-        self.clas_data.reset(self.oracle_samples_list)  # Need to reset! The clas_data has changed in self.comb_metrics
-        for epoch in range(epochs):
-            c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion, self.clas_opt)
-            self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f', epoch, c_loss, c_acc)
-
-        if not cfg.if_test and cfg.if_save:
-            torch.save(self.clas.state_dict(), cfg.pretrained_clas_path)
-
     def adv_train_generator(self, g_step):
         """
         The gen is trained using policy gradients, using the reward from the discriminator.
@@ -171,8 +146,7 @@ class SentiGANInstructor(BasicInstructor):
             rollout_func = rollout.ROLLOUT(self.gen_list[i], cfg.CUDA)
             total_g_loss = 0
             for step in range(g_step):
-                inp, target = self.gen_data_list[i].prepare(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size),
-                                                            gpu=cfg.CUDA)
+                inp, target = GenDataIter.prepare(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
                 # ===Train===
                 rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
@@ -200,11 +174,11 @@ class SentiGANInstructor(BasicInstructor):
                 fake_samples.append(self.gen_list[i].sample(cfg.samples_num // cfg.k_label, 8 * cfg.batch_size))
 
             dis_samples_list = [torch.cat(fake_samples, dim=0)] + real_samples
-            self.dis_data.reset(dis_samples_list)
+            dis_data = CatClasDataIter(dis_samples_list)
 
             for epoch in range(d_epoch):
                 # ===Train===
-                d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
+                d_loss, train_acc = self.train_dis_epoch(self.dis, dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
             # ===Test===
@@ -214,27 +188,18 @@ class SentiGANInstructor(BasicInstructor):
             if cfg.if_save and not cfg.if_test and phrase == 'MLE':
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
 
-    def cal_metrics_with_label(self, label_i=None):
+    def cal_metrics_with_label(self, label_i):
         assert type(label_i) == int, 'missing label'
-
+        # Prepare data for evaluation
         eval_samples = self.gen_list[label_i].sample(cfg.samples_num, 8 * cfg.batch_size)
-        self.gen_data_list[label_i].reset(eval_samples)
+        gen_data = GenDataIter(eval_samples)
 
-        oracle_nll = self.eval_gen(self.oracle_list[label_i],
-                                   self.gen_data_list[label_i].loader,
-                                   self.mle_criterion)
-        gen_nll = self.eval_gen(self.gen_list[label_i],
-                                self.oracle_data_list[label_i].loader,
-                                self.mle_criterion)
-        div_nll = self.eval_gen(self.gen_list[label_i],
-                                self.gen_data_list[label_i].loader,
-                                self.mle_criterion)
+        # Reset metrics
+        self.nll_oracle.reset(self.oracle_list[label_i], gen_data.loader)
+        self.nll_gen.reset(self.gen_list[label_i], self.oracle_data_list[label_i].loader)
+        self.nll_div.reset(self.gen_list[label_i], gen_data.loader)
 
-        # Evaluation Classifier accuracy
-        self.clas_data.reset([eval_samples], label_i)
-        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
-
-        return oracle_nll, gen_nll, div_nll, c_acc
+        return [metric.get_score() for metric in self.all_metrics]
 
     def _save(self, phrase, epoch):
         """Save model state dict and generator's samples"""

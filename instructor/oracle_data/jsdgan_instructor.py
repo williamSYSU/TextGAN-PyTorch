@@ -14,7 +14,6 @@ import torch.optim as optim
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.JSDGAN_G import JSDGAN_G
-from utils.data_loader import GenDataIter
 from utils.helpers import create_oracle
 
 
@@ -32,9 +31,6 @@ class JSDGANInstructor(BasicInstructor):
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
-
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
 
     def init_model(self):
         if cfg.oracle_pretrain:

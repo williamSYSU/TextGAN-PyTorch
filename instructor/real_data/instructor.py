@@ -7,10 +7,15 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
+import numpy as np
 import torch
 import torch.nn as nn
 
 import config as cfg
+from metrics.bleu import BLEU
+from metrics.clas_acc import ACC
+from metrics.nll import NLL
+from utils.cat_data_loader import CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.helpers import Signal, create_logger, get_fixed_temperature
 from utils.text_process import load_dict, write_tokens, tensor_to_tokens
@@ -34,24 +39,28 @@ class BasicInstructor:
         self.train_data = GenDataIter(cfg.train_data)
         self.test_data = GenDataIter(cfg.test_data, if_test_data=True)
         self.train_data_list = None
-        self.gen_data_list = None
-        self.gen_data = None
-        self.clas_data = None
-        self.eval_clas_data = None
 
         self.oracle_data_list = None
         self.clas_samples_list = None
         self.train_samples_list = None
+        self.test_tokens = None
+        self.test_tokens_list = None
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = None
         self.clas_criterion = None
-        self.bleu = None
-        self.self_bleu = None
 
         # Optimizer
-        self.csgan_clas_opt = None
+        self.clas_opt = None
+
+        # Metrics
+        self.bleu = BLEU(name='BLEU', gram=[2, 3, 4, 5], if_use=cfg.use_bleu)
+        self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen)
+        self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div)
+        self.self_bleu = BLEU(name='Self-BLEU', gram=3, if_use=cfg.use_self_bleu)
+        self.clas_acc = ACC(if_use=cfg.use_clas_acc)
+        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu]
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -122,36 +131,21 @@ class BasicInstructor:
         import copy
 
         # Prepare data for Classifier
-        self.clas_data.reset(self.clas_samples_list)  # Need to reset! The clas_data has changed in self.comb_metrics
-        self.eval_clas_data.reset(self.train_samples_list)
+        clas_data = CatClasDataIter(self.clas_samples_list)
+        eval_clas_data = CatClasDataIter(self.train_samples_list)
 
         max_acc = 0
         best_clas = None
         for epoch in range(epochs):
-            c_loss, c_acc = self.train_dis_epoch(self.clas, self.clas_data.loader, self.clas_criterion,
-                                                 self.csgan_clas_opt)
-            _, eval_acc = self.eval_dis(self.clas, self.eval_clas_data.loader, self.clas_criterion)
+            c_loss, c_acc = self.train_dis_epoch(self.clas, clas_data.loader, self.clas_criterion,
+                                                 self.clas_opt)
+            _, eval_acc = self.eval_dis(self.clas, eval_clas_data.loader, self.clas_criterion)
             if eval_acc > max_acc:
                 best_clas = copy.deepcopy(self.clas.state_dict())  # save the best classifier
                 max_acc = eval_acc
             self.log.info('[PRE-CLAS] epoch %d: c_loss = %.4f, c_acc = %.4f, eval_acc = %.4f, max_eval_acc = %.4f',
                           epoch, c_loss, c_acc, eval_acc, max_acc)
         self.clas.load_state_dict(copy.deepcopy(best_clas))  # Reload the best classifier
-
-    @staticmethod
-    def eval_gen(model, data_loader, criterion):
-        total_loss = 0
-        with torch.no_grad():
-            for i, data in enumerate(data_loader):
-                inp, target = data['input'], data['target']
-                if cfg.CUDA:
-                    inp, target = inp.cuda(), target.cuda()
-
-                hidden = model.init_hidden(data_loader.batch_size)
-                pred = model.forward(inp, hidden)
-                loss = criterion(pred, target.view(-1))
-                total_loss += loss.item()
-        return total_loss / len(data_loader)
 
     @staticmethod
     def eval_dis(model, data_loader, criterion):
@@ -200,80 +194,52 @@ class BasicInstructor:
         Calculate metrics
         :param fmt_str: if return format string for logging
         """
-        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
-        self.gen_data.reset(eval_samples)
-        new_gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-        self.bleu.test_text = new_gen_tokens
-        self.self_bleu.real_text = new_gen_tokens
-        self.self_bleu.test_text = tensor_to_tokens(self.gen.sample(200, 200), self.idx2word_dict)
+        with torch.no_grad():
+            # Prepare data for evaluation
+            eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
+            gen_data = GenDataIter(eval_samples)
+            gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
+            gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200), self.idx2word_dict)
 
-        # BLEU-[2,3,4,5]
-        bleu_score = self.bleu.get_score(ignore=False)
-
-        # NLL_gen
-        gen_nll = self.eval_gen(self.gen,
-                                self.train_data.loader,
-                                self.mle_criterion)
-
-        # NLL_div
-        div_nll = self.eval_gen(self.gen,
-                                self.gen_data.loader,
-                                self.mle_criterion)
-
-        # Self-BLEU
-        self_bleu_score = self.self_bleu.get_score(ignore=True)
+            # Reset metrics
+            self.bleu.reset(test_text=gen_tokens, real_text=self.test_tokens)
+            self.nll_gen.reset(self.gen, self.train_data.loader)
+            self.nll_div.reset(self.gen, gen_data.loader)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
 
         if fmt_str:
-            return 'BLEU-%s = %s, gen_NLL = %.4f, div_NLL = %.4f, self_bleu = %s' % (
-                self.bleu.gram, bleu_score, gen_nll, div_nll, self_bleu_score)
-        return bleu_score, gen_nll, div_nll, self_bleu_score
+            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+        else:
+            return [metric.get_score() for metric in self.all_metrics]
 
-    def cal_metrics_with_label(self, label_i=None):
+    def cal_metrics_with_label(self, label_i):
         assert type(label_i) == int, 'missing label'
-        eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
-        self.gen_data_list[label_i].reset(eval_samples)
-        new_gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-        self.bleu[label_i].test_text = new_gen_tokens
-        self.self_bleu[label_i].real_text = new_gen_tokens
-        self.self_bleu[label_i].test_text = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i),
-                                                             self.idx2word_dict)
 
-        # BLEU-[2,3,4,5]
-        bleu_score = self.bleu[label_i].get_score(ignore=False)
+        with torch.no_grad():
+            # Prepare data for evaluation
+            eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+            gen_data = GenDataIter(eval_samples)
+            gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
+            gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i), self.idx2word_dict)
+            clas_data = CatClasDataIter([eval_samples], label_i)
 
-        # NLL_gen
-        gen_nll = self.eval_gen(self.gen,
-                                self.train_data_list[label_i].loader,
-                                self.mle_criterion, label_i)
+            # Reset metrics
+            self.bleu.reset(test_text=gen_tokens, real_text=self.test_tokens_list[label_i])
+            self.nll_gen.reset(self.gen, self.train_data_list[label_i].loader, label_i)
+            self.nll_div.reset(self.gen, gen_data.loader, label_i)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            self.clas_acc.reset(self.clas, clas_data.loader)
 
-        # NLL_div
-        div_nll = self.eval_gen(self.gen,
-                                self.gen_data_list[label_i].loader,
-                                self.mle_criterion, label_i)
-
-        # Self-BLEU
-        self_bleu_score = self.self_bleu[label_i].get_score(ignore=True)
-
-        # Evaluation Classifier accuracy
-        self.clas_data.reset([eval_samples], label_i)
-        _, c_acc = self.eval_dis(self.clas, self.clas_data.loader, self.clas_criterion)
-
-        return bleu_score, gen_nll, div_nll, self_bleu_score, c_acc
+        return [metric.get_score() for metric in self.all_metrics]
 
     def comb_metrics(self, fmt_str=False):
-        bleu, gen_nll, div_nll, self_bleu, clas_acc = [], [], [], [], []
-        for label_i in range(cfg.k_label):
-            bl, g_nll, s_nll, sbl, acc = self.cal_metrics_with_label(label_i)
-            bleu.append(bl)
-            gen_nll.append(round(g_nll, 4))
-            div_nll.append(round(s_nll, 4))
-            self_bleu.append(sbl)
-            clas_acc.append(round(acc, 4))
+        all_scores = [self.cal_metrics_with_label(label_i) for label_i in range(cfg.k_label)]
+        all_scores = np.array(all_scores).T.tolist()  # each row for each metric
 
         if fmt_str:
-            return 'BLEU-%s = %s, gen_NLL = %s, div_NLL = %s, self_bleu = %s, clas_acc = %s' % (
-                self.bleu[0].gram, bleu, gen_nll, div_nll, self_bleu, clas_acc)
-        return bleu, gen_nll, div_nll, self_bleu, clas_acc
+            return ', '.join(['%s = %s' % (metric.get_name(), score)
+                              for (metric, score) in zip(self.all_metrics, all_scores)])
+        return all_scores
 
     def _save(self, phrase, epoch):
         """Save model state dict and generator's samples"""

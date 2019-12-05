@@ -6,11 +6,10 @@ If you find any mistake in my implementation, please let me know! Also, please f
 
 ![LICENSE](https://img.shields.io/packagist/l/doctrine/orm.svg)
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)
-[![Gitter](https://badges.gitter.im/ABSA-PyTorch/community.svg)](https://gitter.im/ABSA-PyTorch/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Requirements
 
-- PyTorch >= 1.0.0
+- PyTorch >= 1.1.0
 - Python 3.6
 - Numpy 1.14.5
 - CUDA 7.5+ (For GPU)

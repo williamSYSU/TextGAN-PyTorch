@@ -90,6 +90,14 @@ def program_config(parser):
     parser.add_argument('--dis_hidden_dim', default=cfg.dis_hidden_dim, type=int)
     parser.add_argument('--num_rep', default=cfg.num_rep, type=int)
 
+    # Metrics
+    parser.add_argument('--use_nll_oracle', default=cfg.use_nll_oracle, type=int)
+    parser.add_argument('--use_nll_gen', default=cfg.use_nll_gen, type=int)
+    parser.add_argument('--use_nll_div', default=cfg.use_nll_div, type=int)
+    parser.add_argument('--use_bleu', default=cfg.use_bleu, type=int)
+    parser.add_argument('--use_self_bleu', default=cfg.use_self_bleu, type=int)
+    parser.add_argument('--use_clas_acc', default=cfg.use_clas_acc, type=int)
+
     # Log
     parser.add_argument('--log_file', default=cfg.log_filename, type=str)
     parser.add_argument('--save_root', default=cfg.save_root, type=str)

@@ -10,7 +10,7 @@ from time import strftime, localtime
 
 import torch.nn as nn
 
-from instructor.oracle_data.instructor import BasicInstructor
+from metrics.nll import NLL
 from models.Oracle import Oracle
 from utils.data_loader import GenDataIter
 from utils.text_process import *
@@ -32,7 +32,7 @@ def create_multi_oracle(number):
 
         oracle_data = GenDataIter(large_samples)
         mle_criterion = nn.NLLLoss()
-        groud_truth = BasicInstructor.eval_gen(oracle, oracle_data.loader, mle_criterion)
+        groud_truth = NLL.cal_nll(oracle, oracle_data.loader, mle_criterion)
         print('Oracle %d Groud Truth: %.4f' % (i, groud_truth))
 
 
@@ -49,7 +49,7 @@ def create_specific_oracle(from_a, to_b, num=1, save_path='../pretrain/'):
 
             oracle_data = GenDataIter(big_samples)
             mle_criterion = nn.NLLLoss()
-            groud_truth = BasicInstructor.eval_gen(oracle, oracle_data.loader, mle_criterion)
+            groud_truth = NLL.cal_nll(oracle, oracle_data.loader, mle_criterion)
 
             if from_a <= groud_truth <= to_b:
                 dir_path = save_path + 'oracle_data_gt{:.2f}_{}'.format(groud_truth,
@@ -78,7 +78,7 @@ def create_many_oracle(from_a, to_b, num=1, save_path='../pretrain/'):
 
             oracle_data = GenDataIter(big_samples)
             mle_criterion = nn.NLLLoss()
-            groud_truth = BasicInstructor.eval_gen(oracle, oracle_data.loader, mle_criterion)
+            groud_truth = NLL.cal_nll(oracle, oracle_data.loader, mle_criterion)
 
             if from_a <= groud_truth <= to_b:
                 print('save ground truth: ', groud_truth)

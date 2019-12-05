@@ -13,7 +13,6 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from metrics.bleu import BLEU
 from models.SeqGAN_D import SeqGAN_D
 from models.SeqGAN_G import SeqGAN_G
 from utils import rollout
@@ -40,17 +39,7 @@ class SeqGANInstructor(BasicInstructor):
         self.mle_criterion = nn.NLLLoss()
         self.dis_criterion = nn.CrossEntropyLoss()
 
-        # DataLoader
-        self.gen_data = GenDataIter(self.gen.sample(cfg.batch_size, cfg.batch_size))
-        self.dis_data = DisDataIter(self.train_data.random_batch()['target'], self.gen_data.random_batch()['target'])
-
-        # Metrics
-        self.bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                         real_text=tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict),
-                         gram=[2, 3, 4, 5])
-        self.self_bleu = BLEU(test_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                              real_text=tensor_to_tokens(self.gen_data.target, self.idx2word_dict),
-                              gram=3)
+        self.test_tokens = tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict)
 
     def _run(self):
         # ===PRE-TRAINING===
@@ -121,7 +110,7 @@ class SeqGANInstructor(BasicInstructor):
         rollout_func = rollout.ROLLOUT(self.gen, cfg.CUDA)
         total_g_loss = 0
         for step in range(g_step):
-            inp, target = self.gen_data.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
+            inp, target = GenDataIter.prepare(self.gen.sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
             # ===Train===
             rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
@@ -143,11 +132,11 @@ class SeqGANInstructor(BasicInstructor):
             # prepare loader for training
             pos_samples = self.train_data.target
             neg_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
-            self.dis_data.reset(pos_samples, neg_samples)
+            dis_data = DisDataIter(pos_samples, neg_samples)
 
             for epoch in range(d_epoch):
                 # ===Train===
-                d_loss, train_acc = self.train_dis_epoch(self.dis, self.dis_data.loader, self.dis_criterion,
+                d_loss, train_acc = self.train_dis_epoch(self.dis, dis_data.loader, self.dis_criterion,
                                                          self.dis_opt)
 
             # ===Test===
