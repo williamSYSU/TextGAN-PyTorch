@@ -74,6 +74,13 @@ ADV_d_epoch = 2
 dis_embed_dim = 64
 dis_hidden_dim = 64
 
+# ===Metrics===
+use_nll_oracle = int(True)
+use_nll_gen = int(True)
+use_nll_div = int(True)
+use_bleu = int(True)
+use_self_bleu = int(True)
+
 args = [
     # Program
     '--if_test', if_test,
@@ -118,6 +125,13 @@ args = [
     '--adv_d_epoch', ADV_d_epoch,
     '--dis_embed_dim', dis_embed_dim,
     '--dis_hidden_dim', dis_hidden_dim,
+
+    # Metrics
+    '--use_nll_oracle', use_nll_oracle,
+    '--use_nll_gen', use_nll_gen,
+    '--use_nll_div', use_nll_div,
+    '--use_bleu', use_bleu,
+    '--use_self_bleu', use_self_bleu,
 ]
 
 args = list(map(str, args))
