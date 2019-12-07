@@ -9,14 +9,37 @@ If you find any mistake in my implementation, please let me know! Also, please f
 
 ## Requirements
 
-- PyTorch >= 1.1.0
+- **PyTorch >= 1.1.0**
 - Python 3.6
 - Numpy 1.14.5
 - CUDA 7.5+ (For GPU)
 - nltk 3.4
 - tqdm 4.32.1
+- KenLM (https://github.com/kpu/kenlm)
 
 To install, run `pip install -r requirements.txt`. In case of CUDA problems, consult the official PyTorch [Get Started guide](https://pytorch.org/get-started/locally/).
+
+## KenLM Installation
+
+- Download stable release and unzip: http://kheafield.com/code/kenlm.tar.gz
+
+- Need Boost >= 1.42.0 and bjam
+
+  - Ubuntu: `sudo apt-get install libboost-all-dev`
+  - Mac: `brew install boost; brew install bjam`
+
+- Run *within* kenlm directory:
+
+  ```bash
+  mkdir -p build
+  cd build
+  cmake ..
+  make -j 4
+  ```
+
+- `pip install https://github.com/kpu/kenlm/archive/master.zip`
+
+- For more information on KenLM see: https://github.com/kpu/kenlm and http://kheafield.com/code/kenlm/
 
 ## Implemented Models and Original Papers
 
