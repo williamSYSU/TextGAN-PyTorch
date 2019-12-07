@@ -8,13 +8,11 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from models.JSDGAN_G import JSDGAN_G
-from utils.text_process import tensor_to_tokens
 
 
 class JSDGANInstructor(BasicInstructor):
@@ -28,11 +26,6 @@ class JSDGANInstructor(BasicInstructor):
 
         # Optimizer
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
-
-        # Criterion
-        self.mle_criterion = nn.NLLLoss()
-
-        self.test_tokens = tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict)
 
     def init_model(self):
         if cfg.gen_pretrain:

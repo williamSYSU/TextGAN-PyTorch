@@ -84,8 +84,8 @@ class CatGenDataIter:
 
     def load_data(self, filename):
         """Load real data from local file"""
-        tokens = get_tokenlized(filename)
-        samples_index = tokens_to_tensor(tokens, self.word2idx_dict)
+        self.tokens = get_tokenlized(filename)
+        samples_index = tokens_to_tensor(self.tokens, self.word2idx_dict)
         return self.prepare(samples_index)
 
 

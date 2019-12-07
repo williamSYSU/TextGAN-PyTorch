@@ -136,6 +136,7 @@ def tensor_to_tokens(tensor, dictionary):
 
 def tokens_to_tensor(tokens, dictionary):
     """transform word tokens to Tensor"""
+    global i
     tensor = []
     for sent in tokens:
         sent_ten = []
@@ -152,6 +153,7 @@ def tokens_to_tensor(tokens, dictionary):
 
 def padding_token(tokens):
     """pad sentences with padding_token"""
+    global i
     pad_tokens = []
     for sent in tokens:
         sent_token = []

@@ -16,6 +16,7 @@ import config as cfg
 from metrics.nll import NLL
 from models.Oracle import Oracle
 from utils.data_loader import GenDataIter
+from utils.data_utils import create_multi_oracle
 from utils.helpers import Signal, create_logger, create_oracle, get_fixed_temperature
 from utils.text_process import write_tensor
 
@@ -31,30 +32,30 @@ class BasicInstructor:
         # oracle, generator, discriminator
         self.oracle = Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
                              cfg.padding_idx, gpu=cfg.CUDA)
-        self.oracle_list = None
+        self.oracle_list = [Oracle(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
+                                   cfg.padding_idx, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
+
         self.dis = None
         self.clas = None
 
         self.show_config()
-
+        self.check_oracle()  # Create Oracle models if not exist
         # DataLoader
-        if not os.path.exists(cfg.oracle_samples_path.format(cfg.samples_num)) or not cfg.oracle_pretrain:
-            create_oracle()
-            self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
         self.oracle_samples = torch.load(cfg.oracle_samples_path.format(cfg.samples_num))
-        self.oracle_data = GenDataIter(self.oracle_samples)
+        self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
+                                    for i in range(cfg.k_label)]
 
-        self.oracle_data_list = None
+        self.oracle_data = GenDataIter(self.oracle_samples)
+        self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
 
         # Criterion
         self.mle_criterion = nn.NLLLoss()
-        self.dis_criterion = None
-        self.clas_criterion = None
+        self.dis_criterion = nn.CrossEntropyLoss()
 
         # Metrics
-        self.nll_oracle = NLL('NLL_oracle', if_use=cfg.use_nll_oracle)
-        self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen)
-        self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div)
+        self.nll_oracle = NLL('NLL_oracle', if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
+        self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
+        self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div, gpu=cfg.CUDA)
         self.all_metrics = [self.nll_oracle, self.nll_gen, self.nll_div]
 
     def _run(self):
@@ -203,11 +204,11 @@ class BasicInstructor:
                               for (metric, score) in zip(self.all_metrics, all_scores)])
         return all_scores
 
-    def _save(self, phrase, epoch):
+    def _save(self, phase, epoch):
         """Save model state dict and generator's samples"""
-        if phrase != 'ADV':
-            torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
-        save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
+        if phase != 'ADV':
+            torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
+        save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size)
         write_tensor(save_sample_path, samples)
 
@@ -215,3 +216,24 @@ class BasicInstructor:
         self.gen.temperature.data = torch.Tensor([get_fixed_temperature(cfg.temperature, i, N, cfg.temp_adpt)])
         if cfg.CUDA:
             self.gen.temperature.data = self.gen.temperature.data.cuda()
+
+    def check_oracle(self):
+        if not cfg.oracle_pretrain:
+            create_oracle()
+            create_multi_oracle(cfg.k_label)
+
+        # General text generation Oracle model
+        if not os.path.exists(cfg.oracle_samples_path.format(cfg.samples_num)) or not cfg.oracle_pretrain:
+            create_oracle()
+
+        # Category text generation Oracle models
+        for i in range(cfg.k_label):
+            if not os.path.exists(cfg.multi_oracle_samples_path.format(i, cfg.samples_num)):
+                create_multi_oracle(cfg.k_label)
+                break
+
+        # Load Oracle state dict
+        self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
+        for i in range(cfg.k_label):
+            oracle_path = cfg.multi_oracle_state_dict_path.format(i)
+            self.oracle_list[i].load_state_dict(torch.load(oracle_path))

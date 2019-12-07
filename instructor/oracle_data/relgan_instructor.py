@@ -36,9 +36,6 @@ class RelGANInstructor(BasicInstructor):
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
 
-        # Criterion
-        self.mle_criterion = nn.NLLLoss()
-
     def _run(self):
         # ===PRE-TRAINING (GENERATOR)===
         if not cfg.gen_pretrain:

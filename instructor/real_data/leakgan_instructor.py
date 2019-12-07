@@ -8,7 +8,6 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 import config as cfg
@@ -37,12 +36,6 @@ class LeakGANInstructor(BasicInstructor):
 
         self.gen_opt = [mana_opt, work_opt]
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
-
-        # Criterion
-        self.mle_criterion = nn.NLLLoss()
-        self.dis_criterion = nn.CrossEntropyLoss()
-
-        self.test_tokens = tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict)
 
     def _run(self):
         for inter_num in range(cfg.inter_epoch):
@@ -155,7 +148,7 @@ class LeakGANInstructor(BasicInstructor):
         self.log.info('[ADV-GEN] adv_mana_loss = %.4f, adv_work_loss = %.4f, %s' % (
             adv_mana_loss / g_step, adv_work_loss / g_step, self.cal_metrics(fmt_str=True)))
 
-    def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
+    def train_discriminator(self, d_step, d_epoch, phase='MLE'):
         """
         Training the discriminator on real_data_samples (positive) and generated samples from gen (negative).
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
@@ -174,7 +167,7 @@ class LeakGANInstructor(BasicInstructor):
 
             # ===Test===
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f,' % (
-                phrase, step, d_loss, train_acc))
+                phase, step, d_loss, train_acc))
 
     def cal_metrics(self, fmt_str=False):
         with torch.no_grad():
@@ -185,18 +178,19 @@ class LeakGANInstructor(BasicInstructor):
             gen_tokens_s = tensor_to_tokens(self.gen.sample(200, cfg.batch_size, self.dis), self.idx2word_dict)
 
             # Reset metrics
-            self.bleu.reset(test_text=gen_tokens, real_text=self.test_tokens)
+            self.bleu.reset(test_text=gen_tokens, real_text=self.test_data.tokens)
             self.nll_gen.reset(self.gen, self.train_data.loader, leak_dis=self.dis)
             self.nll_div.reset(self.gen, gen_data.loader, leak_dis=self.dis)
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            self.ppl.reset(gen_tokens)
 
         if fmt_str:
             return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
         else:
             return [metric.get_score() for metric in self.all_metrics]
 
-    def _save(self, phrase, epoch):
-        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
-        save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phrase, epoch)
+    def _save(self, phase, epoch):
+        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
+        save_sample_path = cfg.save_samples_root + 'samples_{}_{:05d}.txt'.format(phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, self.dis)
         write_tokens(save_sample_path, tensor_to_tokens(samples, self.idx2word_dict))

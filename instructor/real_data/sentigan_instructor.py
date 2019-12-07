@@ -8,7 +8,6 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 import config as cfg
@@ -38,24 +37,8 @@ class SentiGANInstructor(BasicInstructor):
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
         self.clas_opt = optim.Adam(self.clas.parameters(), lr=cfg.clas_lr)
 
-        # Criterion
-        self.mle_criterion = nn.NLLLoss()
-        self.dis_criterion = nn.CrossEntropyLoss()
-        self.clas_criterion = nn.CrossEntropyLoss()
-
-        # DataLoader
-        self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
-        self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i), if_test_data=True) for i in range(cfg.k_label)]
-        self.clas_data_list = [GenDataIter(cfg.cat_test_data.format(str(i)), if_test_data=True) for i in
-                               range(cfg.k_label)]
-
-        self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
-        self.clas_samples_list = [self.clas_data_list[i].target for i in range(cfg.k_label)]
-
-        self.test_tokens_list = [tensor_to_tokens(self.test_data_list[i].target, self.test_data_list[i].idx2word_dict)
-                                 for i in range(cfg.k_label)]
         # Metrics
-        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.clas_acc]
+        self.all_metrics.append(self.clas_acc)
 
     def init_model(self):
         if cfg.dis_pretrain:
@@ -78,8 +61,9 @@ class SentiGANInstructor(BasicInstructor):
 
     def _run(self):
         # ===Pre-train Classifier with real data===
-        self.log.info('Start training Classifier...')
-        self.train_classifier(cfg.PRE_clas_epoch)
+        if cfg.use_clas_acc:
+            self.log.info('Start training Classifier...')
+            self.train_classifier(cfg.PRE_clas_epoch)
 
         # ===PRE-TRAIN GENERATOR===
         if not cfg.gen_pretrain:
@@ -164,7 +148,7 @@ class SentiGANInstructor(BasicInstructor):
         # ===Test===
         self.log.info('[ADV-GEN]: %s', self.comb_metrics(fmt_str=True))
 
-    def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
+    def train_discriminator(self, d_step, d_epoch, phase='MLE'):
         """
         Training the discriminator on real_data_samples (positive) and generated samples from gen (negative).
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
@@ -190,9 +174,9 @@ class SentiGANInstructor(BasicInstructor):
 
             # ===Test===
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f' % (
-                phrase, step, d_loss, train_acc))
+                phase, step, d_loss, train_acc))
 
-            if cfg.if_save and not cfg.if_test and phrase == 'MLE':
+            if cfg.if_save and not cfg.if_test and phase == 'MLE':
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
 
     def cal_metrics_with_label(self, label_i):
@@ -207,20 +191,21 @@ class SentiGANInstructor(BasicInstructor):
             clas_data = CatClasDataIter([eval_samples], label_i)
 
             # Reset metrics
-            self.bleu.reset(test_text=gen_tokens, real_text=self.test_tokens_list[label_i])
+            self.bleu.reset(test_text=gen_tokens, real_text=self.test_data_list[label_i].tokens)
             self.nll_gen.reset(self.gen_list[label_i], self.train_data_list[label_i].loader)
             self.nll_div.reset(self.gen_list[label_i], gen_data.loader)
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
             self.clas_acc.reset(self.clas, clas_data.loader)
+            self.ppl.reset(gen_tokens)
 
         return [metric.get_score() for metric in self.all_metrics]
 
-    def _save(self, phrase, epoch):
+    def _save(self, phase, epoch):
         """Save model state dict and generator's samples"""
         for i in range(cfg.k_label):
-            if phrase != 'ADV':
+            if phase != 'ADV':
                 torch.save(self.gen_list[i].state_dict(),
-                           cfg.save_model_root + 'gen{}_{}_{:05d}.pt'.format(i, phrase, epoch))
-            save_sample_path = cfg.save_samples_root + 'samples_d{}_{}_{:05d}.txt'.format(i, phrase, epoch)
+                           cfg.save_model_root + 'gen{}_{}_{:05d}.pt'.format(i, phase, epoch))
+            save_sample_path = cfg.save_samples_root + 'samples_d{}_{}_{:05d}.txt'.format(i, phase, epoch)
             samples = self.gen_list[i].sample(cfg.batch_size, cfg.batch_size)
             write_tokens(save_sample_path, tensor_to_tokens(samples, self.idx2word_dict))

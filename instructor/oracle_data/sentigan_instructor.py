@@ -9,7 +9,6 @@
 
 import os
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 import config as cfg
@@ -40,15 +39,6 @@ class SentiGANInstructor(BasicInstructor):
         # Optimizer
         self.gen_opt_list = [optim.Adam(gen.parameters(), lr=cfg.gen_lr) for gen in self.gen_list]
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
-
-        # Criterion
-        self.mle_criterion = nn.NLLLoss()
-        self.dis_criterion = nn.CrossEntropyLoss()
-
-        # DataLoader
-        self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
-                                    for i in range(cfg.k_label)]
-        self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
 
     def init_model(self):
         if cfg.oracle_pretrain:
@@ -157,7 +147,7 @@ class SentiGANInstructor(BasicInstructor):
         # ===Test===
         self.log.info('[ADV-GEN]: %s', self.comb_metrics(fmt_str=True))
 
-    def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
+    def train_discriminator(self, d_step, d_epoch, phase='MLE'):
         """
         Training the discriminator on real_data_samples (positive) and generated samples from gen (negative).
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
@@ -183,9 +173,9 @@ class SentiGANInstructor(BasicInstructor):
 
             # ===Test===
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f' % (
-                phrase, step, d_loss, train_acc))
+                phase, step, d_loss, train_acc))
 
-            if cfg.if_save and not cfg.if_test and phrase == 'MLE':
+            if cfg.if_save and not cfg.if_test and phase == 'MLE':
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)
 
     def cal_metrics_with_label(self, label_i):
@@ -201,11 +191,11 @@ class SentiGANInstructor(BasicInstructor):
 
         return [metric.get_score() for metric in self.all_metrics]
 
-    def _save(self, phrase, epoch):
+    def _save(self, phase, epoch):
         """Save model state dict and generator's samples"""
         for i in range(cfg.k_label):
             torch.save(self.gen_list[i].state_dict(),
-                       cfg.save_model_root + 'gen{}_{}_{:05d}.pt'.format(i, phrase, epoch))
-            save_sample_path = cfg.save_samples_root + 'samples_d{}_{}_{:05d}.txt'.format(i, phrase, epoch)
+                       cfg.save_model_root + 'gen{}_{}_{:05d}.pt'.format(i, phase, epoch))
+            save_sample_path = cfg.save_samples_root + 'samples_d{}_{}_{:05d}.txt'.format(i, phase, epoch)
             samples = self.gen_list[i].sample(cfg.batch_size, cfg.batch_size)
             write_tensor(save_sample_path, samples)
