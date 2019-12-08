@@ -8,7 +8,6 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
@@ -18,7 +17,6 @@ from instructor.real_data.instructor import BasicInstructor
 from models.RelGAN_D import RelGAN_D
 from models.RelGAN_G import RelGAN_G
 from utils.helpers import get_fixed_temperature, get_losses
-from utils.text_process import tensor_to_tokens
 
 
 class RelGANInstructor(BasicInstructor):
@@ -36,12 +34,6 @@ class RelGANInstructor(BasicInstructor):
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
-
-        # Criterion
-        self.mle_criterion = nn.NLLLoss()
-        self.adv_criterion = nn.BCEWithLogitsLoss()
-
-        self.test_tokens = tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict)
 
     def _run(self):
         # ===PRE-TRAINING (GENERATOR)===

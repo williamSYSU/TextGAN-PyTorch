@@ -29,7 +29,6 @@ class RelationalMemory(nn.Module):
         MLP. Defaults to 2.
       key_size: Size of vector to use for key & query vectors in the attention
         computation. Defaults to None, in which case we use `head_size`.
-      name: Name of the module.
 
       # NEW flag for this class
       return_all_outputs: Whether the model returns outputs for each step (like seq2seq) or only the final output.

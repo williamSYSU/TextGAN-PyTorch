@@ -15,7 +15,7 @@ from metrics.basic import Metrics
 
 
 class NLL(Metrics):
-    def __init__(self, name, if_use=False, gpu=True):
+    def __init__(self, name, if_use=False, gpu=False):
         super(NLL, self).__init__(name)
 
         self.if_use = if_use

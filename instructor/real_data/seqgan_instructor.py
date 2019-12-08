@@ -8,7 +8,6 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 import config as cfg
@@ -17,7 +16,6 @@ from models.SeqGAN_D import SeqGAN_D
 from models.SeqGAN_G import SeqGAN_G
 from utils import rollout
 from utils.data_loader import GenDataIter, DisDataIter
-from utils.text_process import tensor_to_tokens
 
 
 class SeqGANInstructor(BasicInstructor):
@@ -34,12 +32,6 @@ class SeqGANInstructor(BasicInstructor):
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
-
-        # Criterion
-        self.mle_criterion = nn.NLLLoss()
-        self.dis_criterion = nn.CrossEntropyLoss()
-
-        self.test_tokens = tensor_to_tokens(self.test_data.target, self.test_data.idx2word_dict)
 
     def _run(self):
         # ===PRE-TRAINING===
@@ -121,7 +113,7 @@ class SeqGANInstructor(BasicInstructor):
         # ===Test===
         self.log.info('[ADV-GEN]: g_loss = %.4f, %s' % (total_g_loss, self.cal_metrics(fmt_str=True)))
 
-    def train_discriminator(self, d_step, d_epoch, phrase='MLE'):
+    def train_discriminator(self, d_step, d_epoch, phase='MLE'):
         """
         Training the discriminator on real_data_samples (positive) and generated samples from gen (negative).
         Samples are drawn d_step times, and the discriminator is trained for d_epoch d_epoch.
@@ -141,7 +133,7 @@ class SeqGANInstructor(BasicInstructor):
 
             # ===Test===
             self.log.info('[%s-DIS] d_step %d: d_loss = %.4f, train_acc = %.4f,' % (
-                phrase, step, d_loss, train_acc))
+                phase, step, d_loss, train_acc))
 
             if cfg.if_save and not cfg.if_test:
                 torch.save(self.dis.state_dict(), cfg.pretrained_dis_path)

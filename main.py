@@ -97,6 +97,7 @@ def program_config(parser):
     parser.add_argument('--use_bleu', default=cfg.use_bleu, type=int)
     parser.add_argument('--use_self_bleu', default=cfg.use_self_bleu, type=int)
     parser.add_argument('--use_clas_acc', default=cfg.use_clas_acc, type=int)
+    parser.add_argument('--use_ppl', default=cfg.use_ppl, type=int)
 
     # Log
     parser.add_argument('--log_file', default=cfg.log_filename, type=str)

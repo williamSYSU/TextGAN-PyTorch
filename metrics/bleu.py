@@ -34,9 +34,7 @@ class BLEU(Metrics):
         """
         Get BLEU scores.
         :param is_fast: Fast mode
-        :param if_use: if calculate
         :param given_gram: Calculate specific n-gram BLEU score
-        :return: BLEU score(s)
         """
         if not self.if_use:
             return 0

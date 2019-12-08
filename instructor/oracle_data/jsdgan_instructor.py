@@ -8,7 +8,6 @@
 # Copyrights (C) 2018. All Rights Reserved.
 import os
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 import config as cfg
@@ -28,9 +27,6 @@ class JSDGANInstructor(BasicInstructor):
 
         # Optimizer
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
-
-        # Criterion
-        self.mle_criterion = nn.NLLLoss()
 
     def init_model(self):
         if cfg.oracle_pretrain:

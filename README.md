@@ -9,14 +9,37 @@ If you find any mistake in my implementation, please let me know! Also, please f
 
 ## Requirements
 
-- PyTorch >= 1.1.0
+- **PyTorch >= 1.1.0**
 - Python 3.6
 - Numpy 1.14.5
 - CUDA 7.5+ (For GPU)
 - nltk 3.4
 - tqdm 4.32.1
+- KenLM (https://github.com/kpu/kenlm)
 
 To install, run `pip install -r requirements.txt`. In case of CUDA problems, consult the official PyTorch [Get Started guide](https://pytorch.org/get-started/locally/).
+
+## KenLM Installation
+
+- Download stable release and unzip: http://kheafield.com/code/kenlm.tar.gz
+
+- Need Boost >= 1.42.0 and bjam
+
+  - Ubuntu: `sudo apt-get install libboost-all-dev`
+  - Mac: `brew install boost; brew install bjam`
+
+- Run *within* kenlm directory:
+
+  ```bash
+  mkdir -p build
+  cd build
+  cmake ..
+  make -j 4
+  ```
+
+- `pip install https://github.com/kpu/kenlm/archive/master.zip`
+
+- For more information on KenLM see: https://github.com/kpu/kenlm and http://kheafield.com/code/kenlm/
 
 ## Implemented Models and Original Papers
 
@@ -31,7 +54,6 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 ### Category Text Generation
 
 - **SentiGAN** - [SentiGAN: Generating Sentimental Texts via Mixture Adversarial Networks](https://www.ijcai.org/proceedings/2018/618)
-- **CatGAN** (ours) - [CatGAN: Category-aware Generative Adversarial Networks with Hierarchical Evolutionary Learning for Category Text Generation](https://arxiv.org/abs/1911.06641)
 
 ## Get Started
 
@@ -50,7 +72,7 @@ cd run
 python3 run_[model_name].py 0 0	# The first 0 is job_id, the second 0 is gpu_id
 
 # For example
-python3 run_catgan.py 0 0
+python3 run_seqgan.py 0 0
 ```
 
 ## Features
@@ -78,18 +100,6 @@ python3 run_catgan.py 0 0
    In `config.py`, the program would automatically select a GPU device with the least `GPU-Util` in `nvidia-smi`. This feature is enabled by default. If you want to manually select a GPU device, please uncomment the `--device` args in `run_[run_model].py` and specify a GPU device with command.
 
 ## Implementation Details
-
-### CatGAN
-
-- run file: [run_catgan.py](run/run_catgan.py)
-
-- Instructors: [oracle_data](instructor/oracle_data/catgan_instructor.py), [real_data](instructor/real_data/catgan_instructor.py)
-
-- Models: [generator](models/CatGAN_G.py), [discriminator](models/CatGAN_D.py)
-
-- Structure (from [CatGAN](https://arxiv.org/pdf/1609.05473.pdf))
-
-  ![model_catgan](assets/model_catgan.png)
 
 ### SeqGAN
 
