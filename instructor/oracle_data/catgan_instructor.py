@@ -12,7 +12,6 @@ import numpy as np
 import os
 import random
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
@@ -61,20 +60,10 @@ class CatGANInstructor(BasicInstructor):
                                 for _ in range(cfg.n_parent)]  # list of optimizer state dict
 
         # Criterion
-        self.mle_criterion = nn.NLLLoss()
         self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
         self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
-        if not cfg.oracle_pretrain:
-            create_multi_oracle(cfg.k_label)
-            for i in range(cfg.k_label):
-                oracle_path = cfg.multi_oracle_state_dict_path.format(i)
-                self.oracle_list[i].load_state_dict(torch.load(oracle_path, map_location='cuda:%d' % cfg.device))
-
-        self.oracle_samples_list = [torch.load(cfg.multi_oracle_samples_path.format(i, cfg.samples_num))
-                                    for i in range(cfg.k_label)]
-        self.oracle_data_list = [GenDataIter(self.oracle_samples_list[i]) for i in range(cfg.k_label)]
         self.all_oracle_data = CatGenDataIter(self.oracle_samples_list)  # Shuffled all oracle data
 
     def init_model(self):
@@ -492,10 +481,10 @@ class CatGANInstructor(BasicInstructor):
             total_loss += loss.item()
         return total_loss / len(data_loader)
 
-    def _save(self, phrase, epoch, label_i=None):
+    def _save(self, phase, epoch, label_i=None):
         assert type(label_i) == int
-        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phrase, epoch))
-        save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phrase, epoch)
+        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
+        save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
         write_tensor(save_sample_path, samples)
 

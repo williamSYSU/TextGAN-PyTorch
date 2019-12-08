@@ -139,13 +139,7 @@ class GANLoss(nn.Module):
         return loss_fake + loss_real
 
     def __call__(self, Dreal, Dfake):
-        """Calculate loss given Discriminator's output and grount truth labels.
-        Parameters:
-            prediction (tensor) - - tpyically the prediction output from a discriminator
-            target_is_real (bool) - - if the ground truth label is for real images or fake images
-        Returns:
-            the calculated loss.
-        """
+        """Calculate loss given Discriminator's output and grount truth labels."""
         if self.which_net == 'G':
             return self.G_loss(Dreal, Dfake)
         elif self.which_net == 'D':

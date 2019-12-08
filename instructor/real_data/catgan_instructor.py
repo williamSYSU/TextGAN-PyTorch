@@ -20,7 +20,7 @@ from instructor.real_data.instructor import BasicInstructor
 from metrics.nll import NLL
 from models.CatGAN_D import CatGAN_D, CatGAN_C
 from models.CatGAN_G import CatGAN_G
-from utils.cat_data_loader import CatGenDataIter, CatClasDataIter
+from utils.cat_data_loader import CatGenDataIter
 from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss
 from utils.helpers import get_fixed_temperature
@@ -57,28 +57,14 @@ class CatGANInstructor(BasicInstructor):
                                 for _ in range(cfg.n_parent)]  # list of optimizer state dict
 
         # Criterion
-        self.mle_criterion = nn.NLLLoss()
-        self.clas_criterion = nn.CrossEntropyLoss()
         self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
         self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
-        self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
-        self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i), if_test_data=True) for i in range(cfg.k_label)]
-        self.clas_data_list = [GenDataIter(cfg.cat_test_data.format(str(i)), if_test_data=True) for i in
-                               range(cfg.k_label)]
-
-        self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
-        self.clas_samples_list = [self.clas_data_list[i].target for i in range(cfg.k_label)]
-
         self.all_train_data = CatGenDataIter(self.train_samples_list)
-        self.clas_data = CatClasDataIter(self.clas_samples_list, shuffle=True)  # init classifier train data
-        self.eval_clas_data = CatClasDataIter(self.train_samples_list)
 
-        self.test_tokens_list = [tensor_to_tokens(self.test_data_list[i].target, self.test_data_list[i].idx2word_dict)
-                                 for i in range(cfg.k_label)]
         # Metrics
-        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.clas_acc]
+        self.all_metrics.append(self.clas_acc)
 
     def init_model(self):
         if cfg.gen_pretrain:
@@ -104,8 +90,9 @@ class CatGANInstructor(BasicInstructor):
 
     def _run(self):
         # ===Pre-train Classifier with real data===
-        self.log.info('Start training Classifier...')
-        self.train_classifier(cfg.PRE_clas_epoch)
+        if cfg.use_clas_acc:
+            self.log.info('Start training Classifier...')
+            self.train_classifier(cfg.PRE_clas_epoch)
 
         # ===Pre-train Generator===
         if not cfg.gen_pretrain:

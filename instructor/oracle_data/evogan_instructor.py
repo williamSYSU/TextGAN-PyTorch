@@ -51,8 +51,6 @@ class EvoGANInstructor(BasicInstructor):
                                 for _ in range(cfg.n_parent)]  # list of optimizer state dict
 
         # Criterion
-        self.mle_criterion = nn.NLLLoss()
-        self.cross_entro_cri = nn.CrossEntropyLoss()
         self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
         self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
 

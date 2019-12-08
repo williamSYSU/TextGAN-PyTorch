@@ -84,6 +84,7 @@ use_nll_div = int(True)
 use_bleu = int(True)
 use_self_bleu = int(True)
 use_clas_acc = int(True)
+use_ppl = int(False)
 
 args = [
     # Program
@@ -139,6 +140,7 @@ args = [
     '--use_bleu', use_bleu,
     '--use_self_bleu', use_self_bleu,
     '--use_clas_acc', use_clas_acc,
+    '--use_ppl', use_ppl,
 ]
 
 args = list(map(str, args))

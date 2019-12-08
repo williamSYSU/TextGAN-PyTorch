@@ -40,7 +40,7 @@ CUDA = int(True)
 ora_pretrain = int(True)
 gen_pretrain = int(False)
 dis_pretrain = int(False)
-MLE_train_epoch = 1
+MLE_train_epoch = 150
 clas_pre_epoch = 5
 ADV_train_epoch = 2000
 tips = '{} experiments'
@@ -97,6 +97,7 @@ use_nll_div = int(True)
 use_bleu = int(True)
 use_self_bleu = int(True)
 use_clas_acc = int(True)
+use_ppl = int(False)
 
 args = [
     # Program
@@ -165,6 +166,7 @@ args = [
     '--use_bleu', use_bleu,
     '--use_self_bleu', use_self_bleu,
     '--use_clas_acc', use_clas_acc,
+    '--use_ppl', use_ppl,
 ]
 
 args = list(map(str, args))
