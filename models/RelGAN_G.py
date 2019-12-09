@@ -23,20 +23,36 @@ class RelGAN_G(LSTMGenerator):
 
         self.temperature = 1.0  # init value is 1.0
 
-        # RMC
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
-        self.hidden_dim = mem_slots * num_heads * head_size
-        self.lstm = RelationalMemory(mem_slots=mem_slots, head_size=head_size, input_size=embedding_dim,
-                                     num_heads=num_heads, return_all_outputs=True)
-        self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
-
-        # LSTM
-        # self.hidden_dim = 32
-        # self.lstm = nn.LSTM(embedding_dim, self.hidden_dim, batch_first=True)
-        # self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
+        if cfg.model_type == 'RMC':
+            # RMC
+            self.hidden_dim = mem_slots * num_heads * head_size
+            self.lstm = RelationalMemory(mem_slots=mem_slots, head_size=head_size, input_size=embedding_dim,
+                                         num_heads=num_heads, return_all_outputs=True)
+            self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
+        else:
+            # LSTM
+            self.hidden_dim = hidden_dim
+            self.lstm = nn.LSTM(embedding_dim, self.hidden_dim, batch_first=True)
+            self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
 
         self.init_params()
         pass
+
+    def init_hidden(self, batch_size=cfg.batch_size):
+        if cfg.model_type == 'RMC':
+            """init RMC memory"""
+            memory = self.lstm.initial_state(batch_size)
+            memory = self.lstm.repackage_hidden(memory)  # detch memory at first
+            return memory.cuda() if self.gpu else memory
+        else:
+            h = torch.zeros(1, batch_size, self.hidden_dim)
+            c = torch.zeros(1, batch_size, self.hidden_dim)
+
+            if self.gpu:
+                return h.cuda(), c.cuda()
+            else:
+                return h, c
 
     def step(self, inp, hidden):
         """
@@ -96,12 +112,6 @@ class RelGAN_G(LSTMGenerator):
         if one_hot:
             return all_preds  # batch_size * seq_len * vocab_size
         return samples
-
-    def init_hidden(self, batch_size=cfg.batch_size):
-        """init RMC memory"""
-        memory = self.lstm.initial_state(batch_size)
-        memory = self.lstm.repackage_hidden(memory)  # detch memory at first
-        return memory.cuda() if self.gpu else memory
 
     @staticmethod
     def add_gumbel(o_t, eps=1e-10, gpu=cfg.CUDA):
