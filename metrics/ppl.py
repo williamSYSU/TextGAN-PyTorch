@@ -22,7 +22,15 @@ kenlm_path = '/home/zhiwei/kenlm'  # specify the kenlm path
 
 class PPL(Metrics):
     def __init__(self, train_data, test_data, n_gram=5, if_use=False):
-        super(PPL, self).__init__('[PPL_forward, PPL_reverse]')
+        """
+        Calculate Perplexity scores, including forward and reverse.
+        PPL-F: PPL_forward, PPL-R: PPL_reverse
+        @param train_data: train_data (GenDataIter)
+        @param test_data: test_data (GenDataIter)
+        @param n_gram: calculate with n-gram
+        @param if_use: if use
+        """
+        super(PPL, self).__init__('[PPL-F, PPL-R]')
 
         self.n_gram = n_gram
         self.if_use = if_use
@@ -30,6 +38,7 @@ class PPL(Metrics):
         self.gen_tokens = None
         self.train_data = train_data
         self.test_data = test_data
+        self.is_first = True
 
     def get_score(self):
         if not self.if_use:
@@ -46,9 +55,12 @@ class PPL(Metrics):
 
         write_tokens(save_path, self.gen_tokens)  # save to file
 
+        for_lm, rev_lm = None, None
         # forward ppl
-        for_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=cfg.train_data,
-                                     output_path=output_path, n_gram=self.n_gram)
+        if self.is_first:  # only need to initialize once
+            for_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=cfg.test_data,
+                                         output_path=output_path, n_gram=self.n_gram)
+            self.is_first = False
         for_ppl = self.get_ppl(for_lm, self.gen_tokens)
 
         # reverse ppl
@@ -56,11 +68,9 @@ class PPL(Metrics):
             rev_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=save_path,
                                          output_path=output_path, n_gram=self.n_gram)
 
-            rev_ppl = self.get_ppl(rev_lm, self.train_data.tokens)
-            # rev_ppl = self.get_ppl(rev_lm, self.test_data.tokens)
+            rev_ppl = self.get_ppl(rev_lm, self.test_data.tokens)
         except:
             # Note: Only after the generator is trained few epochs, the reverse ppl can be calculated.
-            print("reverse ppl error: it maybe the generated files aren't valid to obtain an LM")
             rev_ppl = 0
 
         return [for_ppl, rev_ppl]
@@ -85,9 +95,6 @@ class PPL(Metrics):
             subprocess.getstatusoutput(cd_command + " && " + command_2)  # call without logging output
             if os.path.exists(output_path + ".bin"):
                 break
-            else:
-                # print('Calculate PPL again. ({})'.format(output_path + ".bin"))
-                pass
 
         # create language model
         model = kenlm.Model(output_path + ".bin")
