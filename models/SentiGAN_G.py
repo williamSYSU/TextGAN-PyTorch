@@ -35,7 +35,7 @@ class SentiGAN_G(LSTMGenerator):
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
         out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
         out = self.lstm2out(out)  # batch_size * seq_len * vocab_size
-        out = self.temperature * out  # temperature
+        # out = self.temperature * out  # temperature
         if use_log:
             pred = F.log_softmax(out, dim=-1)
         else:
