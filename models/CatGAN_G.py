@@ -31,27 +31,21 @@ class CatGAN_G(LSTMGenerator):
         self.cat_mat = nn.Parameter(torch.eye(k_label), requires_grad=False)
 
         self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
-        if cfg.model_type == 'RMC':
+        if cfg.model_type == 'LSTM':
+            # LSTM
+            self.hidden_dim = hidden_dim
+            self.lstm = nn.LSTM(k_label + embedding_dim, self.hidden_dim, batch_first=True)
+            self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
+        else:
             # RMC
             self.hidden_dim = mem_slots * num_heads * head_size
             self.lstm = RelationalMemory(mem_slots=mem_slots, head_size=head_size, input_size=k_label + embedding_dim,
                                          num_heads=num_heads, return_all_outputs=True)
             self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
-        else:
-            # LSTM
-            self.hidden_dim = hidden_dim
-            self.lstm = nn.LSTM(k_label + embedding_dim, self.hidden_dim, batch_first=True)
-            self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
-
         self.init_params()
 
     def init_hidden(self, batch_size=cfg.batch_size):
-        if cfg.model_type == 'RMC':
-            """init RMC memory"""
-            memory = self.lstm.initial_state(batch_size)
-            memory = self.lstm.repackage_hidden(memory)  # detch memory at first
-            return memory.cuda() if self.gpu else memory
-        else:
+        if cfg.model_type == 'LSTM':
             h = torch.zeros(1, batch_size, self.hidden_dim)
             c = torch.zeros(1, batch_size, self.hidden_dim)
 
@@ -59,6 +53,11 @@ class CatGAN_G(LSTMGenerator):
                 return h.cuda(), c.cuda()
             else:
                 return h, c
+        else:
+            """init RMC memory"""
+            memory = self.lstm.initial_state(batch_size)
+            memory = self.lstm.repackage_hidden(memory)  # detch memory at first
+            return memory.cuda() if self.gpu else memory
 
     def forward(self, inp, hidden, label=None, need_hidden=False):
         """
@@ -80,7 +79,7 @@ class CatGAN_G(LSTMGenerator):
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
         out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
         out = self.lstm2out(out)  # batch_size * seq_len * vocab_size
-        out = self.temperature * out  # temperature
+        # out = self.temperature * out  # temperature
         pred = self.softmax(out)
 
         if need_hidden:

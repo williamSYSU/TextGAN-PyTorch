@@ -6,9 +6,9 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
-import math
 import string
 
+import math
 import numpy as np
 import os
 import random
@@ -42,20 +42,22 @@ class PPL(Metrics):
     def cal_ppl(self):
         save_path = os.path.join("/tmp", ''.join(random.choice(
             string.ascii_uppercase + string.digits) for _ in range(6)))
+        output_path = save_path + ".arpa"
 
         write_tokens(save_path, self.gen_tokens)  # save to file
 
         # forward ppl
         for_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=cfg.train_data,
-                                     output_path=save_path, n_gram=self.n_gram)
+                                     output_path=output_path, n_gram=self.n_gram)
         for_ppl = self.get_ppl(for_lm, self.gen_tokens)
 
         # reverse ppl
         try:
             rev_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=save_path,
-                                         output_path=save_path, n_gram=self.n_gram)
+                                         output_path=output_path, n_gram=self.n_gram)
 
-            rev_ppl = self.get_ppl(rev_lm, self.test_data.tokens)
+            rev_ppl = self.get_ppl(rev_lm, self.train_data.tokens)
+            # rev_ppl = self.get_ppl(rev_lm, self.test_data.tokens)
         except:
             # Note: Only after the generator is trained few epochs, the reverse ppl can be calculated.
             print("reverse ppl error: it maybe the generated files aren't valid to obtain an LM")
@@ -74,15 +76,20 @@ class PPL(Metrics):
         # create .arpa and .bin file of n-grams
         curdir = os.path.abspath(os.path.curdir)
         cd_command = "cd " + os.path.join(kenlm_path, 'build')
-        command_1 = "bin/lmplz -o {} <{} >{} &".format(str(n_gram), os.path.join(curdir, data_path),
-                                                       output_path + ".arpa")
-        command_2 = "bin/build_binary -s {} {} &".format(output_path + ".arpa", output_path + ".bin")
+        command_1 = "bin/lmplz -o {} <{} >{} --discount_fallback &".format(str(n_gram), os.path.join(curdir, data_path),
+                                                                           output_path)
+        command_2 = "bin/build_binary -s {} {} &".format(output_path, output_path + ".bin")
 
-        subprocess.getstatusoutput(cd_command + " && " + command_1)  # call without logging output
-        subprocess.getstatusoutput(cd_command + " && " + command_2)  # call without logging output
+        while True:
+            subprocess.getstatusoutput(cd_command + " && " + command_1)  # call without logging output
+            subprocess.getstatusoutput(cd_command + " && " + command_2)  # call without logging output
+            if os.path.exists(output_path + ".bin"):
+                break
+            else:
+                # print('Calculate PPL again. ({})'.format(output_path + ".bin"))
+                pass
 
         # create language model
-        assert output_path + ".bin"  # captured by try..except block outside
         model = kenlm.Model(output_path + ".bin")
 
         return model

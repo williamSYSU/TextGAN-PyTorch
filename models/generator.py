@@ -7,7 +7,6 @@
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 import math
-
 import torch
 import torch.nn as nn
 
@@ -51,7 +50,7 @@ class LSTMGenerator(nn.Module):
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
         out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
         out = self.lstm2out(out)  # (batch_size * seq_len) * vocab_size
-        out = self.temperature * out  # temperature
+        # out = self.temperature * out  # temperature
         pred = self.softmax(out)
 
         if need_hidden:
