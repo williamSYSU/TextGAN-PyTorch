@@ -140,7 +140,7 @@ class SentiGANInstructor(BasicInstructor):
                 inp, target = GenDataIter.prepare(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
                 # ===Train===
-                rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
+                rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis, current_k=i)
                 adv_loss = self.gen_list[i].batchPGLoss(inp, target, rewards)
                 self.optimize(self.gen_opt_list[i], adv_loss)
                 total_g_loss += adv_loss.item()
