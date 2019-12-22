@@ -14,11 +14,10 @@ from models.generator import LSTMGenerator
 
 
 class MaliGAN_G(LSTMGenerator):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, temperature, gpu=False):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
         super(MaliGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
         self.name = 'maligan'
 
-        self.temperature = temperature
 
     def adv_loss(self, inp, target, reward):
         """
