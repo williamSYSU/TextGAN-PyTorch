@@ -38,8 +38,6 @@ class PPL(Metrics):
         self.gen_tokens = None
         self.train_data = train_data
         self.test_data = test_data
-        self.for_lm = None
-        self.is_first = True
 
     def get_score(self):
         if not self.if_use:
@@ -57,11 +55,9 @@ class PPL(Metrics):
         write_tokens(save_path, self.gen_tokens)  # save to file
 
         # forward ppl
-        if self.is_first:  # only need to initialize once
-            self.for_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=cfg.test_data,
-                                              output_path=output_path, n_gram=self.n_gram)
-            self.is_first = False
-        for_ppl = self.get_ppl(self.for_lm, self.gen_tokens)
+        for_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=cfg.test_data,
+                                     output_path=output_path, n_gram=self.n_gram)
+        for_ppl = self.get_ppl(for_lm, self.gen_tokens)
 
         # reverse ppl
         try:
