@@ -6,12 +6,11 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
-import time
-from time import strftime, localtime
-
 import os
 import re
+import time
 import torch
+from time import strftime, localtime
 
 # ===Program===
 if_test = False
@@ -192,8 +191,6 @@ def init_param(opt):
     clip_norm = opt.clip_norm
     pre_log_step = opt.pre_log_step
     adv_log_step = opt.adv_log_step
-    train_data = opt.train_data
-    test_data = opt.test_data
     temp_adpt = opt.temp_adpt
     temperature = opt.temperature
     oracle_pretrain = True if opt.ora_pretrain == 1 else False
