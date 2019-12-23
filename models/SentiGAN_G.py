@@ -15,11 +15,9 @@ from models.generator import LSTMGenerator
 
 
 class SentiGAN_G(LSTMGenerator):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, temperature, gpu=False):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
         super(SentiGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
         self.name = 'sentigan'
-
-        self.temperature = temperature
 
     def forward(self, inp, hidden, need_hidden=False, use_log=True):
         """

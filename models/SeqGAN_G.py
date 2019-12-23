@@ -14,11 +14,9 @@ from models.generator import LSTMGenerator
 
 
 class SeqGAN_G(LSTMGenerator):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, temperature, gpu=False):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
         super(SeqGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
         self.name = 'seqgan'
-
-        self.temperature = temperature
 
     def batchPGLoss(self, inp, target, reward):
         """

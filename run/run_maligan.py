@@ -7,10 +7,10 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
-import sys
 from subprocess import call
 
 import os
+import sys
 
 # Job id and gpu_id
 if len(sys.argv) > 2:
@@ -61,7 +61,7 @@ pre_log_step = 10
 adv_log_step = 1
 
 # ===Generator===
-ADV_g_step = 50
+ADV_g_step = [50, 1, 1]
 rollout_num = 16
 gen_embed_dim = 32
 gen_hidden_dim = 32
@@ -114,7 +114,7 @@ args = [
     '--adv_log_step', adv_log_step,
 
     # Generator
-    '--adv_g_step', ADV_g_step,
+    '--adv_g_step', ADV_g_step[job_id],
     '--rollout_num', rollout_num,
     '--gen_embed_dim', gen_embed_dim,
     '--gen_hidden_dim', gen_hidden_dim,

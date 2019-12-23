@@ -26,7 +26,7 @@ class SentiGANInstructor(BasicInstructor):
 
         # generator, discriminator
         self.gen_list = [SentiGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                                    cfg.padding_idx, cfg.temperature, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
+                                    cfg.padding_idx, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
         self.dis = SentiGAN_D(cfg.k_label, cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
         self.clas = SentiGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.extend_vocab_size,
                                cfg.padding_idx, gpu=cfg.CUDA)
@@ -140,7 +140,7 @@ class SentiGANInstructor(BasicInstructor):
                 inp, target = GenDataIter.prepare(self.gen_list[i].sample(cfg.batch_size, cfg.batch_size), gpu=cfg.CUDA)
 
                 # ===Train===
-                rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis)
+                rewards = rollout_func.get_reward(target, cfg.rollout_num, self.dis, current_k=i)
                 adv_loss = self.gen_list[i].batchPGLoss(inp, target, rewards)
                 self.optimize(self.gen_opt_list[i], adv_loss)
                 total_g_loss += adv_loss.item()

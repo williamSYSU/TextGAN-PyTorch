@@ -32,7 +32,7 @@ class SentiGANInstructor(BasicInstructor):
                                    cfg.padding_idx, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
 
         self.gen_list = [SentiGAN_G(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len,
-                                    cfg.padding_idx, cfg.temperature, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
+                                    cfg.padding_idx, gpu=cfg.CUDA) for _ in range(cfg.k_label)]
         self.dis = SentiGAN_D(cfg.k_label, cfg.dis_embed_dim, cfg.vocab_size, cfg.padding_idx, gpu=cfg.CUDA)
         self.init_model()
 
