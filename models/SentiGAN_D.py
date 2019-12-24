@@ -25,6 +25,8 @@ class SentiGAN_D(CNNDiscriminator):
 
         self.feature2out = nn.Linear(self.feature_dim, k_label + 1)
 
+        self.init_params()
+
 
 # Classifier
 class SentiGAN_C(CNNClassifier):
