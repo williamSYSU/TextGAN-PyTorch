@@ -6,11 +6,12 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
+import time
+from time import strftime, localtime
+
 import os
 import re
-import time
 import torch
-from time import strftime, localtime
 
 # ===Program===
 if_test = False
@@ -23,7 +24,7 @@ gen_pretrain = False
 dis_pretrain = False
 clas_pretrain = False
 
-run_model = 'catgan'  # seqgan, leakgan, maligan, jsdgan, relgan, catgan, evogan, sentigan
+run_model = 'catgan'  # seqgan, leakgan, maligan, jsdgan, relgan, evogan, sentigan, catgan, dpgan, dgsan, cot
 k_label = 2  # num of labels, >=2
 gen_init = 'truncated_normal'  # normal, uniform, truncated_normal
 dis_init = 'uniform'  # normal, uniform, truncated_normal
@@ -42,10 +43,10 @@ use_population = False
 
 # ===Oracle or Real, type===
 if_real_data = False  # if use real data
-dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, mr15
+dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, amazon_app_movie, mr15
 model_type = 'vanilla'  # vanilla, RMC (custom)
 loss_type = 'rsgan'  # rsgan lsgan ragan vanilla wgan hinge, for Discriminator (CatGAN)
-mu_type = 'rsgan ragan'  # rsgan lsgan ragan vanilla wgan hinge
+mu_type = 'ragan'  # rsgan lsgan ragan vanilla wgan hinge
 eval_type = 'Ra'  # standard, rsgan, nll, nll-f1, Ra, bleu3, bleu-f1
 d_type = 'Ra'  # S (Standard), Ra (Relativistic_average)
 vocab_size = 5000  # oracle: 5000, coco: 4683, emnlp: 5256, amazon_app_book: 6418, mr15: 6289
@@ -87,7 +88,7 @@ use_nll_oracle = True
 use_nll_gen = True
 use_nll_div = True
 use_bleu = True
-use_self_bleu = True
+use_self_bleu = False
 use_clas_acc = True
 use_ppl = False
 
@@ -137,7 +138,7 @@ if torch.cuda.is_available() and torch.cuda.device_count() > 0:
         device = 0
 else:
     device = -1
-# device=1
+# device=0
 # print('device: ', device)
 
 if multi_gpu:
@@ -179,6 +180,9 @@ pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format
 signal_file = 'run_signal.txt'
 
 tips = ''
+
+if samples_num == 5000 or samples_num == 2000:
+    assert 'c' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num, run_model)
 
 
 # Init settings according to parser
