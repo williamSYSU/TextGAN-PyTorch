@@ -50,10 +50,14 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 - **MaliGAN** - [Maximum-Likelihood Augmented Discrete Generative Adversarial Networks](https://arxiv.org/abs/1702.07983)
 - **JSDGAN** - [Adversarial Discrete Sequence Generation without Explicit Neural Networks as Discriminators](http://proceedings.mlr.press/v89/li19g.html)
 - **RelGAN** - [RelGAN: Relational Generative Adversarial Networks for Text Generation](https://openreview.net/forum?id=rJedV3R5tm)
+- **DPGAN** - [DP-GAN: Diversity-Promoting Generative Adversarial Network for Generating Informative and Diversified Text](https://arxiv.org/abs/1802.01345)
+- **DGSAN** - [DGSAN: Discrete Generative Self-Adversarial Network](https://arxiv.org/abs/1908.09127)
+- **CoT** - [CoT: Cooperative Training for Generative Modeling of Discrete Data](https://arxiv.org/abs/1804.03782)
 
 ### Category Text Generation
 
 - **SentiGAN** - [SentiGAN: Generating Sentimental Texts via Mixture Adversarial Networks](https://www.ijcai.org/proceedings/2018/618)
+- **CatGAN** (ours) - [CatGAN: Category-aware Generative Adversarial Networks with Hierarchical Evolutionary Learning for Category Text Generation](https://arxiv.org/abs/1911.06641)
 
 ## Get Started
 
@@ -160,6 +164,38 @@ python3 run_seqgan.py 0 0
 - Structure  (from my understanding)
 
   ![model_relgan](assets/model_relgan.png)
+  
+### DPGAN
+
+- run file: [run_dpgan.py](run/run_dpgan.py)
+
+- Instructors: [oracle_data](instructor/oracle_data/dpgan_instructor.py), [real_data](instructor/real_data/dpgan_instructor.py)
+
+- Models: [generator](models/DPGAN_G.py), [discriminator](models/DPGAN_D.py)
+
+- Structure  (from [DPGAN](https://arxiv.org/abs/1802.01345))
+
+  ![model_dpgan](assets/model_dpgan.png)
+  
+### DGSAN
+
+- run file: [run_dgsan.py](run/run_dgsan.py)
+
+- Instructors: [oracle_data](instructor/oracle_data/dgsan_instructor.py), [real_data](instructor/real_data/dgsan_instructor.py)
+
+- Models: [generator](models/DGSAN_G.py), [discriminator](models/DGSAN_D.py)
+
+### CoT
+
+- run file: [run_cot.py](run/run_cot.py)
+
+- Instructors: [oracle_data](instructor/oracle_data/cot_instructor.py), [real_data](instructor/real_data/cot_instructor.py)
+
+- Models: [generator](models/CoT_G.py), [discriminator](models/CoT_D.py)
+
+- Structure  (from [CoT](https://arxiv.org/abs/1804.03782))
+
+  ![model_cot](assets/model_cot.png)
 
 ### SentiGAN
 
@@ -172,6 +208,20 @@ python3 run_seqgan.py 0 0
 - Structure (from [SentiGAN](https://www.ijcai.org/proceedings/2018/0618.pdf))
 
   ![model_sentigan](assets/model_sentigan.png)
+
+### CatGAN
+
+- run file: [run_catgan.py](run/run_catgan.py)
+
+- Instructors: [oracle_data](instructor/oracle_data/catgan_instructor.py), [real_data](instructor/real_data/catgan_instructor.py)
+
+- Models: [generator](models/CatGAN_G.py), [discriminator](models/CatGAN_D.py)
+
+- Structure (from [CatGAN](https://arxiv.org/abs/1911.06641))
+
+  ![model_catgan](assets/model_catgan.png)
+
+  
 
 ## Licence
 
