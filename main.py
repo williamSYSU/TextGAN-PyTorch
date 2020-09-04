@@ -22,12 +22,27 @@ def program_config(parser):
     parser.add_argument('--dataset', default=cfg.dataset, type=str)
     parser.add_argument('--model_type', default=cfg.model_type, type=str)
     parser.add_argument('--loss_type', default=cfg.loss_type, type=str)
+    parser.add_argument('--mu_type', default=cfg.mu_type, type=str)
+    parser.add_argument('--eval_type', default=cfg.eval_type, type=str)
+    parser.add_argument('--d_type', default=cfg.d_type, type=str)
     parser.add_argument('--if_real_data', default=cfg.if_real_data, type=int)
     parser.add_argument('--cuda', default=cfg.CUDA, type=int)
     parser.add_argument('--device', default=cfg.device, type=int)
+    parser.add_argument('--devices', default=cfg.devices, type=str)
     parser.add_argument('--shuffle', default=cfg.data_shuffle, type=int)
     parser.add_argument('--gen_init', default=cfg.gen_init, type=str)
     parser.add_argument('--dis_init', default=cfg.dis_init, type=str)
+
+    # CatGAN
+    parser.add_argument('--n_parent', default=cfg.n_parent, type=int)
+    parser.add_argument('--eval_b_num', default=cfg.eval_b_num, type=int)
+    parser.add_argument('--lambda_fq', default=cfg.lambda_fq, type=float)
+    parser.add_argument('--lambda_fd', default=cfg.lambda_fd, type=float)
+    parser.add_argument('--d_out_mean', default=cfg.d_out_mean, type=int)
+    parser.add_argument('--freeze_dis', default=cfg.freeze_dis, type=int)
+    parser.add_argument('--freeze_clas', default=cfg.freeze_clas, type=int)
+    parser.add_argument('--use_all_real_fake', default=cfg.use_all_real_fake, type=int)
+    parser.add_argument('--use_population', default=cfg.use_population, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
@@ -49,6 +64,7 @@ def program_config(parser):
     parser.add_argument('--train_data', default=cfg.train_data, type=str)
     parser.add_argument('--test_data', default=cfg.test_data, type=str)
     parser.add_argument('--temp_adpt', default=cfg.temp_adpt, type=str)
+    parser.add_argument('--evo_temp_step', default=cfg.evo_temp_step, type=int)
     parser.add_argument('--temperature', default=cfg.temperature, type=int)
     parser.add_argument('--ora_pretrain', default=cfg.oracle_pretrain, type=int)
     parser.add_argument('--gen_pretrain', default=cfg.gen_pretrain, type=int)
@@ -115,6 +131,8 @@ if __name__ == '__main__':
         from instructor.real_data.jsdgan_instructor import JSDGANInstructor
         from instructor.real_data.relgan_instructor import RelGANInstructor
         from instructor.real_data.sentigan_instructor import SentiGANInstructor
+        from instructor.real_data.evogan_instructor import EvoGANInstructor
+        from instructor.real_data.catgan_instructor import CatGANInstructor
 
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
@@ -123,6 +141,8 @@ if __name__ == '__main__':
         from instructor.oracle_data.jsdgan_instructor import JSDGANInstructor
         from instructor.oracle_data.relgan_instructor import RelGANInstructor
         from instructor.oracle_data.sentigan_instructor import SentiGANInstructor
+        from instructor.oracle_data.evogan_instructor import EvoGANInstructor
+        from instructor.oracle_data.catgan_instructor import CatGANInstructor
 
     instruction_dict = {
         'seqgan': SeqGANInstructor,
@@ -131,6 +151,8 @@ if __name__ == '__main__':
         'jsdgan': JSDGANInstructor,
         'relgan': RelGANInstructor,
         'sentigan': SentiGANInstructor,
+        'evogan': EvoGANInstructor,
+        'catgan': CatGANInstructor,
     }
 
     inst = instruction_dict[cfg.run_model](opt)
