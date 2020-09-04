@@ -154,7 +154,6 @@ class CatGAN_G(LSTMGenerator):
             return all_preds  # batch_size * seq_len * vocab_size
         return samples
 
-
     @staticmethod
     def add_gumbel(o_t, eps=1e-10, gpu=cfg.CUDA):
         """Add o_t by a vector sampled from Gumbel(0,1)"""

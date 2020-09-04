@@ -202,3 +202,6 @@ class ROLLOUT:
         rewards = torch.Tensor(rewards).cuda()
         rewards = torch.sum(rewards, dim=0) / rollout_num
         return rewards
+
+    def get_reward_csgan(self, target, rollout_num, csgan_clas):
+        pass

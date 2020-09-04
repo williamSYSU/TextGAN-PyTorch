@@ -120,7 +120,7 @@ class CatGANInstructor(BasicInstructor):
                 ' '.join(select_mu), d_loss, self.parents[best_id]['temperature'].item()))
 
             # ===Test===
-            if adv_epoch % cfg.adv_log_step == 0:
+            if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 

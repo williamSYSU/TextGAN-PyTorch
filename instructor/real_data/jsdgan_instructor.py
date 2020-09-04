@@ -47,7 +47,7 @@ class JSDGANInstructor(BasicInstructor):
         for adv_epoch in range(cfg.ADV_train_epoch):
             g_loss = self.adv_train_generator(cfg.ADV_g_step)  # Generator
 
-            if adv_epoch % cfg.adv_log_step == 0:
+            if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
                 self.log.info('[ADV] epoch %d: g_loss = %.4f, %s' % (adv_epoch, g_loss, self.cal_metrics(fmt_str=True)))
 
                 if cfg.if_save and not cfg.if_test:

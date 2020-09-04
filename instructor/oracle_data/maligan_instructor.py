@@ -9,6 +9,7 @@
 
 
 import torch
+import torch.nn.functional as F
 import torch.optim as optim
 
 import config as cfg
@@ -62,7 +63,7 @@ class MaliGANInstructor(BasicInstructor):
                 self.adv_train_generator(cfg.ADV_g_step)  # Generator
                 self.train_discriminator(cfg.ADV_d_step, cfg.ADV_d_epoch, 'ADV')  # Discriminator
 
-                if adv_epoch % cfg.adv_log_step == 0:
+                if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
                     if cfg.if_save and not cfg.if_test:
                         self._save('ADV', adv_epoch)
             else:
@@ -144,7 +145,7 @@ class MaliGANInstructor(BasicInstructor):
     def get_mali_reward(self, samples):
         rewards = []
         for _ in range(cfg.rollout_num):
-            dis_out = self.dis(samples)[:, 1]
+            dis_out = F.softmax(self.dis(samples), dim=-1)[:, 1]
             rewards.append(dis_out)
 
         rewards = torch.mean(torch.stack(rewards, dim=0), dim=0)  # batch_size

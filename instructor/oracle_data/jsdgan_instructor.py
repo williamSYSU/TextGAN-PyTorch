@@ -32,7 +32,8 @@ class JSDGANInstructor(BasicInstructor):
         if cfg.oracle_pretrain:
             if not os.path.exists(cfg.oracle_state_dict_path):
                 create_oracle()
-            self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path))
+            self.oracle.load_state_dict(
+                torch.load(cfg.oracle_state_dict_path, map_location='cuda:{}'.format(cfg.device)))
 
         if cfg.gen_pretrain:
             self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path))
@@ -53,7 +54,7 @@ class JSDGANInstructor(BasicInstructor):
         for adv_epoch in range(cfg.ADV_train_epoch):
             g_loss = self.adv_train_generator(cfg.ADV_g_step)  # Generator
 
-            if adv_epoch % cfg.adv_log_step == 0:
+            if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
                 self.log.info('[ADV] epoch %d: g_loss = %.4f, %s' % (adv_epoch, g_loss, self.cal_metrics(fmt_str=True)))
 
                 if cfg.if_save and not cfg.if_test:

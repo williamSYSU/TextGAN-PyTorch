@@ -83,10 +83,10 @@ class BasicInstructor:
         if cfg.dis_pretrain:
             self.log.info(
                 'Load pre-trained discriminator: {}'.format(cfg.pretrained_dis_path))
-            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path))
+            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path, map_location='cuda:{}'.format(cfg.device)))
         if cfg.gen_pretrain:
             self.log.info('Load MLE pre-trained generator: {}'.format(cfg.pretrained_gen_path))
-            self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path))
+            self.gen.load_state_dict(torch.load(cfg.pretrained_gen_path, map_location='cuda:{}'.format(cfg.device)))
 
         if cfg.CUDA:
             self.gen = self.gen.cuda()

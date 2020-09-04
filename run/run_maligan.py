@@ -7,10 +7,10 @@
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
 
+import sys
 from subprocess import call
 
 import os
-import sys
 
 # Job id and gpu_id
 if len(sys.argv) > 2:

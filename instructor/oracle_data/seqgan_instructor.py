@@ -62,7 +62,7 @@ class SeqGANInstructor(BasicInstructor):
                 self.adv_train_generator(cfg.ADV_g_step)  # Generator
                 self.train_discriminator(cfg.ADV_d_step, cfg.ADV_d_epoch, 'ADV')  # Discriminator
 
-                if adv_epoch % cfg.adv_log_step == 0:
+                if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
                     if cfg.if_save and not cfg.if_test:
                         self._save('ADV', adv_epoch)
             else:

@@ -46,16 +46,17 @@ class SentiGANInstructor(BasicInstructor):
                 oracle_path = cfg.multi_oracle_state_dict_path.format(i)
                 if not os.path.exists(oracle_path):
                     create_multi_oracle(cfg.k_label)
-                self.oracle_list[i].load_state_dict(torch.load(oracle_path))
+                self.oracle_list[i].load_state_dict(torch.load(oracle_path, map_location='cuda:{}'.format(cfg.device)))
 
         if cfg.dis_pretrain:
             self.log.info(
                 'Load pretrained discriminator: {}'.format(cfg.pretrained_dis_path))
-            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path))
+            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path, map_location='cuda:{}'.format(cfg.device)))
         if cfg.gen_pretrain:
             for i in range(cfg.k_label):
                 self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-                self.gen_list[i].load_state_dict(torch.load(cfg.pretrained_gen_path + '%d' % i))
+                self.gen_list[i].load_state_dict(
+                    torch.load(cfg.pretrained_gen_path + '%d' % i, map_location='cuda:{}'.format(cfg.device)))
 
         if cfg.CUDA:
             for i in range(cfg.k_label):
@@ -92,7 +93,7 @@ class SentiGANInstructor(BasicInstructor):
                 self.adv_train_generator(cfg.ADV_g_step)  # Generator
                 self.train_discriminator(cfg.ADV_d_step, cfg.ADV_d_epoch, 'ADV')  # Discriminator
 
-                if adv_epoch % cfg.adv_log_step == 0:
+                if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
                     if cfg.if_save and not cfg.if_test:
                         self._save('ADV', adv_epoch)
             else:

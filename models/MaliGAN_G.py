@@ -18,7 +18,6 @@ class MaliGAN_G(LSTMGenerator):
         super(MaliGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
         self.name = 'maligan'
 
-
     def adv_loss(self, inp, target, reward):
         """
         Returns a MaliGAN loss

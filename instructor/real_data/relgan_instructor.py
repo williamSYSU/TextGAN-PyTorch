@@ -58,7 +58,7 @@ class RelGANInstructor(BasicInstructor):
                     'g_loss: %.4f, d_loss: %.4f, temperature: %.4f' % (g_loss, d_loss, self.gen.temperature))
 
                 # TEST
-                if adv_epoch % cfg.adv_log_step == 0:
+                if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
                     self.log.info('[ADV] epoch %d: g_loss: %.4f, d_loss: %.4f, %s' % (
                         adv_epoch, g_loss, d_loss, self.cal_metrics(fmt_str=True)))
 

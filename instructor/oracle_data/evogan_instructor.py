@@ -11,7 +11,6 @@ import numpy as np
 import os
 import random
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
@@ -63,7 +62,7 @@ class EvoGANInstructor(BasicInstructor):
         if cfg.dis_pretrain:
             self.log.info(
                 'Load pretrained discriminator: {}'.format(cfg.pretrained_dis_path))
-            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path))
+            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path, map_location='cuda:{}'.format(cfg.device)))
 
         if cfg.gen_pretrain:
             for i in range(cfg.n_parent):
@@ -114,7 +113,7 @@ class EvoGANInstructor(BasicInstructor):
                 ' '.join(select_mu), d_loss, self.parents[best_id]['temperature'].item()))
 
             # TEST
-            if adv_epoch % cfg.adv_log_step == 0:
+            if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 

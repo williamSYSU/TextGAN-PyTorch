@@ -6,9 +6,9 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  : 
 # Copyrights (C) 2018. All Rights Reserved.
+import math
 import string
 
-import math
 import numpy as np
 import os
 import random
