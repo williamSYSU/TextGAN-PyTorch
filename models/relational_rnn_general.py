@@ -171,7 +171,7 @@ class RelationalMemory(nn.Module):
         q, k, v = torch.split(qkv_transpose, [self.key_size, self.key_size, self.value_size], -1)
 
         # scale q with d_k, the dimensionality of the key vectors
-        q *= (self.key_size ** -0.5)
+        q = q * (self.key_size ** -0.5)
 
         # make it [B, H, N, N]
         dot_product = torch.matmul(q, k.permute(0, 1, 3, 2))
