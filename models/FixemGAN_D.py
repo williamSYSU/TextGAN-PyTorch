@@ -58,7 +58,7 @@ class Discriminator(CNNDiscriminator):
             ),
             # 8 layer
             Flatten(),
-            nn.Linear(complexity * TARGET_LEN // 2 // 2, complexity),
+            nn.Linear(complexity * cfg.max_seq_len // 2 // 2, complexity),
             nn.LeakyReLU(alpha),
             nn.Dropout(drop_rate),
         )
@@ -67,7 +67,7 @@ class Discriminator(CNNDiscriminator):
             nn.Linear(complexity, 1),
         )
         self.labels = nn.Sequential(
-            nn.Linear(complexity, DEPTH),
+            nn.Linear(complexity, cfg.k_label),
         )
         self.optimizer = get_optimizer()
         # maybe it will help!

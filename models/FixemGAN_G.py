@@ -23,10 +23,10 @@ class Generator(LSTMGenerator):
         self.main = nn.Sequential(
             # 1 layer
             Concatenate(1),
-            nn.Linear(NOISE_SIZE + DEPTH, TARGET_LEN // 2 // 2 * complexity),
-            nn.BatchNorm1d(TARGET_LEN // 2 // 2 * complexity),
+            nn.Linear(cfg.noise_size + cfg.k_label, cfg.max_seq_len // 2 // 2 * complexity),
+            nn.BatchNorm1d(cfg.max_seq_len // 2 // 2 * complexity),
             nn.LeakyReLU(alpha),
-            Reshape(complexity, TARGET_LEN // 2 // 2),
+            Reshape(complexity, cfg.max_seq_len // 2 // 2),
             # 2 layer
             MyConvLayerNorm(complexity, complexity, alpha=alpha),
             # 3 layer
@@ -50,7 +50,7 @@ class Generator(LSTMGenerator):
             # adding/concatenating positional encoding
             PositionalEncoding(
                 dim_pe=parameters.complexity,
-                max_len=TARGET_LEN,
+                max_len=cfg.max_seq_len,
                 concatenate_pe=parameters.concatenate_pe,
             ),
             # 5 layer
@@ -63,7 +63,7 @@ class Generator(LSTMGenerator):
             # adding/concatenating positional encoding
             PositionalEncoding(
                 dim_pe=complexity,
-                max_len=TARGET_LEN,
+                max_len=cfg.max_seq_len,
                 concatenate_pe=parameters.concatenate_pe,
             ),
             # 6 layer
@@ -118,12 +118,12 @@ class Generator(LSTMGenerator):
         self.to(device)
 
     def forward(self, noise, target_labels):
-        target_labels = torch.nn.functional.one_hot(target_labels, num_classes=DEPTH)
+        target_labels = torch.nn.functional.one_hot(target_labels, num_classes=cfg.k_label)
         x = self.main([noise, target_labels])
         return x
 
     def sample(self, num_samples, batch_size, start_letter=cfg.start_letter):
-        noise = create_noise(num_samples, self.noise_size)
+        noise = create_noise(num_samples, self.noise_size, cfg.k_label)
         fakes = self.forward(*noise)
         fakes = fakes.detach().cpu().numpy()
         assert len(fakes.shape) == 3

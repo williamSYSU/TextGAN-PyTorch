@@ -9,10 +9,10 @@ import math
 import matplotlib.pyplot as plt
 
 
-def create_noise(sample_size, noise_size):
+def create_noise(sample_size, noise_size, k_label):
     return (
         torch.randn(sample_size, noise_size).to(device),
-        torch.randint(0, DEPTH, (sample_size,)).sort().values.to(device),
+        torch.randint(0, k_label, (sample_size,)).sort().values.to(device),
     )
 
 
@@ -34,7 +34,7 @@ def get_optimizer(parameters, lr=0.0001, betas=(0.5, 0.999)):
 
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, dim_pe: int, max_len: int = TARGET_LEN, concatenate_pe=False):
+    def __init__(self, dim_pe: int, max_len: int, concatenate_pe=False):
         super().__init__()
 
         position = torch.arange(max_len).unsqueeze(1)

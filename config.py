@@ -41,6 +41,12 @@ freeze_clas = False
 use_all_real_fake = False
 use_population = False
 
+# ===Embedding===
+w2v_embedding_size = 100
+w2v_window = 5
+w2v_min_count = 1
+w2v_workers = 1
+
 # ===Oracle or Real, type===
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, amazon_app_movie, mr15
@@ -198,7 +204,8 @@ def init_param(opt):
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
         lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
         multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices, \
-        use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc, use_ppl
+        use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc, use_ppl, \
+        w2v_embedding_size, w2v_window, w2v_min_count, w2v_workers
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -268,7 +275,7 @@ def init_param(opt):
     dis_hidden_dim = opt.dis_hidden_dim
     num_rep = opt.num_rep
 
-    w2v_embedding_size = opt.embeddging_size
+    w2v_embedding_size = opt.w2v_embeddging_size
     w2v_window = opt.w2v_window
     w2v_min_count = opt.w2v_min_count
     w2v_workers = opt.w2v_workers
@@ -329,7 +336,7 @@ def init_param(opt):
                                                                                    samples_num)
     pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                      samples_num)
-    pretrain_embeddgin_path = pretrain_root + 'w2v_embedding_size{}.model'.format(opt.embedding_size)
+    pretrain_embeddgin_path = pretrain_root + 'w2v_embedding_size{}.model'.format(opt.w2v_embedding_size)
     # Assertion
     assert k_label >= 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)
     assert eval_b_num >= n_parent * ADV_d_step, 'Error: eval_b_num = {}, which should be >= n_parent * ADV_d_step ({})!'.format(

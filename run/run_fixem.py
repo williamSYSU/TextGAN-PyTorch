@@ -41,7 +41,7 @@ batch_size = 32
 noise_size = 1000
 max_epochs = 20
 batches_per_epoch = 200
-
+tips = '{} experiments'
 
 # ===Oracle or Real===
 if_real_data = [int(False), int(True), int(True), int(False), int(True), int(True)]
@@ -49,9 +49,8 @@ dataset = ['mr15', 'amazon_app_book', 'image_coco', 'emnlp_news']
 w2v_embedding_size = [100, 100, 100, 100, 100, 100]
 w2v_window = 5
 w2v_min_count = 30
-.w2v_workers = 30
+w2v_workers = 30
 vocab_size = [5000, 0, 0, 5000, 0, 0]
-target_len = [16, 40, 20, 16, 52]
 
 # ===CatGAN Param===
 n_parent = 1
@@ -60,11 +59,6 @@ mu_type = 'ragan rsgan'
 eval_type = 'Ra'
 temp_adpt = 'exp'
 d_out_mean = int(False)
-embedding_size = [100, 512, 512, 100, 512, 512]
-embedding_filename = 'w2v_{}.model'.format(embedding_size[job_id])
-w2v_window = 5
-w2v_min_count = 50
-w2v_workers = 1
 
 # === Basic Param ===
 data_shuffle = int(False)
@@ -73,7 +67,7 @@ gen_init = 'truncated_normal'
 dis_init = 'uniform'
 samples_num = 10000
 batch_size = 64
-max_seq_len = 20
+max_seq_len = [16, 40, 20, 16, 52]
 gen_lr = 0.01
 gen_adv_lr = 1e-4
 dis_lr = 1e-4
@@ -110,12 +104,6 @@ args = [
     '--k_label', k_label,
     '--cuda', CUDA,
     # '--device', gpu_id,   # comment for auto GPU
-    '--ora_pretrain', ora_pretrain,
-    '--gen_pretrain', gen_pretrain,
-    '--dis_pretrain', dis_pretrain,
-    '--mle_epoch', MLE_train_epoch,
-    '--clas_pre_epoch', clas_pre_epoch,
-    '--adv_epoch', ADV_train_epoch,
     '--tips', tips.format(run_model[job_id]),
 
     # Oracle or Real
@@ -123,17 +111,19 @@ args = [
     '--dataset', dataset[job_id],
     '--vocab_size', vocab_size[job_id],
 
+    # W2V embeddings
+    '--w2v_embedding_size', w2v_embedding_size[job_id],
+    '--w2v_window', w2v_window,
+    '--w2v_min_count', w2v_min_count,
+    '--w2v_workers', w2v_workers,
+
     # CatGAN Param
     '--n_parent', n_parent,
     '--loss_type', loss_type,
     '--mu_type', mu_type,
     '--eval_type', eval_type,
     '--temp_adpt', temp_adpt,
-    '--temperature', temperature[job_id],
     '--d_out_mean', d_out_mean,
-    '--lambda_fq', lambda_fq,
-    '--lambda_fd', lambda_fd,
-    '--eval_b_num', eval_b_num,
 
     # Basic Param
     '--shuffle', data_shuffle,
@@ -142,7 +132,7 @@ args = [
     '--dis_init', dis_init,
     '--samples_num', samples_num,
     '--batch_size', batch_size,
-    '--max_seq_len', max_seq_len,
+    '--max_seq_len', max_seq_len[job_id],
     '--gen_lr', gen_lr,
     '--gen_adv_lr', gen_adv_lr,
     '--dis_lr', dis_lr,

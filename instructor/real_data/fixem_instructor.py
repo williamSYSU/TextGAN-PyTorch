@@ -71,7 +71,7 @@ class FixemGANInstructor(BasicInstructor):
 
     def generator_train_one_batch(self):
         self.generator.optimizer.zero_grad()
-        noise = create_noise(cfg.batch_size, cfg.noise_size)
+        noise = create_noise(cfg.batch_size, cfg.noise_size. cfg.k_label)
         ones = label_ones(cfg.batch_size)
         fakes = self.generator(*noise)
 
@@ -90,7 +90,7 @@ class FixemGANInstructor(BasicInstructor):
         this_batch_size = real_vector.shape[0]
 
         # create input
-        noise = create_noise(this_batch_size, cfg.noise_size)
+        noise = create_noise(cfg.batch_size, cfg.noise_size. cfg.k_label)
         fake = self.generator(*noise).detach()
         text_input_vectors = torch.cat((real_vector, fake))
 
