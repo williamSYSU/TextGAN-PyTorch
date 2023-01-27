@@ -10,6 +10,7 @@
 import random
 from torch.utils.data import Dataset, DataLoader
 
+import config as cfg
 from utils.text_process import *
 
 
@@ -128,11 +129,19 @@ class DisDataIter:
 
 
 class DataSupplier:
-    def __init__(self, tokenized, labels, verbose, batch_size, batches_per_epoch):
+    def __init__(self, tokenized, labels, w2v, verbose, batch_size, batches_per_epoch):
         self.verbose=verbose
 
+
+        labels, tokenized = zip(*[
+            (label, tokens)
+            for label, tokens in zip(labels, tokenized)
+            if all(token in w2v.wv for token in tokens)
+        ])
+
         self.labels = torch.tensor(labels, dtype=int)
-        self.vectors = [vectorize_sentence(txt, padding_token = PADDING) for txt in tokenized]
+
+        self.vectors = [vectorize_sentence(tokens, w2v, padding_token = cfg.padding_token) for tokens in tokenized]
         self.vectors = np.stack(vectors, axis=0)
         self.vectors = torch.tensor(vectors, dtype=torch.float32)
 
@@ -150,25 +159,16 @@ class DataSupplier:
         self.vectors = self.vectors[permutation]
         self.labels = self.labels[permutation]
 
-        # permutation = torch.randint(low=0, high=len(self), size=(self.batch_size,))
-        # yield self.labels[permutation].to(device), self.vectors[permutation].to(device)
-
         for _ in batch_iterator:
-            if len(self) < self.batch_size:
-                # we need to repat self vectors several times
-                repeats = self.batch_size // len(self.vectors)
-                yield self.labels.repeat(repeats).to(device), self.vectors.repeat(repeats, 1, 1).to(device)
-
+            index = 0
+            index += self.batch_size
+            if index > len(self):
+                # concatenating beginning of self.vectors
+                yield (torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])).to(device),
+                torch.cat((self.vectors[index - self.batch_size: index], self.vectors[:index-len(self)])).to(device))
+                index = index % len(self)
             else:
-                index = 0
-                index += self.batch_size
-                if index > len(self):
-                    # concatenating beginning of self.vectors
-                    yield (torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])).to(device),
-                    torch.cat((self.vectors[index - self.batch_size: index], self.vectors[:index-len(self)])).to(device))
-                    index = index % len(self)
-                else:
-                    yield self.labels[index - self.batch_size: index].to(device), self.vectors[index - self.batch_size: index].to(device)
+                yield self.labels[index - self.batch_size: index].to(device), self.vectors[index - self.batch_size: index].to(device)
 
 
     def __len__(self):

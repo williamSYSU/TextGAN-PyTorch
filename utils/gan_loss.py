@@ -4,14 +4,14 @@
 # @FileName     : gan_loss.py
 # @Time         : Created at 2019-07-11
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
 import torch.nn as nn
 
 import config as cfg
-
+from utils.nn_helpers import DiversityLoss
 
 class GANLoss(nn.Module):
     """Define different GAN Discriminator's objectives.
@@ -45,6 +45,10 @@ class GANLoss(nn.Module):
             self.loss = nn.BCEWithLogitsLoss()
         elif loss_mode in ['wgan', 'hinge']:
             self.loss = None
+        elif loss_mode == 'fixem':
+            self.real_fake_criterion = nn.BCEWithLogitsLoss()
+            self.label_criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+            self.diversity_criterion = DiversityLoss()
         else:
             raise NotImplementedError('gan mode %s not implemented' % loss_mode)
 
@@ -137,6 +141,26 @@ class GANLoss(nn.Module):
             raise NotImplementedError('loss_mode name [%s] is not recognized' % self.loss_mode)
 
         return loss_fake + loss_real
+
+
+    def G_loss_fixem(self, real_fake_predicts, label_predicts, target_labels, fakes):
+        target_fake = self.get_target_tensor(real_fake_predicts, target_is_real=True)
+        real_fake_loss = self.real_fake_criterion(real_fake_predicts, target_fake)
+        labels_loss = self.label_criterion(label_predicts, target_labels)
+        diversity_loss = self.diversity_criterion(fakes)
+        loss = real_fake_loss + diversity_loss
+        loss = loss + labels_loss if cfg.run_model == 'cat_fixemgan' else loss
+        return loss
+
+    def D_loss_fixem(self, real_fake_predicts, label_predicts, target_labels):
+        target_real = self.get_target_tensor(real_fake_predicts.chunk(2)[0], target_is_real=True)
+        target_fake = self.get_target_tensor(real_fake_predicts.chunk(2)[1], target_is_real=False)
+        target_real_fake = torch.cat((target_real, target_fake))
+        real_fake_loss = self.real_fake_criterion(real_fake_predicts, target_real_fake)
+        labels_loss = self.label_criterion(label_predicts, target_labels)
+        loss = real_fake_loss
+        loss = loss + labels_loss if cfg.run_model == 'cat_fixemgan' else loss
+        return loss
 
     def __call__(self, Dreal, Dfake):
         """Calculate loss given Discriminator's output and grount truth labels."""

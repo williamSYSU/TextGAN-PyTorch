@@ -1,10 +1,21 @@
 import os
+
+from pathlib import Path
+import numpy as np
 import torch
+from torch.utils.data import Dataset, DataLoader
 import torchtext
+from tqdm import trange
+
+
 
 from instructor.real_data.instructor import BasicInstructor
-from utils.text_process import tokenize
-from utils.data_loader import DataSupplier
+from utils.text_process import text_file_iterator
+from utils.data_loader import DataSupplier, GANDataset
+from utils.nn_helpers import create_noise, number_of_parameters
+from utils.create_embedding import EmbeddingsTrainer, load_embedding
+from models.FixemGAN_G import Generator
+from models.FixemGAN_D import Discriminator
 
 
 # TO DO:
@@ -22,42 +33,99 @@ class FixemGANInstructor(BasicInstructor):
     def __init__(self, cfg):
         super(FixemGANInstructor, self).__init__(cfg)
         # check if embeddings already exist for current oracle
-        if os.path.exists(f'oracle path/{cfg.embedding_file_name}'):
-            # train embedding with oracle
-        w2v = load_embedding(f'oracle path/{cfg.embedding_file_name}')
+        if not os.path.exists(cfg.pretrain_embeddgin_path):
+            # train embedding on available dataset or oracle
+            sources = list(Path(texts_data).glob('*.txt'))
+            EmbeddingsTrainer(sources, cfg.pretrain_embeddgin_path).make_embeddings()
 
-        print(self.train_data)
+        w2v = load_embedding(cfg.pretrain_embeddgin_path)
 
-        print(self.train_data_list)
+        if cfg.run_model == 'fixemgan':
+            labels, train_data = zip(*[(0, line) for line in text_file_iterator(cfg.train_data)])
 
-        # data_generator = DataSupplier
+        if cfg.run_model == 'cat_fixemgan':
+            labels, train_data = zip(
+                *chain(
+                    *[[(i, line) for line in text_file_iterator(cfg.cat_train_data.format(i))]
+                    for i in range(cfg.k_label)]
+                )
+            )
 
-        DataLoader(
-            dataset=GANDataset(),
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            drop_last=True
+        self.train_data_supplier = DataSupplier(train_data, labels, w2v, True, cfg.batch_size, cfg.batches_per_epoch)
+
+        self.discriminator = Discriminator(cfg.discriminator_complexity)
+        print(
+            "discriminator total tranable parameters:",
+            number_of_parameters(self.discriminator.parameters())
+        )
+        self.generator = Generator(cfg.generator_complexity, cgf.noise_size, w2v)
+        print(
+            "generator total tranable parameters:",
+            number_of_parameters(self.generator.parameters())
         )
 
+        self.G_criterion = GANLoss(cfg.run_model, which_net=None, which_D=None, )
+        self.D_criterion = GANLoss(cfg.run_model, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2)
 
-        # try:
-        #     self.train_data = GenDataIter(cfg.train_data)
-        #     self.test_data = GenDataIter(cfg.test_data, if_test_data=True)
-        # except:
-        #     pass
+        self.all_metrics = [self.bleu, self.self_bleu]
 
-        # try:
-        #     self.train_data_list = [GenDataIter(cfg.cat_train_data.format(i)) for i in range(cfg.k_label)]
-        #     self.test_data_list = [GenDataIter(cfg.cat_test_data.format(i), if_test_data=True) for i in
-        #                            range(cfg.k_label)]
-        #     self.clas_data_list = [GenDataIter(cfg.cat_test_data.format(str(i)), if_test_data=True) for i in
-        #                            range(cfg.k_label)]
+    def generator_train_one_batch(self):
+        self.generator.optimizer.zero_grad()
+        noise = create_noise(cfg.batch_size, cfg.noise_size)
+        ones = label_ones(cfg.batch_size)
+        fakes = self.generator(*noise)
 
-        #     self.train_samples_list = [self.train_data_list[i].target for i in range(cfg.k_label)]
-        #     self.clas_samples_list = [self.clas_data_list[i].target for i in range(cfg.k_label)]
-        # except:
-        #     pass
+        real_fake_predicts, label_predicts = self.discriminator(fakes)
+        loss = self.G_criterion.G_loss_fixem(real_fake_predicts, label_predicts, fakes)
+        loss.backward()
+        self.generator.optimizer.step()
 
+        generator_acc = float(
+            np.array(real_fake_predicts.detach().cpu().numpy() > 0.5, dtype=int).mean()
+        )
+        return generator_acc
+
+    def discriminator_train_one_batch(self, real_vector, labels):
+        # important to have equal batch size for fake and real vectors
+        this_batch_size = real_vector.shape[0]
+
+        # create input
+        noise = create_noise(this_batch_size, cfg.noise_size)
+        fake = self.generator(*noise).detach()
+        text_input_vectors = torch.cat((real_vector, fake))
+
+        # optmizer step
+        discriminator.optimizer.zero_grad()
+        real_fake_predicts, label_predicts = self.discriminator(text_input_vectors)
+        loss = self.D_criterion.D_loss_fixem(real_fake_predicts, label_predicts[:this_batch_size], labels)
+        loss.backward()
+        discriminator.optimizer.step()
+
+        discriminator_acc = torch.cat(
+            (
+                real_fake_predicts.chunk(2)[0] > 0.5,
+                real_fake_predicts.chunk(2)[1] < 0.5
+            )
+        )
+        return discriminator_acc
+
+
+    def _run(self):
+        for i in trange(cfg.max_epochs):
+            for labels, text_vector in self.train_data_supplier:
+                discriminator_acc = self.discriminator_train_one_batch(text_vector, labels)
+
+                generator_acc = 1 - 2 * (discriminator_acc - 0.5)
+                # run the generator until generator acc not get high enought
+                while self.one_more_batch_for_generator(generator_acc):
+                    generator_acc = self.generator_train_one_batch()
+
+            if cfg.run_model = 'fixemgan':
+                scores = self.cal_metrics(fmt_str=True)
+            if cfg.run_model = 'cat_fixemgan':
+                scores = self.cal_metrics_with_label(fmt_str=True)
+
+            print('epoch:', i, scores)
 
 
     def one_more_batch_for_generator(
@@ -69,9 +137,25 @@ class FixemGANInstructor(BasicInstructor):
             return True
         return False
 
-    def write_txt_file(self, source, save_path, save_filename):
-        with open(os.path.join(save_path, save_filename), 'w') as f:
-            for _, text in source:
-                line = ' '.join(tokenize(text))
-                f.write(line)
-                f.write('\n')
+
+    def cal_metrics(self, fmt_str=False):
+        """
+        Calculate metrics
+        :param fmt_str: if return format string for logging
+        """
+        with torch.no_grad():
+            # Prepare data for evaluation
+            gen_tokens = self.generator.sample(cfg.samples_num, 4 * cfg.batch_size)
+            gen_tokens_s = self.generator.sample(200, 200)
+
+            # Reset metrics
+            self.bleu.reset(test_text=gen_tokens, real_text=self.test_data.tokens)
+            # self.nll_gen.reset(self.gen, self.train_data.loader)
+            # self.nll_div.reset(self.gen, gen_data.loader)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            # self.ppl.reset(gen_tokens)
+
+        if fmt_str:
+            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+        else:
+            return [metric.get_score() for metric in self.all_metrics]

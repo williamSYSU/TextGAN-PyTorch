@@ -38,13 +38,20 @@ run_model = ['fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan', 'cat_fixemgan',
 k_label = 2
 CUDA = int(True)
 batch_size = 32
+noise_size = 1000
+max_epochs = 20
+batches_per_epoch = 200
 
 
 # ===Oracle or Real===
 if_real_data = [int(False), int(True), int(True), int(False), int(True), int(True)]
-dataset = ['oracle', 'mr15', 'amazon_app_book', 'oracle', 'image_coco', 'emnlp_news']
+dataset = ['mr15', 'amazon_app_book', 'image_coco', 'emnlp_news']
+w2v_embedding_size = [100, 100, 100, 100, 100, 100]
+w2v_window = 5
+w2v_min_count = 30
+.w2v_workers = 30
 vocab_size = [5000, 0, 0, 5000, 0, 0]
-target_len = [20, 20, 40, 20, 16, 52]
+target_len = [16, 40, 20, 16, 52]
 
 # ===CatGAN Param===
 n_parent = 1

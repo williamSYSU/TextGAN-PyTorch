@@ -1,33 +1,24 @@
 from dataclasses import dataclass
 
 import torch.nn as nn
-from utils.nn_helpers import get_optimizer, Concatenate, Reshape, MyConvLayerNorm, MyConvTransposeLayer, PositionalEncoding, MyLSTMLayerNorm
+from utils.nn_helpers import get_optimizer, create_noise, Concatenate, Reshape, MyConvLayerNorm, MyConvTransposeLayer, PositionalEncoding, MyLSTMLayerNorm
+
+import config as cfg
+from models.generator import LSTMGenerator
 
 
-@dataclass
-class GeneratorParameters:
-    complexity: int = 512
-    concatenate_pe: bool = False
-    leacky_ReLU_alpha: float = 0.2
-    batch_norm: bool = True
-    transformer: bool = False
-    lstm: bool = True
-    transformer_layers: int = 3
 
-
-class Generator(nn.Module):
-    def __init__(self, parameters: GeneratorParameters, embedding_size: int, verbose=False):
+class Generator(LSTMGenerator):
+    def __init__(self, complexity, noise_size, w2v):
         super(Generator, self).__init__()
-        complexity = parameters.complexity
-        alpha = parameters.leacky_ReLU_alpha
-        added_dim_pe = parameters.complexity if parameters.concatenate_pe else 0
-        include_batch_norm = parameters.batch_norm
-        include_transformer = parameters.transformer
-        include_lstm = parameters.lstm
-
+        alpha = 0.2
+        added_dim_pe = 0
+        include_batch_norm = True
+        include_transformer = False
+        include_lstm = True
+        self.noise_size = noise_size
+        self.w2v = w2v
         self.embedding_size = embedding_size
-        self.real_fake_criterion = nn.BCELoss()
-        self.label_criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 
         self.main = nn.Sequential(
             # 1 layer
@@ -125,10 +116,25 @@ class Generator(nn.Module):
         )
         self.optimizer = get_optimizer()
         self.to(device)
-        if verbose:
-            print("total parameters:", number_of_parameters(self.parameters()))
 
     def forward(self, noise, target_labels):
         target_labels = torch.nn.functional.one_hot(target_labels, num_classes=DEPTH)
         x = self.main([noise, target_labels])
         return x
+
+    def sample(self, num_samples, batch_size, start_letter=cfg.start_letter):
+        noise = create_noise(num_samples, self.noise_size)
+        fakes = self.forward(*noise)
+        fakes = fakes.detach().cpu().numpy()
+        assert len(fakes.shape) == 3
+        return [recover_sentence(fake) for fake in fakes]
+
+    def recover_sentence(self, fake):
+        fake = fake.T
+        tokens = []
+        for token_vector in fake:
+            token = self.w2v.wv.most_similar([token_vec])[0][0]
+            if token == cfg.padding_token:
+                continue
+            tokens.append(token)
+        return " ".join(tokens).strip()

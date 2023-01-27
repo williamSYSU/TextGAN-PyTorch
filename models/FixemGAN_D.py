@@ -2,22 +2,14 @@ import torch.nn as nn
 
 from utils.nn_helpers import get_optimizer, MyConvLayer, MyTransformerEncoderLayer, Flatten
 
-@dataclass
-class DiscriminatorParameters:
-    complexity: int = 512
-    alpha: float = 0.2
-    drop_rate: float = 0.0
-    transformer: bool = False
-    transformer_layers: int = 6
+from models.discriminator import CNNDiscriminator
 
-
-class Discriminator(nn.Module):
-    def __init__(self, parameters: DiscriminatorParameters, verbose=False):
+class Discriminator(CNNDiscriminator):
+    def __init__(self, complexity):
         super(Discriminator, self).__init__()
-        complexity = parameters.complexity
-        alpha = parameters.alpha
-        drop_rate = parameters.drop_rate
-        include_transformer = parameters.transformer
+        alpha = 0.2
+        drop_rate = 0.0
+        include_transformer = False
 
         self.main = nn.Sequential(
             # 1 layer
@@ -78,6 +70,8 @@ class Discriminator(nn.Module):
             nn.Linear(complexity, DEPTH),
         )
         self.optimizer = get_optimizer()
+        # maybe it will help!
+        # self.init_params()
 
     @property
     def nb_of_parameters(self):

@@ -1,22 +1,34 @@
 from gensim.models import Word2Vec
 
 import config as cfg
-from utils.text_process import get_tokenized_from_file
+from utils.text_process import text_file_iterator, get_tokenized_from_file
+
+
+class MultipleFilesIterator:
+    def __init__(self, files):
+        self.files = files
+
+    def __iter__(self):
+        for file in self.files:
+            yield from [cfg.padding_token] * 5 + text_file_iterator(file)
 
 
 class EmbeddingsTrainer:
-    def __init__(self, *files, size=512, save_filename=cfg.word2vec_model_name):
-        self.files = files
+    def __init__(self, sources, save_filename):
+        self.sources = sources
         self.size = size
         self.save_filename = save_filename
 
-    def make_embeddings(self, verbose=True):
-        tokenized = get_tokenized_from_file(self.files)
-        W2V = Word2Vec(
-            sentences=tokenized,
-            size=self.size,
+    def make_embeddings(self):
+        w2v = Word2Vec(
+            sentences=MultipleFilesIterator(self.sources),
+            size=cfg.w2v_embedding_size,
             window=cfg.w2v_window,
             min_count=cfg.w2v_min_count,
             workers=cfg.w2v_workers,
         )
-        W2V.save(self.save_filename)
+        w2v.save(self.save_filename)
+
+
+def load_embedding(path):
+    return Word2Vec.load(path)

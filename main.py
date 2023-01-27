@@ -90,6 +90,12 @@ def program_config(parser):
     parser.add_argument('--dis_hidden_dim', default=cfg.dis_hidden_dim, type=int)
     parser.add_argument('--num_rep', default=cfg.num_rep, type=int)
 
+    # W2V embeddings
+    parser.add_argument('--w2v_embedding_size', default=cfg.w2v_embedding_size, type=int)
+    parser.add_argument('--w2v_window', default=cfg.w2v_window, type=int)
+    parser.add_argument('--w2v_min_count', default=cfg.w2v_min_count, type=int)
+    parser.add_argument('--w2v_workers', default=cfg.w2v_workers, type=int)
+
     # Metrics
     parser.add_argument('--use_nll_oracle', default=cfg.use_nll_oracle, type=int)
     parser.add_argument('--use_nll_gen', default=cfg.use_nll_gen, type=int)

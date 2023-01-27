@@ -9,7 +9,7 @@ import math
 import matplotlib.pyplot as plt
 
 
-def create_noise(sample_size, noise_size=NOISE_SIZE):
+def create_noise(sample_size, noise_size):
     return (
         torch.randn(sample_size, noise_size).to(device),
         torch.randint(0, DEPTH, (sample_size,)).sort().values.to(device),

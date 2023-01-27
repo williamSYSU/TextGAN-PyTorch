@@ -268,6 +268,11 @@ def init_param(opt):
     dis_hidden_dim = opt.dis_hidden_dim
     num_rep = opt.num_rep
 
+    w2v_embedding_size = opt.embeddging_size
+    w2v_window = opt.w2v_window
+    w2v_min_count = opt.w2v_min_count
+    w2v_workers = opt.w2v_workers
+
     use_nll_oracle = True if opt.use_nll_oracle == 1 else False
     use_nll_gen = True if opt.use_nll_gen == 1 else False
     use_nll_div = True if opt.use_nll_div == 1 else False
@@ -324,7 +329,7 @@ def init_param(opt):
                                                                                    samples_num)
     pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                      samples_num)
-
+    pretrain_embeddgin_path = pretrain_root + 'w2v_embedding_size{}.model'.format(opt.embedding_size)
     # Assertion
     assert k_label >= 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)
     assert eval_b_num >= n_parent * ADV_d_step, 'Error: eval_b_num = {}, which should be >= n_parent * ADV_d_step ({})!'.format(
