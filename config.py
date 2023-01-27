@@ -110,6 +110,7 @@ step_size = 4  # LeakGAN-4
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
 head_size = 256  # RelGAN-256
+generator_complexity = 512
 
 # ===Discriminator===
 d_step = 5  # SeqGAN-50, LeakGAN-5
@@ -120,6 +121,7 @@ ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
 dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64  # RelGAN
+discriminator_complexity = 512
 
 # ===log===
 log_time_str = strftime("%m%d_%H%M_%S", localtime())
@@ -211,7 +213,8 @@ def init_param(opt):
         lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
         multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices, \
         use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc, use_ppl, \
-        w2v_embedding_size, w2v_window, w2v_min_count, w2v_workers, pretrain_embedding_path, batches_per_epoch
+        w2v_embedding_size, w2v_window, w2v_min_count, w2v_workers, pretrain_embedding_path, batches_per_epoch,
+        generator_complexity, discriminator_complexity
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -273,6 +276,7 @@ def init_param(opt):
     mem_slots = opt.mem_slots
     num_heads = opt.num_heads
     head_size = opt.head_size
+    generator_complexity = opt.generator_complexity
 
     d_step = opt.d_step
     d_epoch = opt.d_epoch
@@ -281,6 +285,7 @@ def init_param(opt):
     dis_embed_dim = opt.dis_embed_dim
     dis_hidden_dim = opt.dis_hidden_dim
     num_rep = opt.num_rep
+    discriminator_complexity = opt.discriminator_complexity
 
     w2v_embedding_size = opt.w2v_embedding_size
     w2v_window = opt.w2v_window

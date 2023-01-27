@@ -35,7 +35,9 @@ class FixemGANInstructor(BasicInstructor):
         # check if embeddings already exist for current oracle
         if not os.path.exists(cfg.pretrain_embedding_path):
             # train embedding on available dataset or oracle
-            sources = list(Path(texts_pile).glob('*.txt'))
+            print(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
+            print("Will train new one, it may take a while...")
+            sources = list(Path(cfg.texts_pile).glob('*.txt'))
             EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()
 
         w2v = load_embedding(cfg.pretrain_embedding_path)

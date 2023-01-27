@@ -352,7 +352,7 @@ def build_embedding_matrix(dataset):
     return embedding_matrix
 
 def pad_sequences(
-    sequence, target_len: int = 52, embedding_size: int = 300, padding_token = None
+    sequence, w2v, target_len: int = 52, embedding_size: int = 300, padding_token = None
 ) -> np.array:
     sequence = np.array(sequence)
     current_length = sequence.shape[0]
@@ -367,6 +367,7 @@ def pad_sequences(
 def vectorize_sentence(tokens, w2v, target_len: int = 52, embedding_size: int = 300, padding_token=None):
     vectorized = pad_sequences(
         [w2v.wv[token] for token in tokens],
+        w2v,
         target_len=target_len,
         embedding_size=embedding_size,
         padding_token=padding_token,

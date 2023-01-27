@@ -1,4 +1,6 @@
 from gensim.models import Word2Vec
+from tqdm import tqdm
+from pathlib import Path
 
 import config as cfg
 from utils.text_process import text_file_iterator
@@ -9,7 +11,7 @@ class MultipleFilesEmbeddingIterator:
         self.files = files
 
     def __iter__(self):
-        for file in self.files:
+        for file in tqdm(self.files, desc='iterating files'):
             for tokens in text_file_iterator(file):
                 yield [cfg.padding_token] * 5 + tokens
 
@@ -27,6 +29,7 @@ class EmbeddingsTrainer:
             min_count=cfg.w2v_min_count,
             workers=cfg.w2v_workers,
         )
+        Path(self.save_filename).parents[0].mkdir(parents=True, exist_ok=True)
         w2v.save(self.save_filename)
 
 

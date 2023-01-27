@@ -67,7 +67,7 @@ gen_init = 'truncated_normal'
 dis_init = 'uniform'
 samples_num = 10000
 batch_size = 64
-max_seq_len = [16, 40, 20, 16, 52]
+max_seq_len = [16, 40, 20, 16, 52, 36]
 gen_lr = 0.01
 gen_adv_lr = 1e-4
 dis_lr = 1e-4
@@ -81,12 +81,14 @@ gen_hidden_dim = 32
 mem_slots = 1
 num_heads = 2
 head_size = [512, 512, 512, 256, 256, 256]
+generator_complexity = [256, 512, 512, 512, 512, 512]
 
 # ===Discriminator===
 ADV_d_step = 3
 dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64
+discriminator_complexity = [512, 512, 512, 512, 512]
 
 # ===Metrics===
 use_nll_oracle = int(True)
@@ -147,12 +149,14 @@ args = [
     '--mem_slots', mem_slots,
     '--num_heads', num_heads,
     '--head_size', head_size[job_id],
+    '--generator_complexity', generator_complexity[job_id]
 
     # Discriminator
     '--adv_d_step', ADV_d_step,
     '--dis_embed_dim', dis_embed_dim,
     '--dis_hidden_dim', dis_hidden_dim,
     '--num_rep', num_rep,
+    '--discriminator_complexity', discriminator_complexity[job_id]
 
     # Metrics
     '--use_nll_oracle', use_nll_oracle,

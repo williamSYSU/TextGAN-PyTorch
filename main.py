@@ -81,6 +81,7 @@ def program_config(parser):
     parser.add_argument('--mem_slots', default=cfg.mem_slots, type=int)
     parser.add_argument('--num_heads', default=cfg.num_heads, type=int)
     parser.add_argument('--head_size', default=cfg.head_size, type=int)
+    parser.add_argument('--generator_complexity', default=cfg.generator_complexity, type=int)
 
     # Discriminator
     parser.add_argument('--d_step', default=cfg.d_step, type=int)
@@ -90,6 +91,7 @@ def program_config(parser):
     parser.add_argument('--dis_embed_dim', default=cfg.dis_embed_dim, type=int)
     parser.add_argument('--dis_hidden_dim', default=cfg.dis_hidden_dim, type=int)
     parser.add_argument('--num_rep', default=cfg.num_rep, type=int)
+    parser.add_argument('--discriminator_complexity', default=cfg.discriminator_complexity, type=int)
 
     # W2V embeddings
     parser.add_argument('--w2v_embedding_size', default=cfg.w2v_embedding_size, type=int)

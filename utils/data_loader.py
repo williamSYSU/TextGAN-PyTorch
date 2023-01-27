@@ -142,13 +142,13 @@ class DataSupplier:
         self.labels = torch.tensor(labels, dtype=int)
 
         self.vectors = [vectorize_sentence(tokens, w2v, target_len=cfg.max_seq_len, padding_token = cfg.padding_token) for tokens in tokenized]
-        self.vectors = np.stack(vectors, axis=0)
-        self.vectors = torch.tensor(vectors, dtype=torch.float32)
+        self.vectors = np.stack(self.vectors, axis=0)
+        self.vectors = torch.tensor(self.vectors, dtype=torch.float32)
 
         self.batches_per_epoch = batches_per_epoch
         self.batch_size = batch_size
 
-        self.texts = set(" ".join(text[-cfg.max_seq_len:]) for text in texts)
+        self.texts = set(" ".join(tokens[-cfg.max_seq_len:]) for tokens in tokenized)
         if self.verbose:
             print('texts examples', [txt for txt in self.texts][:3])
 
