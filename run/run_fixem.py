@@ -149,14 +149,14 @@ args = [
     '--mem_slots', mem_slots,
     '--num_heads', num_heads,
     '--head_size', head_size[job_id],
-    '--generator_complexity', generator_complexity[job_id]
+    '--generator_complexity', generator_complexity[job_id],
 
     # Discriminator
     '--adv_d_step', ADV_d_step,
     '--dis_embed_dim', dis_embed_dim,
     '--dis_hidden_dim', dis_hidden_dim,
     '--num_rep', num_rep,
-    '--discriminator_complexity', discriminator_complexity[job_id]
+    '--discriminator_complexity', discriminator_complexity[job_id],
 
     # Metrics
     '--use_nll_oracle', use_nll_oracle,

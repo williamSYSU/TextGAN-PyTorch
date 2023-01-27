@@ -10,7 +10,6 @@ from models.generator import LSTMGenerator
 
 class Generator(LSTMGenerator):
     def __init__(self, complexity, noise_size, w2v):
-        super(Generator, self).__init__()
         alpha = 0.2
         added_dim_pe = 0
         include_batch_norm = True
@@ -49,9 +48,9 @@ class Generator(LSTMGenerator):
             ),
             # adding/concatenating positional encoding
             PositionalEncoding(
-                dim_pe=parameters.complexity,
+                dim_pe=complexity,
                 max_len=cfg.max_seq_len,
-                concatenate_pe=parameters.concatenate_pe,
+                concatenate_pe=False,
             ),
             # 5 layer
             MyConvLayerNorm(
@@ -64,12 +63,12 @@ class Generator(LSTMGenerator):
             PositionalEncoding(
                 dim_pe=complexity,
                 max_len=cfg.max_seq_len,
-                concatenate_pe=parameters.concatenate_pe,
+                concatenate_pe=False,
             ),
             # 6 layer
             MyTransformerEncoderLayer(
                 d_model=complexity + added_dim_pe,
-                n_layers=parameters.transformer_layers,
+                n_layers=3,
             )
             if include_transformer
             else Dummy(),
@@ -108,14 +107,13 @@ class Generator(LSTMGenerator):
             # 12 layer
             nn.Conv1d(
                 complexity,
-                EMBEDDING_SIZE,
+                cfg.w2v_embedding_size,
                 kernel_size=1,
                 stride=1,
                 padding=0,
             ),
         )
         self.optimizer = get_optimizer()
-        self.to(device)
 
     def forward(self, noise, target_labels):
         target_labels = torch.nn.functional.one_hot(target_labels, num_classes=cfg.k_label)
@@ -127,7 +125,7 @@ class Generator(LSTMGenerator):
         fakes = self.forward(*noise)
         fakes = fakes.detach().cpu().numpy()
         assert len(fakes.shape) == 3
-        return [recover_sentence(fake) for fake in fakes]
+        return [self.recover_sentence(fake) for fake in fakes]
 
     def recover_sentence(self, fake):
         fake = fake.T

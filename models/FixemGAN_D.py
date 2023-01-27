@@ -6,14 +6,13 @@ from models.discriminator import CNNDiscriminator
 
 class Discriminator(CNNDiscriminator):
     def __init__(self, complexity):
-        super(Discriminator, self).__init__()
         alpha = 0.2
         drop_rate = 0.0
         include_transformer = False
 
         self.main = nn.Sequential(
             # 1 layer
-            MyConvLayer(EMBEDDING_SIZE, complexity, alpha=alpha, drop_rate=drop_rate),
+            MyConvLayer(cfg.w2v_embedding_size, complexity, alpha=alpha, drop_rate=drop_rate),
             # 2 layer
             MyConvLayer(
                 complexity,
@@ -30,7 +29,7 @@ class Discriminator(CNNDiscriminator):
 
             MyTransformerEncoderLayer(
                 d_model=complexity,
-                n_layers=parameters.transformer_layers,
+                n_layers=3,
             )
             if include_transformer
             else Dummy(),

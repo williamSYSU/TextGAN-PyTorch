@@ -213,7 +213,7 @@ def init_param(opt):
         lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
         multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices, \
         use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc, use_ppl, \
-        w2v_embedding_size, w2v_window, w2v_min_count, w2v_workers, pretrain_embedding_path, batches_per_epoch,
+        w2v_embedding_size, w2v_window, w2v_min_count, w2v_workers, pretrain_embedding_path, batches_per_epoch, \
         generator_complexity, discriminator_complexity
 
     if_test = True if opt.if_test == 1 else False

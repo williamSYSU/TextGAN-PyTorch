@@ -66,6 +66,10 @@ class FixemGANInstructor(BasicInstructor):
             number_of_parameters(self.generator.parameters())
         )
 
+        if cfg.CUDA::
+            self.discriminator = self.discriminator.cuda()
+            self.generator = self.generator.cuda()
+
         self.G_criterion = GANLoss(cfg.run_model, which_net=None, which_D=None, )
         self.D_criterion = GANLoss(cfg.run_model, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2)
 
@@ -114,6 +118,8 @@ class FixemGANInstructor(BasicInstructor):
     def _run(self):
         for i in trange(cfg.max_epochs):
             for labels, text_vector in self.train_data_supplier:
+                if cgf.CUDA:
+                    labels, text_vector = labels.cuda(), text_vector.cuda()
                 discriminator_acc = self.discriminator_train_one_batch(text_vector, labels)
 
                 generator_acc = 1 - 2 * (discriminator_acc - 0.5)
