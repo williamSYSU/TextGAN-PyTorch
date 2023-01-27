@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 
 def create_noise(sample_size, noise_size, k_label):
     return (
-        torch.randn(sample_size, noise_size).to(device),
-        torch.randint(0, k_label, (sample_size,)).sort().values.to(device),
+        torch.randn(sample_size, noise_size),
+        torch.randint(0, k_label, (sample_size,)),
     )
 
 

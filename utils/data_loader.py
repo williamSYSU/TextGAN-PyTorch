@@ -8,7 +8,10 @@
 # Copyrights (C) 2018. All Rights Reserved.
 
 import random
+
+import torch
 from torch.utils.data import Dataset, DataLoader
+from tqdm import trange
 
 import config as cfg
 from utils.text_process import *
@@ -164,11 +167,11 @@ class DataSupplier:
             index += self.batch_size
             if index > len(self):
                 # concatenating beginning of self.vectors
-                yield (torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])).to(device),
-                torch.cat((self.vectors[index - self.batch_size: index], self.vectors[:index-len(self)])).to(device))
+                yield (torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])),
+                torch.cat((self.vectors[index - self.batch_size: index], self.vectors[:index-len(self)])).)
                 index = index % len(self)
             else:
-                yield self.labels[index - self.batch_size: index].to(device), self.vectors[index - self.batch_size: index].to(device)
+                yield self.labels[index - self.batch_size: index], self.vectors[index - self.batch_size: index]
 
 
     def __len__(self):

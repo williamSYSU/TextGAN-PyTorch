@@ -1,4 +1,6 @@
 import os
+import random
+from itertools import chain
 
 from pathlib import Path
 import numpy as np
@@ -10,6 +12,7 @@ from tqdm import trange
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
+from utils.gan_loss import GANLoss
 from utils.text_process import text_file_iterator
 from utils.data_loader import DataSupplier, GANDataset
 from utils.nn_helpers import create_noise, number_of_parameters
@@ -60,24 +63,26 @@ class FixemGANInstructor(BasicInstructor):
             "discriminator total tranable parameters:",
             number_of_parameters(self.discriminator.parameters())
         )
-        self.generator = Generator(cfg.generator_complexity, cgf.noise_size, w2v)
+        self.generator = Generator(cfg.generator_complexity, cfg.noise_size, w2v, cfg.w2v_embedding_size)
         print(
             "generator total tranable parameters:",
             number_of_parameters(self.generator.parameters())
         )
 
-        if cfg.CUDA::
+        if cfg.CUDA:
             self.discriminator = self.discriminator.cuda()
             self.generator = self.generator.cuda()
 
-        self.G_criterion = GANLoss(cfg.run_model, which_net=None, which_D=None, )
-        self.D_criterion = GANLoss(cfg.run_model, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2)
+        self.G_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, )
+        self.D_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2)
 
         self.all_metrics = [self.bleu, self.self_bleu]
 
     def generator_train_one_batch(self):
         self.generator.optimizer.zero_grad()
         noise = create_noise(cfg.batch_size, cfg.noise_size. cfg.k_label)
+        if cfg.CUDA:
+            noise = tuple(tt.cuda() for tt in noise)
         fakes = self.generator(*noise)
 
         real_fake_predicts, label_predicts = self.discriminator(fakes)
@@ -95,18 +100,20 @@ class FixemGANInstructor(BasicInstructor):
         this_batch_size = real_vector.shape[0]
 
         # create input
-        noise = create_noise(cfg.batch_size, cfg.noise_size. cfg.k_label)
+        noise = create_noise(cfg.batch_size, cfg.noise_size, cfg.k_label)
+        if cfg.CUDA:
+            noise = tuple(tt.cuda() for tt in noise)
         fake = self.generator(*noise).detach()
         text_input_vectors = torch.cat((real_vector, fake))
 
         # optmizer step
-        discriminator.optimizer.zero_grad()
+        self.discriminator.optimizer.zero_grad()
         real_fake_predicts, label_predicts = self.discriminator(text_input_vectors)
         loss = self.D_criterion.D_loss_fixem(real_fake_predicts, label_predicts[:this_batch_size], labels)
         loss.backward()
-        discriminator.optimizer.step()
+        self.discriminator.optimizer.step()
 
-        discriminator_acc = torch.cat(
+        self.discriminator_acc = torch.cat(
             (
                 real_fake_predicts.chunk(2)[0] > 0.5,
                 real_fake_predicts.chunk(2)[1] < 0.5

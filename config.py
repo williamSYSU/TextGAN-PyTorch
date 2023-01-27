@@ -40,7 +40,12 @@ freeze_dis = False
 freeze_clas = False
 use_all_real_fake = False
 use_population = False
+
+# ===FixemGAN===
 batches_per_epoch = 200
+noise_size = 1000
+max_epochs = 20
+target_len = 40
 
 # ===Embedding===
 w2v_embedding_size = 100
@@ -214,7 +219,7 @@ def init_param(opt):
         multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices, \
         use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc, use_ppl, \
         w2v_embedding_size, w2v_window, w2v_min_count, w2v_workers, pretrain_embedding_path, batches_per_epoch, \
-        generator_complexity, discriminator_complexity
+        generator_complexity, discriminator_complexity, noise_size, max_epochs, target_len
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -242,7 +247,11 @@ def init_param(opt):
     freeze_clas = opt.freeze_clas
     use_all_real_fake = opt.use_all_real_fake
     use_population = opt.use_population
+
     batches_per_epoch = opt.batches_per_epoch
+    noise_size = opt.noise_size
+    max_epochs = opt.max_epochs
+    target_len = opt.target_len
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size

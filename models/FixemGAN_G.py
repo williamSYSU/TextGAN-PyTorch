@@ -1,7 +1,18 @@
 from dataclasses import dataclass
 
+import torch
 import torch.nn as nn
-from utils.nn_helpers import get_optimizer, create_noise, Concatenate, Reshape, MyConvLayerNorm, MyConvTransposeLayer, PositionalEncoding, MyLSTMLayerNorm
+from utils.nn_helpers import (
+    get_optimizer,
+    create_noise,
+    Concatenate,
+    Reshape,
+    MyConvLayerNorm,
+    MyConvTransposeLayer,
+    PositionalEncoding,
+    MyLSTMLayerNorm,
+    Dummy,
+)
 
 import config as cfg
 from models.generator import LSTMGenerator
@@ -9,7 +20,8 @@ from models.generator import LSTMGenerator
 
 
 class Generator(LSTMGenerator):
-    def __init__(self, complexity, noise_size, w2v):
+    def __init__(self, complexity, noise_size, w2v, w2v_embedding_size):
+        super(Generator, self).__init__(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.target_len, cfg.padding_idx)
         alpha = 0.2
         added_dim_pe = 0
         include_batch_norm = True
@@ -17,15 +29,15 @@ class Generator(LSTMGenerator):
         include_lstm = True
         self.noise_size = noise_size
         self.w2v = w2v
-        self.embedding_size = embedding_size
+        self.embedding_size = w2v_embedding_size
 
         self.main = nn.Sequential(
             # 1 layer
             Concatenate(1),
-            nn.Linear(cfg.noise_size + cfg.k_label, cfg.max_seq_len // 2 // 2 * complexity),
-            nn.BatchNorm1d(cfg.max_seq_len // 2 // 2 * complexity),
+            nn.Linear(cfg.noise_size + cfg.k_label, cfg.target_len // 2 // 2 * complexity),
+            nn.BatchNorm1d(cfg.target_len // 2 // 2 * complexity),
             nn.LeakyReLU(alpha),
-            Reshape(complexity, cfg.max_seq_len // 2 // 2),
+            Reshape(complexity, cfg.target_len // 2 // 2),
             # 2 layer
             MyConvLayerNorm(complexity, complexity, alpha=alpha),
             # 3 layer
@@ -49,7 +61,7 @@ class Generator(LSTMGenerator):
             # adding/concatenating positional encoding
             PositionalEncoding(
                 dim_pe=complexity,
-                max_len=cfg.max_seq_len,
+                max_len=cfg.target_len,
                 concatenate_pe=False,
             ),
             # 5 layer
@@ -62,7 +74,7 @@ class Generator(LSTMGenerator):
             # adding/concatenating positional encoding
             PositionalEncoding(
                 dim_pe=complexity,
-                max_len=cfg.max_seq_len,
+                max_len=cfg.target_len,
                 concatenate_pe=False,
             ),
             # 6 layer
@@ -113,7 +125,7 @@ class Generator(LSTMGenerator):
                 padding=0,
             ),
         )
-        self.optimizer = get_optimizer()
+        self.optimizer = get_optimizer(self.parameters())
 
     def forward(self, noise, target_labels):
         target_labels = torch.nn.functional.one_hot(target_labels, num_classes=cfg.k_label)

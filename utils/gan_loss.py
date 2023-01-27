@@ -45,7 +45,7 @@ class GANLoss(nn.Module):
             self.loss = nn.BCEWithLogitsLoss()
         elif loss_mode in ['wgan', 'hinge']:
             self.loss = None
-        elif loss_mode == 'fixem':
+        elif loss_mode == 'fixemgan':
             self.real_fake_criterion = nn.BCEWithLogitsLoss()
             self.label_criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
             self.diversity_criterion = DiversityLoss()

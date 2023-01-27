@@ -1,11 +1,12 @@
 import torch.nn as nn
 
-from utils.nn_helpers import get_optimizer, MyConvLayer, MyTransformerEncoderLayer, Flatten
-
+import config as cfg
+from utils.nn_helpers import get_optimizer, MyConvLayer, MyTransformerEncoderLayer, Flatten, Dummy
 from models.discriminator import CNNDiscriminator
 
-class Discriminator(CNNDiscriminator):
+class Discriminator(nn.Module):
     def __init__(self, complexity):
+        super(Discriminator, self).__init__()
         alpha = 0.2
         drop_rate = 0.0
         include_transformer = False
@@ -57,7 +58,7 @@ class Discriminator(CNNDiscriminator):
             ),
             # 8 layer
             Flatten(),
-            nn.Linear(complexity * cfg.max_seq_len // 2 // 2, complexity),
+            nn.Linear(complexity * cfg.target_len // 2 // 2, complexity),
             nn.LeakyReLU(alpha),
             nn.Dropout(drop_rate),
         )
@@ -68,7 +69,7 @@ class Discriminator(CNNDiscriminator):
         self.labels = nn.Sequential(
             nn.Linear(complexity, cfg.k_label),
         )
-        self.optimizer = get_optimizer()
+        self.optimizer = get_optimizer(self.parameters())
         # maybe it will help!
         # self.init_params()
 

@@ -44,6 +44,9 @@ def program_config(parser):
     parser.add_argument('--use_all_real_fake', default=cfg.use_all_real_fake, type=int)
     parser.add_argument('--use_population', default=cfg.use_population, type=int)
     parser.add_argument('--batches_per_epoch', default=cfg.batches_per_epoch, type=int)
+    parser.add_argument('--noise_size', default=cfg.noise_size, type=int)
+    parser.add_argument('--max_epochs', default=cfg.max_epochs, type=int)
+    parser.add_argument('--target_len', default=cfg.target_len, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
