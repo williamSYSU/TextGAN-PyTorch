@@ -44,7 +44,7 @@ batches_per_epoch = 200
 tips = '{} experiments'
 
 # ===Oracle or Real===
-if_real_data = [int(False), int(True), int(True), int(False), int(True), int(True)]
+if_real_data = [int(True), int(True), int(True), int(True), int(True)]
 dataset = ['mr15', 'amazon_app_book', 'image_coco', 'emnlp_news']
 w2v_embedding_size = [100, 100, 100, 100, 100, 100]
 w2v_window = 5

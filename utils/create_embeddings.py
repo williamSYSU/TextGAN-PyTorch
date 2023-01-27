@@ -1,7 +1,7 @@
 from gensim.models import Word2Vec
 
 import config as cfg
-from utils.text_process import text_file_iterator, get_tokenized_from_file
+from utils.text_process import text_file_iterator
 
 
 class MultipleFilesIterator:

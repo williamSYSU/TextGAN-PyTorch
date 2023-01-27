@@ -97,7 +97,7 @@ class Generator(LSTMGenerator):
             MyLSTMLayerNorm(
                 complexity,
                 complexity//2,
-            ) if include_lstm else Dummy(),,
+            ) if include_lstm else Dummy(),
             # 11 layer
             MyConvTransposeLayer(
                 complexity,

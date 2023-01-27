@@ -13,7 +13,7 @@ from instructor.real_data.instructor import BasicInstructor
 from utils.text_process import text_file_iterator
 from utils.data_loader import DataSupplier, GANDataset
 from utils.nn_helpers import create_noise, number_of_parameters
-from utils.create_embedding import EmbeddingsTrainer, load_embedding
+from utils.create_embeddings import EmbeddingsTrainer, load_embedding
 from models.FixemGAN_G import Generator
 from models.FixemGAN_D import Discriminator
 
@@ -33,12 +33,12 @@ class FixemGANInstructor(BasicInstructor):
     def __init__(self, cfg):
         super(FixemGANInstructor, self).__init__(cfg)
         # check if embeddings already exist for current oracle
-        if not os.path.exists(cfg.pretrain_embeddgin_path):
+        if not os.path.exists(cfg.pretrain_embedding_path):
             # train embedding on available dataset or oracle
             sources = list(Path(texts_data).glob('*.txt'))
-            EmbeddingsTrainer(sources, cfg.pretrain_embeddgin_path).make_embeddings()
+            EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()
 
-        w2v = load_embedding(cfg.pretrain_embeddgin_path)
+        w2v = load_embedding(cfg.pretrain_embedding_path)
 
         if cfg.run_model == 'fixemgan':
             labels, train_data = zip(*[(0, line) for line in text_file_iterator(cfg.train_data)])
@@ -72,7 +72,6 @@ class FixemGANInstructor(BasicInstructor):
     def generator_train_one_batch(self):
         self.generator.optimizer.zero_grad()
         noise = create_noise(cfg.batch_size, cfg.noise_size. cfg.k_label)
-        ones = label_ones(cfg.batch_size)
         fakes = self.generator(*noise)
 
         real_fake_predicts, label_predicts = self.discriminator(fakes)
