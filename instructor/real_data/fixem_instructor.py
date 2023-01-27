@@ -8,7 +8,7 @@ import torchtext
 from tqdm import trange
 
 
-
+import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from utils.text_process import text_file_iterator
 from utils.data_loader import DataSupplier, GANDataset
@@ -30,12 +30,12 @@ from models.FixemGAN_D import Discriminator
 
 
 class FixemGANInstructor(BasicInstructor):
-    def __init__(self, cfg):
-        super(FixemGANInstructor, self).__init__(cfg)
+    def __init__(self, opt):
+        super(FixemGANInstructor, self).__init__(opt)
         # check if embeddings already exist for current oracle
         if not os.path.exists(cfg.pretrain_embedding_path):
             # train embedding on available dataset or oracle
-            sources = list(Path(texts_data).glob('*.txt'))
+            sources = list(Path(texts_pile).glob('*.txt'))
             EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()
 
         w2v = load_embedding(cfg.pretrain_embedding_path)
@@ -119,9 +119,9 @@ class FixemGANInstructor(BasicInstructor):
                 while self.one_more_batch_for_generator(generator_acc):
                     generator_acc = self.generator_train_one_batch()
 
-            if cfg.run_model = 'fixemgan':
+            if cfg.run_model == 'fixemgan':
                 scores = self.cal_metrics(fmt_str=True)
-            if cfg.run_model = 'cat_fixemgan':
+            if cfg.run_model == 'cat_fixemgan':
                 scores = self.cal_metrics_with_label(fmt_str=True)
 
             print('epoch:', i, scores)

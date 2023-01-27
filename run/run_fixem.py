@@ -124,6 +124,7 @@ args = [
     '--eval_type', eval_type,
     '--temp_adpt', temp_adpt,
     '--d_out_mean', d_out_mean,
+    '--batches_per_epoch', batches_per_epoch,
 
     # Basic Param
     '--shuffle', data_shuffle,

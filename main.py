@@ -43,6 +43,7 @@ def program_config(parser):
     parser.add_argument('--freeze_clas', default=cfg.freeze_clas, type=int)
     parser.add_argument('--use_all_real_fake', default=cfg.use_all_real_fake, type=int)
     parser.add_argument('--use_population', default=cfg.use_population, type=int)
+    parser.add_argument('--batches_per_epoch', default=cfg.batches_per_epoch, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
