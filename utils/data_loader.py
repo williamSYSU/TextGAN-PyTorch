@@ -132,10 +132,7 @@ class DisDataIter:
 
 
 class DataSupplier:
-    def __init__(self, tokenized, labels, w2v, verbose, batch_size, batches_per_epoch):
-        self.verbose=verbose
-
-
+    def __init__(self, tokenized, labels, w2v, batch_size, batches_per_epoch):
         labels, tokenized = zip(*[
             (label, tokens)
             for label, tokens in zip(labels, tokenized)
@@ -144,31 +141,30 @@ class DataSupplier:
 
         self.labels = torch.tensor(labels, dtype=int)
 
-        self.vectors = [vectorize_sentence(tokens, w2v, target_len=cfg.max_seq_len, padding_token = cfg.padding_token) for tokens in tokenized]
+        self.vectors = [vectorize_sentence(tokens, w2v, target_len=cfg.target_len, padding_token = cfg.padding_token) for tokens in tokenized]
         self.vectors = np.stack(self.vectors, axis=0)
         self.vectors = torch.tensor(self.vectors, dtype=torch.float32)
 
         self.batches_per_epoch = batches_per_epoch
         self.batch_size = batch_size
 
-        self.texts = set(" ".join(tokens[-cfg.max_seq_len:]) for tokens in tokenized)
+        self.texts = set(" ".join(tokens[-cfg.target_len:]) for tokens in tokenized)
         if self.verbose:
             print('texts examples', [txt for txt in self.texts][:3])
 
 
     def __iter__(self):
-        batch_iterator = trange(self.batches_per_epoch) if self.verbose else range(self.batches_per_epoch)
         permutation = torch.randperm(len(self))
         self.vectors = self.vectors[permutation]
         self.labels = self.labels[permutation]
 
-        for _ in batch_iterator:
+        for _ in range(self.batches_per_epoch):
             index = 0
             index += self.batch_size
             if index > len(self):
                 # concatenating beginning of self.vectors
                 yield (torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])),
-                torch.cat((self.vectors[index - self.batch_size: index], self.vectors[:index-len(self)])).)
+                torch.cat((self.vectors[index - self.batch_size: index], self.vectors[:index-len(self)])))
                 index = index % len(self)
             else:
                 yield self.labels[index - self.batch_size: index], self.vectors[index - self.batch_size: index]

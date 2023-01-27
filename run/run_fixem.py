@@ -130,7 +130,7 @@ args = [
     '--max_epochs', max_epochs,
     '--batches_per_epoch', batches_per_epoch,
     '--noise_size', noise_size,
-    '--target_len', target_len,
+    '--target_len', target_len[job_id],
 
     # Basic Param
     '--shuffle', data_shuffle,
@@ -139,7 +139,6 @@ args = [
     '--dis_init', dis_init,
     '--samples_num', samples_num,
     '--batch_size', batch_size,
-    '--max_seq_len', max_seq_len[job_id],
     '--gen_lr', gen_lr,
     '--gen_adv_lr', gen_adv_lr,
     '--dis_lr', dis_lr,

@@ -23,13 +23,19 @@ from models.FixemGAN_D import Discriminator
 
 # TO DO:
 # 1. train embedding if not exists (if oracle, then always retrain )
-# 2. create data generator (categorical and non categorical) (based on given dataset)
-# 3. create disc and gen
 # 4. train epochs and each 10 epochs print metrics
-# 5. show metrics
 # 6. save? or save each 10 epochs
+# fix bleu score
+# add new interested scores (IOC, NLL on GPT) (split quick metric and slow metric)
+# logger
+# cat_fixemgan
+# oracle
+# cat_oracle
+# make run_fixem clean
 
+# afterwards:
 # chack target real/fake to be right (Uniform or const)
+# random data portion generator?
 
 
 class FixemGANInstructor(BasicInstructor):
@@ -56,7 +62,7 @@ class FixemGANInstructor(BasicInstructor):
                 )
             )
 
-        self.train_data_supplier = DataSupplier(train_data, labels, w2v, True, cfg.batch_size, cfg.batches_per_epoch)
+        self.train_data_supplier = DataSupplier(train_data, labels, w2v, cfg.batch_size, cfg.batches_per_epoch)
 
         self.discriminator = Discriminator(cfg.discriminator_complexity)
         print(
@@ -73,20 +79,21 @@ class FixemGANInstructor(BasicInstructor):
             self.discriminator = self.discriminator.cuda()
             self.generator = self.generator.cuda()
 
-        self.G_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, )
-        self.D_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2)
+        self.G_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, CUDA=cfg.CUDA)
+        self.D_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2, CUDA=cfg.CUDA)
 
         self.all_metrics = [self.bleu, self.self_bleu]
 
     def generator_train_one_batch(self):
         self.generator.optimizer.zero_grad()
-        noise = create_noise(cfg.batch_size, cfg.noise_size. cfg.k_label)
+        noise = create_noise(cfg.batch_size, cfg.noise_size, cfg.k_label)
         if cfg.CUDA:
             noise = tuple(tt.cuda() for tt in noise)
         fakes = self.generator(*noise)
 
         real_fake_predicts, label_predicts = self.discriminator(fakes)
-        loss = self.G_criterion.G_loss_fixem(real_fake_predicts, label_predicts, fakes)
+        loss = self.G_criterion.G_loss_fixem(real_fake_predicts, label_predicts, noise[1], fakes)
+
         loss.backward()
         self.generator.optimizer.step()
 
@@ -113,11 +120,14 @@ class FixemGANInstructor(BasicInstructor):
         loss.backward()
         self.discriminator.optimizer.step()
 
-        self.discriminator_acc = torch.cat(
-            (
-                real_fake_predicts.chunk(2)[0] > 0.5,
-                real_fake_predicts.chunk(2)[1] < 0.5
-            )
+        discriminator_acc = float(
+            torch.tensor(
+                torch.cat((
+                    real_fake_predicts.chunk(2)[0] > 0.5,
+                    real_fake_predicts.chunk(2)[1] < 0.5
+                )),
+                dtype = float,
+            ).mean()
         )
         return discriminator_acc
 
@@ -125,7 +135,7 @@ class FixemGANInstructor(BasicInstructor):
     def _run(self):
         for i in trange(cfg.max_epochs):
             for labels, text_vector in self.train_data_supplier:
-                if cgf.CUDA:
+                if cfg.CUDA:
                     labels, text_vector = labels.cuda(), text_vector.cuda()
                 discriminator_acc = self.discriminator_train_one_batch(text_vector, labels)
 
@@ -139,7 +149,11 @@ class FixemGANInstructor(BasicInstructor):
             if cfg.run_model == 'cat_fixemgan':
                 scores = self.cal_metrics_with_label(fmt_str=True)
 
-            print('epoch:', i, scores)
+            samples = self.generator.sample(20, 20)
+            for sample in samples:
+                print(sample)
+            if (i + 1) % 10 == 0:
+                print('epoch:', i, scores)
 
 
     def one_more_batch_for_generator(

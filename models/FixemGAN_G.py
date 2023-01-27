@@ -134,6 +134,8 @@ class Generator(LSTMGenerator):
 
     def sample(self, num_samples, batch_size, start_letter=cfg.start_letter):
         noise = create_noise(num_samples, self.noise_size, cfg.k_label)
+        if cfg.CUDA:
+            noise = tuple(tt.cuda() for tt in noise)
         fakes = self.forward(*noise)
         fakes = fakes.detach().cpu().numpy()
         assert len(fakes.shape) == 3
@@ -143,7 +145,7 @@ class Generator(LSTMGenerator):
         fake = fake.T
         tokens = []
         for token_vector in fake:
-            token = self.w2v.wv.most_similar([token_vec])[0][0]
+            token = self.w2v.wv.most_similar([token_vector])[0][0]
             if token == cfg.padding_token:
                 continue
             tokens.append(token)
