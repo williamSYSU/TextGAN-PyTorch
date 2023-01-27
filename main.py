@@ -136,6 +136,7 @@ if __name__ == '__main__':
         from instructor.real_data.catgan_instructor import CatGANInstructor
         from instructor.real_data.dgsan_instructor import DGSANInstructor
         from instructor.real_data.cot_instructor import CoTInstructor
+        from instructor.real_data.fixem_instructor import FixemGANInstructor
 
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
@@ -162,6 +163,7 @@ if __name__ == '__main__':
         'catgan': CatGANInstructor,
         'dgsan': DGSANInstructor,
         'cot': CoTInstructor,
+        'fixemgan': FixemGANInstructor
     }
 
     inst = instruction_dict[cfg.run_model](opt)

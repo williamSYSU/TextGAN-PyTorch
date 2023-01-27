@@ -4,7 +4,7 @@
 # @FileName     : data_loader.py
 # @Time         : Created at 2019-05-31
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import random
@@ -125,3 +125,54 @@ class DisDataIter:
         if gpu:
             return inp.cuda(), target.cuda()
         return inp, target
+
+
+class DataSupplier:
+    def __init__(self, tokenized, labels, verbose, batch_size, batches_per_epoch):
+        self.verbose=verbose
+
+        self.labels = torch.tensor(labels, dtype=int)
+        self.vectors = [vectorize_sentence(txt, padding_token = PADDING) for txt in tokenized]
+        self.vectors = np.stack(vectors, axis=0)
+        self.vectors = torch.tensor(vectors, dtype=torch.float32)
+
+        self.batches_per_epoch = batches_per_epoch
+        self.batch_size = batch_size
+
+        self.texts = set(" ".join(text[-TARGET_LEN:]) for text in texts)
+        if self.verbose:
+            print('texts examples', [txt for txt in self.texts][:3])
+
+
+    def __iter__(self):
+        batch_iterator = trange(self.batches_per_epoch) if self.verbose else range(self.batches_per_epoch)
+        permutation = torch.randperm(len(self))
+        self.vectors = self.vectors[permutation]
+        self.labels = self.labels[permutation]
+
+        # permutation = torch.randint(low=0, high=len(self), size=(self.batch_size,))
+        # yield self.labels[permutation].to(device), self.vectors[permutation].to(device)
+
+        for _ in batch_iterator:
+            if len(self) < self.batch_size:
+                # we need to repat self vectors several times
+                repeats = self.batch_size // len(self.vectors)
+                yield self.labels.repeat(repeats).to(device), self.vectors.repeat(repeats, 1, 1).to(device)
+
+            else:
+                index = 0
+                index += self.batch_size
+                if index > len(self):
+                    # concatenating beginning of self.vectors
+                    yield (torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])).to(device),
+                    torch.cat((self.vectors[index - self.batch_size: index], self.vectors[:index-len(self)])).to(device))
+                    index = index % len(self)
+                else:
+                    yield self.labels[index - self.batch_size: index].to(device), self.vectors[index - self.batch_size: index].to(device)
+
+
+    def __len__(self):
+        return len(self.vectors)
+
+    def is_this_message_in_dataset(self, text):
+        return text in self.texts

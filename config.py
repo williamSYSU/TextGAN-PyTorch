@@ -311,6 +311,8 @@ def init_param(opt):
     cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
     cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
+    texts_data = 'dataset/' # do not include testdata
+
     if max_seq_len == 40:
         oracle_samples_path = 'pretrain/oracle_data/oracle_lstm_samples_{}_sl40.pt'
         multi_oracle_samples_path = 'pretrain/oracle_data/oracle{}_lstm_samples_{}_sl40.pt'

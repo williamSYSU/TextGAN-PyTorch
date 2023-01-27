@@ -4,7 +4,7 @@
 # @FileName     : text_process.py
 # @Time         : Created at 2019-05-14
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import nltk
@@ -343,6 +343,30 @@ def build_embedding_matrix(dataset):
         embedding_matrix = torch.FloatTensor(embedding_matrix)
         torch.save(embedding_matrix, embed_filename)
     return embedding_matrix
+
+def pad_sequences(
+    sequence, target_len: int = 52, embedding_size: int = 300, padding_token = None
+) -> np.array:
+    sequence = np.array(sequence)
+    current_length = sequence.shape[0]
+
+    if current_length >= target_len:
+        return sequence[-target_len:]
+
+    padding = np.repeat(np.array([w2v.wv[padding_token]]), target_len - current_length,axis=0) if padding_token else np.zeros((target_len - current_length, embedding_size))
+    return np.concatenate((padding, sequence), axis=0)
+
+
+def vectorize_sentence(tokens, target_len: int = 52, embedding_size: int = 300, padding_token=None):
+    tokens = tokenizer_func(text) if type(text) == str else text
+    target_sentence = pad_sequences(
+        [w2v.wv[token] for token in tokens],
+        target_len=target_len,
+        embedding_size=embedding_size,
+        padding_token=padding_token,
+    )
+    target_sentence = target_sentence.T  # required for pytorch
+    return target_sentence
 
 
 if __name__ == '__main__':
