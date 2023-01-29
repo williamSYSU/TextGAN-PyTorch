@@ -34,7 +34,7 @@ scriptname = 'main.py'
 # CatGAN: Catgory text generation model
 # EvoGAN: General text generation model
 if_test = int(False)
-run_model = ['fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan', 'cat_fixemgan', 'cat_fixemgan']
+run_model = ['fixemgan', 'cat_fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan', 'cat_fixemgan', 'cat_fixemgan']
 k_label = 2
 CUDA = int(True)
 batch_size = 32
@@ -45,8 +45,8 @@ tips = '{} experiments'
 
 # ===Oracle or Real===
 if_real_data = [int(True), int(True), int(True), int(True), int(True)]
-dataset = ['mr15', 'amazon_app_book', 'image_coco', 'emnlp_news']
-w2v_embedding_size = [512, 100, 100, 100, 100, 100]
+dataset = ['oracle', 'mr15', 'amazon_app_book', 'image_coco', 'emnlp_news']
+w2v_embedding_size = [100, 512, 100, 100, 100, 100]
 w2v_window = 5
 w2v_min_count = 30
 w2v_workers = 30
@@ -81,7 +81,7 @@ gen_hidden_dim = 32
 mem_slots = 1
 num_heads = 2
 head_size = [512, 512, 512, 256, 256, 256]
-generator_complexity = [256, 512, 512, 512, 512, 512]
+generator_complexity = [768, 512, 512, 512, 512, 512]
 
 # ===Discriminator===
 ADV_d_step = 3

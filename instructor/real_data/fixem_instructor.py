@@ -22,8 +22,8 @@ from models.FixemGAN_D import Discriminator
 
 
 # TO DO:
-# 2. test cat gan
-# 1. test oracle (# 1. train embedding if not exists (if oracle, then always retrain ))
+# 1. test oracle
+# 1. train embedding if not exists (if oracle, then always retrain ))
 # 3. train epochs and each 10 epochs print metrics
 # 4. save? or save each 10 epochs
 # 5. fix bleu score
