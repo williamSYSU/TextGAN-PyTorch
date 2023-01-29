@@ -11,7 +11,8 @@ from tqdm import trange
 
 
 import config as cfg
-from instructor.real_data.instructor import BasicInstructor
+from instructor.oracle_data.instructor import BasicInstructor
+from instructor.real_data.fixem_instructor import FixemGANInstructor
 from utils.gan_loss import GANLoss
 from utils.text_process import text_file_iterator
 from utils.data_loader import DataSupplier, GANDataset
@@ -39,15 +40,24 @@ from models.FixemGAN_D import Discriminator
 # random data portion generator?
 
 
-class FixemGANInstructor(BasicInstructor):
+class FixemGANInstructor(BasicInstructor, FixemGANInstructor):
     def __init__(self, opt):
         super(FixemGANInstructor, self).__init__(opt)
-        # check if embeddings already exist
+        # check if embeddings already exist for current oracle
+
         if not os.path.exists(cfg.pretrain_embedding_path):
             # train embedding on available dataset or oracle
             print(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
             print("Will train new one, it may take a while...")
-            sources = list(Path(cfg.texts_pile).glob('*.txt'))
+            giant_samples = self.oracle.sample(cfg.w2v_samples_num, 4 * cfg.batch_size)
+            file_name
+
+            with open(cfg.oracle_samples_path.format(cfg.w2v_samples_num), 'w') as f:
+                for sample in tqdm(giant_samples):
+                    f.write(" ".join(str(int(idx)) for idx in sample))
+                    f.write("\n")
+
+            sources = [cfg.oracle_samples_path.format(cfg.w2v_samples_num)]
             EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()
 
         w2v = load_embedding(cfg.pretrain_embedding_path)

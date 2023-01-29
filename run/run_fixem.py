@@ -50,6 +50,7 @@ w2v_embedding_size = [100, 512, 100, 100, 100, 100]
 w2v_window = 5
 w2v_min_count = 30
 w2v_workers = 30
+w2v_samples_num = 5_000_000
 vocab_size = [5000, 0, 0, 5000, 0, 0]
 
 # ===CatGAN Param===
@@ -118,6 +119,7 @@ args = [
     '--w2v_window', w2v_window,
     '--w2v_min_count', w2v_min_count,
     '--w2v_workers', w2v_workers,
+    '--w2v_samples_num', w2v_samples_num,
 
     # CatGAN Param
     '--n_parent', n_parent,

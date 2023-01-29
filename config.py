@@ -52,6 +52,7 @@ w2v_embedding_size = 100
 w2v_window = 5
 w2v_min_count = 1
 w2v_workers = 1
+w2v_samples_num = 5_000_000
 
 # ===Oracle or Real, type===
 if_real_data = False  # if use real data
@@ -219,7 +220,7 @@ def init_param(opt):
         multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices, \
         use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc, use_ppl, \
         w2v_embedding_size, w2v_window, w2v_min_count, w2v_workers, pretrain_embedding_path, batches_per_epoch, \
-        generator_complexity, discriminator_complexity, noise_size, max_epochs, target_len
+        generator_complexity, discriminator_complexity, noise_size, max_epochs, target_len, w2v_samples_num
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -300,6 +301,7 @@ def init_param(opt):
     w2v_window = opt.w2v_window
     w2v_min_count = opt.w2v_min_count
     w2v_workers = opt.w2v_workers
+    w2v_samples_num = opt.w2v_samples_num
 
     use_nll_oracle = True if opt.use_nll_oracle == 1 else False
     use_nll_gen = True if opt.use_nll_gen == 1 else False
@@ -355,7 +357,7 @@ def init_param(opt):
                                                                                    samples_num)
     pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                      samples_num)
-    emebedding_root = 'pretrain/real_data/' if if_real_data else 'pretrain/real_data/'
+    emebedding_root = 'pretrain/real_data/' if if_real_data else 'pretrain/oracle_data/'
     pretrain_embedding_path = emebedding_root + 'w2v_embedding_size_{}.model'.format(w2v_embedding_size)
     # Assertion
     assert k_label >= 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)

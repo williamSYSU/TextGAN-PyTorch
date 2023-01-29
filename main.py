@@ -101,6 +101,7 @@ def program_config(parser):
     parser.add_argument('--w2v_window', default=cfg.w2v_window, type=int)
     parser.add_argument('--w2v_min_count', default=cfg.w2v_min_count, type=int)
     parser.add_argument('--w2v_workers', default=cfg.w2v_workers, type=int)
+    parser.add_argument('--w2v_samples_num', default=cfg.w2v_samples_num, type=int)
 
     # Metrics
     parser.add_argument('--use_nll_oracle', default=cfg.use_nll_oracle, type=int)
@@ -162,6 +163,7 @@ if __name__ == '__main__':
         from instructor.oracle_data.catgan_instructor import CatGANInstructor
         from instructor.oracle_data.dgsan_instructor import DGSANInstructor
         from instructor.oracle_data.cot_instructor import CoTInstructor
+        from instructor.oracle_data.fixem_instructor import FixemGANInstructor
 
     instruction_dict = {
         'seqgan': SeqGANInstructor,
