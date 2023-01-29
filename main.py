@@ -175,7 +175,8 @@ if __name__ == '__main__':
         'catgan': CatGANInstructor,
         'dgsan': DGSANInstructor,
         'cot': CoTInstructor,
-        'fixemgan': FixemGANInstructor
+        'fixemgan': FixemGANInstructor,
+        'cat_fixemgan': FixemGANInstructor
     }
 
     inst = instruction_dict[cfg.run_model](opt)

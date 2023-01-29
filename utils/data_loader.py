@@ -149,8 +149,7 @@ class DataSupplier:
         self.batch_size = batch_size
 
         self.texts = set(" ".join(tokens[-cfg.target_len:]) for tokens in tokenized)
-        if self.verbose:
-            print('texts examples', [txt for txt in self.texts][:3])
+        print('dataset random texts examples', [txt for txt in self.texts][:3])
 
 
     def __iter__(self):

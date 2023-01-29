@@ -46,7 +46,7 @@ tips = '{} experiments'
 # ===Oracle or Real===
 if_real_data = [int(True), int(True), int(True), int(True), int(True)]
 dataset = ['mr15', 'amazon_app_book', 'image_coco', 'emnlp_news']
-w2v_embedding_size = [100, 100, 100, 100, 100, 100]
+w2v_embedding_size = [512, 100, 100, 100, 100, 100]
 w2v_window = 5
 w2v_min_count = 30
 w2v_workers = 30

@@ -22,16 +22,17 @@ from models.FixemGAN_D import Discriminator
 
 
 # TO DO:
-# 1. train embedding if not exists (if oracle, then always retrain )
-# 4. train epochs and each 10 epochs print metrics
-# 6. save? or save each 10 epochs
-# fix bleu score
-# add new interested scores (IOC, NLL on GPT) (split quick metric and slow metric)
-# logger
-# cat_fixemgan
-# oracle
-# cat_oracle
-# make run_fixem clean
+# 2. test cat gan
+# 1. test oracle (# 1. train embedding if not exists (if oracle, then always retrain ))
+# 3. train epochs and each 10 epochs print metrics
+# 4. save? or save each 10 epochs
+# 5. fix bleu score
+# 6. add new interested scores (IOC, NLL on GPT) (split quick metric and slow metric)
+# 7. logger
+# 8. cat_fixemgan
+# 9. oracle
+# 10. cat_oracle
+# 11. make run_fixem clean
 
 # afterwards:
 # chack target real/fake to be right (Uniform or const)
@@ -120,14 +121,14 @@ class FixemGANInstructor(BasicInstructor):
         loss.backward()
         self.discriminator.optimizer.step()
 
+        real_fake_predicts = real_fake_predicts.clone().detach()
+        real_fake_predicts = real_fake_predicts.chunk(2) #splitting to realand fake parks
+
         discriminator_acc = float(
-            torch.tensor(
                 torch.cat((
-                    real_fake_predicts.chunk(2)[0] > 0.5,
-                    real_fake_predicts.chunk(2)[1] < 0.5
-                )),
-                dtype = float,
-            ).mean()
+                    real_fake_predicts[0] > 0.5,
+                    real_fake_predicts[1] < 0.5
+                )).mean(dtype=float)
         )
         return discriminator_acc
 
@@ -144,15 +145,16 @@ class FixemGANInstructor(BasicInstructor):
                 while self.one_more_batch_for_generator(generator_acc):
                     generator_acc = self.generator_train_one_batch()
 
-            if cfg.run_model == 'fixemgan':
-                scores = self.cal_metrics(fmt_str=True)
-            if cfg.run_model == 'cat_fixemgan':
-                scores = self.cal_metrics_with_label(fmt_str=True)
 
             samples = self.generator.sample(20, 20)
             for sample in samples:
                 print(sample)
+
             if (i + 1) % 10 == 0:
+                if cfg.run_model == 'fixemgan':
+                    scores = self.cal_metrics(fmt_str=True)
+                if cfg.run_model == 'cat_fixemgan':
+                    scores = ' '.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
                 print('epoch:', i, scores)
 
 
@@ -164,6 +166,32 @@ class FixemGANInstructor(BasicInstructor):
         if random.random() > generator_acc:
             return True
         return False
+
+
+    def cal_metrics_with_label(self, label_i, fmt_str=False):
+        assert type(label_i) == int, 'missing label'
+        with torch.no_grad():
+            # Prepare data for evaluation
+            # eval_samples = self.generator.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+            # gen_data = GenDataIter(eval_samples)
+            # gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
+            gen_tokens = self.generator.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+            # gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i), self.idx2word_dict)
+            gen_tokens_s = self.generator.sample(200, 200, label_i=label_i)
+            # clas_data = CatClasDataIter([eval_samples], label_i)
+
+            # Reset metrics
+            self.bleu.reset(test_text=gen_tokens, real_text=self.test_data_list[label_i].tokens)
+            # self.nll_gen.reset(self.gen, self.train_data_list[label_i].loader, label_i)
+            # self.nll_div.reset(self.gen, gen_data.loader, label_i)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            # self.clas_acc.reset(self.clas, clas_data.loader)
+            # self.ppl.reset(gen_tokens)
+
+        if fmt_str:
+            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+
+        return [metric.get_score() for metric in self.all_metrics]
 
 
     def cal_metrics(self, fmt_str=False):

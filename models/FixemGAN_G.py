@@ -132,8 +132,11 @@ class Generator(LSTMGenerator):
         x = self.main([noise, target_labels])
         return x
 
-    def sample(self, num_samples, batch_size, start_letter=cfg.start_letter):
+    def sample(self, num_samples, batch_size, label_i = 'random', start_letter=cfg.start_letter):
         noise = create_noise(num_samples, self.noise_size, cfg.k_label)
+        if label_i != 'random':
+            noise = (noise[0], torch.tensor(label_i).expand_as(noise[1]))
+
         if cfg.CUDA:
             noise = tuple(tt.cuda() for tt in noise)
         fakes = self.forward(*noise)
