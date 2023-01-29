@@ -341,9 +341,9 @@ def init_param(opt):
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'
 
-    train_data = 'dataset/' + dataset + '.txt'
+    train_data = 'dataset/' + dataset + '.txt' if if_real_data else 'pretrain/oracle_data/' + dataset + '.txt'
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
-    cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
+    cat_train_data = 'dataset/' + dataset + '_cat{}.txt' if if_real_data else 'pretrain/oracle_data/' + dataset + '_cat{}.txt'
     cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
     if max_seq_len == 40:

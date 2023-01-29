@@ -78,6 +78,20 @@ def create_oracle():
     torch.save(oracle.sample(cfg.samples_num // 2, 4 * cfg.batch_size),
                cfg.oracle_samples_path.format(cfg.samples_num // 2))
 
+    #giant for W2V
+    giant_samples = self.oracle.sample(cfg.w2v_samples_num, 4 * cfg.batch_size)
+    with open(cfg.oracle_samples_path.format(cfg.w2v_samples_num), 'w') as f:
+        for sample in tqdm(giant_samples):
+            f.write(" ".join(str(int(idx)) for idx in sample))
+            f.write("\n")
+
+    # moderate for training for W2V
+    train_samples = self.oracle.sample(cfg.train_samples_num, 4 * cfg.batch_size)
+    with open(cfg.train_data, 'w') as f:
+        for sample in tqdm(train_samples):
+            f.write(" ".join(str(int(idx)) for idx in sample))
+            f.write("\n")
+
     oracle_data = GenDataIter(big_samples)
     mle_criterion = nn.NLLLoss()
     groud_truth = NLL.cal_nll(oracle, oracle_data.loader, mle_criterion)
