@@ -21,34 +21,13 @@ from models.FixemGAN_G import Generator
 from models.FixemGAN_D import Discriminator
 
 
-# TO DO:
-# 1. test oracle
-# 1. train embedding if not exists (if oracle, then always retrain ))
-# 3. train epochs and each 10 epochs print metrics
-# 4. save? or save each 10 epochs
-# 5. fix bleu score
-# 6. add new interested scores (IOC, NLL on GPT) (split quick metric and slow metric)
-# 7. logger
-# 8. cat_fixemgan
-# 9. oracle
-# 10. cat_oracle
-# 11. make run_fixem clean
-
-# afterwards:
-# chack target real/fake to be right (Uniform or const)
-# random data portion generator?
-
-
 class FixemGANInstructor(BasicInstructor):
     def __init__(self, opt):
         super(FixemGANInstructor, self).__init__(opt)
         # check if embeddings already exist
         if not os.path.exists(cfg.pretrain_embedding_path):
-            # train embedding on available dataset or oracle
-            print(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
-            print("Will train new one, it may take a while...")
-            sources = list(Path(cfg.texts_pile).glob('*.txt'))
-            EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()
+            # train embedding on available datasets
+            self.build_embedding()
 
         w2v = load_embedding(cfg.pretrain_embedding_path)
 
@@ -84,6 +63,12 @@ class FixemGANInstructor(BasicInstructor):
         self.D_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2, CUDA=cfg.CUDA)
 
         self.all_metrics = [self.bleu, self.self_bleu]
+
+    def build_embedding(self):
+        print(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
+        print("Will train new one, it may take a while...")
+        sources = list(Path(cfg.texts_pile).glob('*.txt'))
+        EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()
 
     def generator_train_one_batch(self):
         self.generator.optimizer.zero_grad()

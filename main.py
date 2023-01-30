@@ -47,6 +47,7 @@ def program_config(parser):
     parser.add_argument('--noise_size', default=cfg.noise_size, type=int)
     parser.add_argument('--max_epochs', default=cfg.max_epochs, type=int)
     parser.add_argument('--target_len', default=cfg.target_len, type=int)
+    parser.add_argument('--oracle_train_samples_num', default=cfg.oracle_train_samples_num, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)

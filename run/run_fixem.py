@@ -31,7 +31,6 @@ rootdir = '../'
 scriptname = 'main.py'
 
 # ===Program===
-# CatGAN: Catgory text generation model
 # EvoGAN: General text generation model
 if_test = int(False)
 run_model = ['fixemgan', 'cat_fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan', 'cat_fixemgan', 'cat_fixemgan']
@@ -45,8 +44,8 @@ tips = '{} experiments'
 
 # ===Oracle or Real===
 if_real_data = [int(False), int(True), int(True), int(True), int(True)]
-dataset = ['oracle', 'mr15', 'amazon_app_book', 'image_coco', 'emnlp_news']
-w2v_embedding_size = [100, 512, 100, 100, 100, 100]
+dataset = ['mr20', 'mr15', 'oracle', 'amazon_app_book', 'image_coco', 'emnlp_news']
+w2v_embedding_size = [512, 100, 512, 100, 100, 100]
 w2v_window = 5
 w2v_min_count = 30
 w2v_workers = 30
@@ -54,12 +53,8 @@ w2v_samples_num = 5_000_000
 vocab_size = [5000, 0, 0, 5000, 0, 0]
 
 # ===CatGAN Param===
-n_parent = 1
 loss_type = 'fixem'
-mu_type = 'ragan rsgan'
-eval_type = 'Ra'
-temp_adpt = 'exp'
-d_out_mean = int(False)
+oracle_train_samples_num = 100_000
 
 # === Basic Param ===
 data_shuffle = int(False)
@@ -68,27 +63,12 @@ gen_init = 'truncated_normal'
 dis_init = 'uniform'
 samples_num = 10000
 batch_size = 64
-target_len = [16, 40, 20, 16, 52, 36]
-gen_lr = 0.01
-gen_adv_lr = 1e-4
-dis_lr = 1e-4
-pre_log_step = 10
-adv_log_step = 20
+target_len = [20, 40, 20, 16, 52, 36]
 
 # ===Generator===
-ADV_g_step = 1
-gen_embed_dim = 32
-gen_hidden_dim = 32
-mem_slots = 1
-num_heads = 2
-head_size = [512, 512, 512, 256, 256, 256]
 generator_complexity = [768, 512, 512, 512, 512, 512]
 
 # ===Discriminator===
-ADV_d_step = 3
-dis_embed_dim = 64
-dis_hidden_dim = 64
-num_rep = 64
 discriminator_complexity = [512, 512, 512, 512, 512]
 
 # ===Metrics===
@@ -133,34 +113,12 @@ args = [
     '--batches_per_epoch', batches_per_epoch,
     '--noise_size', noise_size,
     '--target_len', target_len[job_id],
-
-    # Basic Param
-    '--shuffle', data_shuffle,
-    '--model_type', model_type,
-    '--gen_init', gen_init,
-    '--dis_init', dis_init,
-    '--samples_num', samples_num,
-    '--batch_size', batch_size,
-    '--gen_lr', gen_lr,
-    '--gen_adv_lr', gen_adv_lr,
-    '--dis_lr', dis_lr,
-    '--pre_log_step', pre_log_step,
-    '--adv_log_step', adv_log_step,
+    '--oracle_train_samples_num', oracle_train_samples_num,
 
     # Generator
-    '--adv_g_step', ADV_g_step,
-    '--gen_embed_dim', gen_embed_dim,
-    '--gen_hidden_dim', gen_hidden_dim,
-    '--mem_slots', mem_slots,
-    '--num_heads', num_heads,
-    '--head_size', head_size[job_id],
     '--generator_complexity', generator_complexity[job_id],
 
     # Discriminator
-    '--adv_d_step', ADV_d_step,
-    '--dis_embed_dim', dis_embed_dim,
-    '--dis_hidden_dim', dis_hidden_dim,
-    '--num_rep', num_rep,
     '--discriminator_complexity', discriminator_complexity[job_id],
 
     # Metrics

@@ -5,6 +5,7 @@ from time import strftime, gmtime
 import numpy as np
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 
 from metrics.nll import NLL
 from utils.data_loader import GenDataIter
@@ -79,14 +80,14 @@ def create_oracle():
                cfg.oracle_samples_path.format(cfg.samples_num // 2))
 
     #giant for W2V
-    giant_samples = self.oracle.sample(cfg.w2v_samples_num, 4 * cfg.batch_size)
+    giant_samples = oracle.sample(cfg.w2v_samples_num, 4 * cfg.batch_size)
     with open(cfg.oracle_samples_path.format(cfg.w2v_samples_num), 'w') as f:
         for sample in tqdm(giant_samples):
             f.write(" ".join(str(int(idx)) for idx in sample))
             f.write("\n")
 
     # moderate for training for W2V
-    train_samples = self.oracle.sample(cfg.train_samples_num, 4 * cfg.batch_size)
+    train_samples = oracle.sample(cfg.oracle_train_samples_num, 4 * cfg.batch_size)
     with open(cfg.train_data, 'w') as f:
         for sample in tqdm(train_samples):
             f.write(" ".join(str(int(idx)) for idx in sample))
