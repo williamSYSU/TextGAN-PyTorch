@@ -26,7 +26,7 @@ else:
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = 'python'
+executable = 'python3'
 rootdir = '../'
 scriptname = 'main.py'
 
@@ -101,14 +101,8 @@ args = [
     '--w2v_workers', w2v_workers,
     '--w2v_samples_num', w2v_samples_num,
 
-    # CatGAN Param
-    '--n_parent', n_parent,
+    # FixemGAN Param
     '--loss_type', loss_type,
-    '--mu_type', mu_type,
-    '--eval_type', eval_type,
-    '--temp_adpt', temp_adpt,
-    '--d_out_mean', d_out_mean,
-
     '--max_epochs', max_epochs,
     '--batches_per_epoch', batches_per_epoch,
     '--noise_size', noise_size,
