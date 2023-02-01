@@ -4,7 +4,7 @@
 # @FileName     : bleu.py
 # @Time         : Created at 2019-05-31
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 from multiprocessing import Pool
 
@@ -28,7 +28,7 @@ class BLEU(Metrics):
         self.sample_size = 200  # BLEU scores remain nearly unchanged for self.sample_size >= 200
         self.reference = None
         self.is_first = True
-        self.portion = portion  # how many portions to use in the evaluation, default to use the whole test dataset
+        self.portion = 0.01#portion  # how many portions to use in the evaluation, default to use the whole test dataset
 
     def get_score(self, is_fast=True, given_gram=None):
         """
@@ -81,6 +81,7 @@ class BLEU(Metrics):
 
     @staticmethod
     def cal_bleu(reference, hypothesis, weight):
+        print(reference, hypothesis)
         return nltk.translate.bleu_score.sentence_bleu(reference, hypothesis, weight,
                                                        smoothing_function=SmoothingFunction().method1)
 

@@ -43,13 +43,13 @@ batches_per_epoch = 200
 tips = '{} experiments'
 
 # ===Oracle or Real===
-if_real_data = [int(False), int(True), int(True), int(True), int(True)]
+if_real_data = [int(True), int(True), int(True), int(True), int(True)]
 dataset = ['mr20', 'mr15', 'oracle', 'amazon_app_book', 'image_coco', 'emnlp_news']
-w2v_embedding_size = [512, 100, 512, 100, 100, 100]
+w2v_embedding_size = [100, 100, 512, 100, 100, 100]
 w2v_window = 5
 w2v_min_count = 30
 w2v_workers = 30
-w2v_samples_num = 5_000_000
+w2v_samples_num = 100_000
 vocab_size = [5000, 0, 0, 5000, 0, 0]
 
 # ===CatGAN Param===
