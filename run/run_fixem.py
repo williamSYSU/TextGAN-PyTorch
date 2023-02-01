@@ -61,7 +61,6 @@ data_shuffle = int(False)
 model_type = 'fixem'
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
-samples_num = 10000
 batch_size = 64
 target_len = [20, 40, 20, 16, 52, 36]
 

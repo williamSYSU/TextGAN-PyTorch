@@ -135,12 +135,12 @@ class FixemGANInstructor(BasicInstructor):
             for sample in samples:
                 print(sample)
 
-            if (i + 1) % 10 == 0:
-                if cfg.run_model == 'fixemgan':
-                    scores = self.cal_metrics(fmt_str=True)
-                if cfg.run_model == 'cat_fixemgan':
-                    scores = ' '.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
-                print('epoch:', i, scores)
+            # if (i + 1) % 10 == 0:
+            if cfg.run_model == 'fixemgan':
+                scores = self.cal_metrics(fmt_str=True)
+            if cfg.run_model == 'cat_fixemgan':
+                scores = ' '.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
+            print('epoch:', i, scores)
 
 
     def one_more_batch_for_generator(
@@ -161,8 +161,10 @@ class FixemGANInstructor(BasicInstructor):
             # gen_data = GenDataIter(eval_samples)
             # gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
             gen_tokens = self.generator.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+            gen_tokens = [sample.split() for sample in gen_tokens]
             # gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i), self.idx2word_dict)
             gen_tokens_s = self.generator.sample(200, 200, label_i=label_i)
+            gen_tokens_s = [sample.split() for sample in gen_tokens_s]
             # clas_data = CatClasDataIter([eval_samples], label_i)
 
             # Reset metrics

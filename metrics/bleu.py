@@ -81,7 +81,6 @@ class BLEU(Metrics):
 
     @staticmethod
     def cal_bleu(reference, hypothesis, weight):
-        print(reference, hypothesis)
         return nltk.translate.bleu_score.sentence_bleu(reference, hypothesis, weight,
                                                        smoothing_function=SmoothingFunction().method1)
 
