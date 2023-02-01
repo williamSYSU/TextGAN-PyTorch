@@ -38,6 +38,10 @@ from models.FixemGAN_D import Discriminator
 # random data portion generator?
 
 
+# half of page idea explained
+# current status
+# plans for future, implementation tweaks
+
 class FixemGANInstructor(RealDataFixemGANInstructor, BasicInstructor):
     def __init__(self, opt):
         self.oracle = Oracle(32, 32, cfg.vocab_size, cfg.max_seq_len,cfg.padding_idx, gpu=cfg.CUDA)

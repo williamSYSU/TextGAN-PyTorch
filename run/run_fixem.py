@@ -26,7 +26,7 @@ else:
     print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
 
 # Executables
-executable = 'python3'
+executable = 'python'
 rootdir = '../'
 scriptname = 'main.py'
 
