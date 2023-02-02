@@ -28,7 +28,7 @@ class BLEU(Metrics):
         self.sample_size = 200  # BLEU scores remain nearly unchanged for self.sample_size >= 200
         self.reference = None
         self.is_first = True
-        self.portion = 0.01#portion  # how many portions to use in the evaluation, default to use the whole test dataset
+        self.portion = portion  # how many portions to use in the evaluation, default to use the whole test dataset
 
     def get_score(self, is_fast=True, given_gram=None):
         """

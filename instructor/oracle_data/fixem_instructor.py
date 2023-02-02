@@ -26,17 +26,16 @@ from models.FixemGAN_D import Discriminator
 
 
 # TO DO:
-# 5. fix bleu score
 # 6. add new interested scores (IOC, NLL on GPT) (split quick metric and slow metric)
 # 4. save? or save each 10 epochs
 # 7. logger
 # 11. make run_fixem clean
-# 10. cat_oracle ?
+# 10. cat_oracle
+# 12. class accuracy
 
 # afterwards:
 # check target real/fake to be right (Uniform or const)
 # random data portion generator?
-
 
 # half of page idea explained
 # current status

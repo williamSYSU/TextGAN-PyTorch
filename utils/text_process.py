@@ -19,7 +19,7 @@ import config as cfg
 def text_file_iterator(file):
     with open(file) as raw:
         for line in raw.readlines():
-            yield line.strip().split()
+            yield line.strip('\n').split()
 
 
 def get_tokenlized(file):

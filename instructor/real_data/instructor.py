@@ -14,6 +14,8 @@ import torch.nn as nn
 import config as cfg
 from metrics.bleu import BLEU
 from metrics.clas_acc import ACC
+from metrics.ioc import IOC
+from metrics.gpt_nll import GPTNLL
 from metrics.nll import NLL
 from metrics.ppl import PPL
 from utils.cat_data_loader import CatClasDataIter
@@ -70,8 +72,10 @@ class BasicInstructor:
         self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div, gpu=cfg.CUDA)
         self.self_bleu = BLEU('Self-BLEU', gram=[2, 3, 4], if_use=cfg.use_self_bleu)
         self.clas_acc = ACC(if_use=cfg.use_clas_acc)
+        self.ioc = IOC(if_use=cfg.use_ioc, real_text=self.test_data.tokens)
+        self.gpt_nll = GPTNLL(if_use=cfg.use_gpt_nll, real_text=self.test_data.tokens)
         # self.ppl = PPL(self.train_data, self.test_data, n_gram=5, if_use=cfg.use_ppl)
-        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu]#, self.ppl]
+        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.gpt_nll]#, self.ppl]
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -217,7 +221,9 @@ class BasicInstructor:
             self.nll_gen.reset(self.gen, self.train_data.loader)
             self.nll_div.reset(self.gen, gen_data.loader)
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
-            self.ppl.reset(gen_tokens)
+            self.ppl.reset(test_text=gen_tokens)
+            self.ioc.reset(test_text=gen_tokens)
+            self.gpt_nll.reset(test_text=gen_tokens)
 
         if fmt_str:
             return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])

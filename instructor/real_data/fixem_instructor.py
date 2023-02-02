@@ -62,7 +62,7 @@ class FixemGANInstructor(BasicInstructor):
         self.G_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, CUDA=cfg.CUDA)
         self.D_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2, CUDA=cfg.CUDA)
 
-        self.all_metrics = [self.bleu, self.self_bleu]
+        self.all_metrics = [self.bleu, self.self_bleu, self.ioc, self.gpt_nll]
 
     def build_embedding(self):
         print(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
@@ -174,6 +174,8 @@ class FixemGANInstructor(BasicInstructor):
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
             # self.clas_acc.reset(self.clas, clas_data.loader)
             # self.ppl.reset(gen_tokens)
+            self.ioc.reset(test_text=gen_tokens)
+            self.gpt_nll.reset(test_text=gen_tokens)
 
         if fmt_str:
             return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
@@ -189,7 +191,9 @@ class FixemGANInstructor(BasicInstructor):
         with torch.no_grad():
             # Prepare data for evaluation
             gen_tokens = self.generator.sample(cfg.samples_num, 4 * cfg.batch_size)
+            gen_tokens = [sample.split() for sample in gen_tokens]
             gen_tokens_s = self.generator.sample(200, 200)
+            gen_tokens_s = [sample.split() for sample in gen_tokens_s]
 
             # Reset metrics
             self.bleu.reset(test_text=gen_tokens, real_text=self.test_data.tokens)
