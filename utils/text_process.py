@@ -7,7 +7,6 @@
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
-import nltk
 import numpy as np
 import os
 import torch
@@ -27,7 +26,7 @@ def get_tokenlized(file):
     tokenlized = list()
     with open(file) as raw:
         for text in raw:
-            text = nltk.word_tokenize(text.lower())
+            text = text.strip('\n').lower().split()
             tokenlized.append(text)
     return tokenlized
 
@@ -375,21 +374,6 @@ def vectorize_sentence(tokens, w2v, target_len: int = 52, embedding_size: int = 
     vectorized = vectorized.T  # required for pytorch
     return vectorized
 
-import os
-import nltk
-nltk.download('punkt')
-from tqdm.notebook import tqdm
-from pathlib import Path
-
-
-def tokenize_and_save(source, path, filename):
-    with open(Path(path) / filename, 'w') as f:
-        for _, line in tqdm(source, desc=filename):
-            line = line.strip().lower()
-            line = ' '.join(nltk.tokenize.word_tokenize(line))
-            f.write(line)
-            f.write('\n')
-
 
 if __name__ == '__main__':
     os.chdir('../')
@@ -399,6 +383,22 @@ if __name__ == '__main__':
 
     # dataset preprocess and saving
     import torchtext
+    import os
+    import nltk
+    nltk.download('punkt')
+    from tqdm.notebook import tqdm
+    from pathlib import Path
+
+    def tokenize_and_save(source, path, filename):
+        with open(Path(path) / filename, 'w') as f:
+            for _, line in tqdm(source, desc=filename):
+                line = line.strip().lower()
+                line = ' '.join(nltk.tokenize.word_tokenize(line))
+                line = ' '.join(line.split('\n'))
+                line = ' '.join(line.split('\\n'))
+                line = ' '.join(line.split('\\'))
+                f.write(line)
+                f.write('\n')
 
     AGNEWS_train, AGNEWS_test = torchtext.datasets.AG_NEWS(
         root="./data", split=("train", "test")
@@ -406,7 +406,6 @@ if __name__ == '__main__':
     DBpedia_train, DBpedia_test = torchtext.datasets.DBpedia(
         root="./data", split=("train", "test")
     )
-
     WikiText103_train, WikiText103_valid, WikiText103_test = torchtext.datasets.WikiText103(
         root="./data", split=("train", "valid", "test")
     )

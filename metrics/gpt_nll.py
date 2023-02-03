@@ -3,6 +3,7 @@ from itertools import chain
 import os
 import random
 
+import torch
 import torch.nn.functional as F
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
@@ -21,7 +22,7 @@ class GPTNLL(Metrics):
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         self.model = GPT2LMHeadModel.from_pretrained("gpt2")
 
-        self.real_text_nll = self.get_ioc(real_text) if real_text else None
+        self.real_text_nll = self.get_NLL(real_text) if real_text else None
 
     def get_score(self):
         """Get gpt2 NLL score."""
@@ -39,12 +40,12 @@ class GPTNLL(Metrics):
 
         all_logits = []
         for message in messages:
-            message = "<|endoftext|>" + message + "<|endoftext|>"
+            message = self.tokenizer.eos_token + message + self.tokenizer.eos_token
             inputs = self.tokenizer(message, return_tensors="pt")
             logits = self.model(**inputs)[0][0]
-            logits = F.log_softmax(logits)
+            logits = F.log_softmax(logits, dim=1)
             # calculating NLL loss on token appearing on it's position
             all_logits.append(
-                self.NLLLloss(logits[:-1], inputs["input_ids"][0][1:]).detach().numpy()
+                self.NLLloss(logits[:-1], inputs["input_ids"][0][1:]).detach().numpy()
             )
         return np.mean(all_logits)
