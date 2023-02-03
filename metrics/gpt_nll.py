@@ -3,6 +3,7 @@ from itertools import chain
 import os
 import random
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
@@ -16,19 +17,20 @@ class GPTNLL(Metrics):
 
         self.if_use = if_use
         self.test_text = test_text
-        self.dataset_nll = 0
 
         self.NLLloss = torch.nn.NLLLoss()
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         self.model = GPT2LMHeadModel.from_pretrained("gpt2")
-
-        self.real_text_nll = self.get_NLL(real_text) if real_text else None
+        print('Calculating dataset NLL')
+        self.real_text_nll = self.get_NLL(random.sample(real_text, 500)) if real_text else None
+        print(f'dataset NLL based on GPT2 is {self.real_text_nll}')
+        print('GPT2 as oracle metric will be calculated relative to this value')
 
     def get_score(self):
         """Get gpt2 NLL score."""
         if not self.if_use:
             return 0
-        return self.get_NLL(self.test_text) - self.dataset_nll
+        return self.get_NLL(self.test_text) - self.real_text_nll
 
     def reset(self, test_text=None, real_text=None):
         self.test_text = test_text if test_text else self.test_text

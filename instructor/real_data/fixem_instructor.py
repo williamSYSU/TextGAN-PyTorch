@@ -201,6 +201,8 @@ class FixemGANInstructor(BasicInstructor):
             # self.nll_div.reset(self.gen, gen_data.loader)
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
             # self.ppl.reset(gen_tokens)
+            self.ioc.reset(test_text=gen_tokens)
+            self.gpt_nll.reset(test_text=gen_tokens)
 
         if fmt_str:
             return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])

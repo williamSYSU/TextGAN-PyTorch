@@ -15,6 +15,7 @@ class IOC(Metrics):
         self.if_use = if_use
         self.test_text = test_text
         self.real_text_ioc = self.get_ioc(real_text) if real_text else None
+        print(f'Dataset Index of coincedense: {self.real_text_ioc}')
         self.reference = None
         self.is_first = True
         self.portion = 0.01#portion  # how many portions to use in the evaluation, default to use the whole test dataset
