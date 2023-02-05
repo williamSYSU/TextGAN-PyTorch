@@ -38,6 +38,8 @@ class BasicInstructor:
         # load dictionary
         if cfg.if_real_data:
             self.word2idx_dict, self.idx2word_dict = load_dict(cfg.dataset)
+        else:
+            self.word2idx_dict, self.idx2word_dict = {}, {}
 
         # Dataloader
         try:
@@ -73,9 +75,9 @@ class BasicInstructor:
         self.self_bleu = BLEU('Self-BLEU', gram=[2, 3, 4], if_use=cfg.use_self_bleu)
         self.clas_acc = ACC(if_use=cfg.use_clas_acc)
         self.ioc = IOC(if_use=cfg.use_ioc, real_text=self.test_data.tokens)
-        self.gpt_nll = GPTNLL(if_use=cfg.use_gpt_nll, real_text=self.test_data.tokens)
+        self.nll_oracle = GPTNLL(if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
         # self.ppl = PPL(self.train_data, self.test_data, n_gram=5, if_use=cfg.use_ppl)
-        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.gpt_nll]#, self.ppl]
+        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.nll_oracle, self.ppl]
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -204,6 +206,13 @@ class BasicInstructor:
             self.log.info('>>> {0}: {1}'.format(arg, getattr(self.opt, arg)))
         self.log.info(100 * '=')
 
+    def sample_for_metrics(self):
+        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
+        gen_data = GenDataIter(eval_samples)
+        gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
+        gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200), self.idx2word_dict)
+        return gen_data, gen_tokens, gen_tokens_s
+
     def cal_metrics(self, fmt_str=False):
         """
         Calculate metrics
@@ -211,11 +220,7 @@ class BasicInstructor:
         """
         with torch.no_grad():
             # Prepare data for evaluation
-            eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
-            gen_data = GenDataIter(eval_samples)
-            gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-            gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200), self.idx2word_dict)
-
+            gen_data, gen_tokens, gen_tokens_s = sample_for_metrics()
             # Reset metrics
             self.bleu.reset(test_text=gen_tokens, real_text=self.test_data.tokens)
             self.nll_gen.reset(self.gen, self.train_data.loader)
@@ -223,7 +228,7 @@ class BasicInstructor:
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
             self.ppl.reset(test_text=gen_tokens)
             self.ioc.reset(test_text=gen_tokens)
-            self.gpt_nll.reset(test_text=gen_tokens)
+            self.nll_oracle.reset(test_text=gen_tokens)
 
         if fmt_str:
             return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])

@@ -4,7 +4,7 @@
 # @FileName     : instructor.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import numpy as np

@@ -104,7 +104,6 @@ use_nll_div = True
 use_bleu = True
 use_self_bleu = False
 use_ioc = True
-use_gpt_nll = True
 use_clas_acc = True
 use_ppl = False
 

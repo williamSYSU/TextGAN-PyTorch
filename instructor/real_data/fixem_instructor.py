@@ -182,29 +182,9 @@ class FixemGANInstructor(BasicInstructor):
 
         return [metric.get_score() for metric in self.all_metrics]
 
-
-    def cal_metrics(self, fmt_str=False):
-        """
-        Calculate metrics
-        :param fmt_str: if return format string for logging
-        """
-        with torch.no_grad():
-            # Prepare data for evaluation
-            gen_tokens = self.generator.sample(cfg.samples_num, 4 * cfg.batch_size)
-            gen_tokens = [sample.split() for sample in gen_tokens]
-            gen_tokens_s = self.generator.sample(200, 200)
-            gen_tokens_s = [sample.split() for sample in gen_tokens_s]
-
-            # Reset metrics
-            self.bleu.reset(test_text=gen_tokens, real_text=self.test_data.tokens)
-            # self.nll_gen.reset(self.gen, self.train_data.loader)
-            # self.nll_div.reset(self.gen, gen_data.loader)
-            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
-            # self.ppl.reset(gen_tokens)
-            self.ioc.reset(test_text=gen_tokens)
-            self.gpt_nll.reset(test_text=gen_tokens)
-
-        if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
-        else:
-            return [metric.get_score() for metric in self.all_metrics]
+    def sample_for_metrics(self):
+        gen_tokens = self.generator.sample(cfg.samples_num, 4 * cfg.batch_size)
+        gen_tokens = [sample.split() for sample in gen_tokens]
+        gen_tokens_s = self.generator.sample(200, 200)
+        gen_tokens_s = [sample.split() for sample in gen_tokens_s]
+        return None, gen_tokens, gen_tokens_s

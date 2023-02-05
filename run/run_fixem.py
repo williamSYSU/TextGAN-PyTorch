@@ -72,8 +72,8 @@ discriminator_complexity = [512, 512, 512, 512, 512]
 
 # ===Metrics===
 use_nll_oracle = int(True)
-use_nll_gen = int(True)
-use_nll_div = int(True)
+use_nll_gen = int(False)
+use_nll_div = int(False)
 use_bleu = int(True)
 use_self_bleu = int(True)
 use_clas_acc = int(True)
