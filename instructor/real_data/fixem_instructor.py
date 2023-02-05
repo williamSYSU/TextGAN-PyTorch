@@ -14,7 +14,7 @@ import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from utils.gan_loss import GANLoss
 from utils.text_process import text_file_iterator
-from utils.data_loader import DataSupplier, GANDataset
+from utils.data_loader import DataSupplier, GenDataIter, GANDataset
 from utils.nn_helpers import create_noise, number_of_parameters
 from utils.create_embeddings import EmbeddingsTrainer, load_embedding
 from models.FixemGAN_G import Generator
@@ -44,7 +44,7 @@ class FixemGANInstructor(BasicInstructor):
 
         self.train_data_supplier = DataSupplier(train_data, labels, w2v, cfg.batch_size, cfg.batches_per_epoch)
 
-        self.disc = Discriminator(cfg.discriminator_complexity)
+        self.dis = Discriminator(cfg.discriminator_complexity)
         print(
             "discriminator total tranable parameters:",
             number_of_parameters(self.dis.parameters())
@@ -62,8 +62,6 @@ class FixemGANInstructor(BasicInstructor):
         self.G_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, CUDA=cfg.CUDA)
         self.D_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2, CUDA=cfg.CUDA)
 
-        self.all_metrics = [self.bleu, self.self_bleu, self.ioc, self.gpt_nll]
-
     def build_embedding(self):
         print(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
         print("Will train new one, it may take a while...")
@@ -71,11 +69,11 @@ class FixemGANInstructor(BasicInstructor):
         EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()
 
     def generator_train_one_batch(self):
-        self.generator.optimizer.zero_grad()
+        self.gen.optimizer.zero_grad()
         noise = create_noise(cfg.batch_size, cfg.noise_size, cfg.k_label)
         if cfg.CUDA:
             noise = tuple(tt.cuda() for tt in noise)
-        fakes = self.generator(*noise)
+        fakes = self.gen(*noise)
 
         real_fake_predicts, label_predicts = self.dis(fakes)
         loss = self.G_criterion.G_loss_fixem(real_fake_predicts, label_predicts, noise[1], fakes)
@@ -96,7 +94,7 @@ class FixemGANInstructor(BasicInstructor):
         noise = create_noise(cfg.batch_size, cfg.noise_size, cfg.k_label)
         if cfg.CUDA:
             noise = tuple(tt.cuda() for tt in noise)
-        fake = self.generator(*noise).detach()
+        fake = self.gen(*noise).detach()
         text_input_vectors = torch.cat((real_vector, fake))
 
         # optmizer step
@@ -131,7 +129,7 @@ class FixemGANInstructor(BasicInstructor):
                     generator_acc = self.generator_train_one_batch()
 
 
-            samples = self.gene.sample(20, 20)
+            samples = self.gen.sample(20, 20)
             for sample in samples:
                 print(sample)
 
@@ -187,4 +185,4 @@ class FixemGANInstructor(BasicInstructor):
         gen_tokens = [sample.split() for sample in gen_tokens]
         gen_tokens_s = self.gen.sample(200, 200)
         gen_tokens_s = [sample.split() for sample in gen_tokens_s]
-        return None, gen_tokens, gen_tokens_s
+        return GenDataIter(gen_tokens), gen_tokens, gen_tokens_s

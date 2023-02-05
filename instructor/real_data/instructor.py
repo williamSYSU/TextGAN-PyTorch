@@ -220,7 +220,7 @@ class BasicInstructor:
         """
         with torch.no_grad():
             # Prepare data for evaluation
-            gen_data, gen_tokens, gen_tokens_s = sample_for_metrics()
+            gen_data, gen_tokens, gen_tokens_s = self.sample_for_metrics()
             # Reset metrics
             self.bleu.reset(test_text=gen_tokens, real_text=self.test_data.tokens)
             self.nll_gen.reset(self.gen, self.train_data.loader)

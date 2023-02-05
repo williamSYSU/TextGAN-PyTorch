@@ -45,8 +45,8 @@ class GenDataIter:
             shuffle=self.shuffle,
             drop_last=True)
 
-        self.input = self._all_data_('input')
-        self.target = self._all_data_('target')
+        # self.input = self._all_data_('input')
+        # self.target = self._all_data_('target')
 
     def __read_data__(self, samples):
         """
