@@ -76,7 +76,7 @@ class BasicInstructor:
         self.clas_acc = ACC(if_use=cfg.use_clas_acc)
         self.ioc = IOC(if_use=cfg.use_ioc, real_text=self.test_data.tokens)
         self.nll_oracle = GPTNLL(if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
-        # self.ppl = PPL(self.train_data, self.test_data, n_gram=5, if_use=cfg.use_ppl)
+        self.ppl = PPL(self.train_data, self.test_data, n_gram=5, if_use=cfg.use_ppl)
         self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.nll_oracle, self.ppl]
 
     def _run(self):

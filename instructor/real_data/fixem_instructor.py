@@ -44,20 +44,20 @@ class FixemGANInstructor(BasicInstructor):
 
         self.train_data_supplier = DataSupplier(train_data, labels, w2v, cfg.batch_size, cfg.batches_per_epoch)
 
-        self.discriminator = Discriminator(cfg.discriminator_complexity)
+        self.disc = Discriminator(cfg.discriminator_complexity)
         print(
             "discriminator total tranable parameters:",
-            number_of_parameters(self.discriminator.parameters())
+            number_of_parameters(self.dis.parameters())
         )
-        self.generator = Generator(cfg.generator_complexity, cfg.noise_size, w2v, cfg.w2v_embedding_size)
+        self.gen = Generator(cfg.generator_complexity, cfg.noise_size, w2v, cfg.w2v_embedding_size)
         print(
             "generator total tranable parameters:",
-            number_of_parameters(self.generator.parameters())
+            number_of_parameters(self.gen.parameters())
         )
 
         if cfg.CUDA:
-            self.discriminator = self.discriminator.cuda()
-            self.generator = self.generator.cuda()
+            self.dis = self.dis.cuda()
+            self.gen = self.gen.cuda()
 
         self.G_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, CUDA=cfg.CUDA)
         self.D_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2, CUDA=cfg.CUDA)
@@ -77,11 +77,11 @@ class FixemGANInstructor(BasicInstructor):
             noise = tuple(tt.cuda() for tt in noise)
         fakes = self.generator(*noise)
 
-        real_fake_predicts, label_predicts = self.discriminator(fakes)
+        real_fake_predicts, label_predicts = self.dis(fakes)
         loss = self.G_criterion.G_loss_fixem(real_fake_predicts, label_predicts, noise[1], fakes)
 
         loss.backward()
-        self.generator.optimizer.step()
+        self.gen.optimizer.step()
 
         generator_acc = float(
             np.array(real_fake_predicts.detach().cpu().numpy() > 0.5, dtype=int).mean()
@@ -100,11 +100,11 @@ class FixemGANInstructor(BasicInstructor):
         text_input_vectors = torch.cat((real_vector, fake))
 
         # optmizer step
-        self.discriminator.optimizer.zero_grad()
-        real_fake_predicts, label_predicts = self.discriminator(text_input_vectors)
+        self.dis.optimizer.zero_grad()
+        real_fake_predicts, label_predicts = self.dis(text_input_vectors)
         loss = self.D_criterion.D_loss_fixem(real_fake_predicts, label_predicts[:this_batch_size], labels)
         loss.backward()
-        self.discriminator.optimizer.step()
+        self.dis.optimizer.step()
 
         real_fake_predicts = real_fake_predicts.clone().detach()
         real_fake_predicts = real_fake_predicts.chunk(2) #splitting to realand fake parks
@@ -131,7 +131,7 @@ class FixemGANInstructor(BasicInstructor):
                     generator_acc = self.generator_train_one_batch()
 
 
-            samples = self.generator.sample(20, 20)
+            samples = self.gene.sample(20, 20)
             for sample in samples:
                 print(sample)
 
@@ -160,10 +160,10 @@ class FixemGANInstructor(BasicInstructor):
             # eval_samples = self.generator.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
             # gen_data = GenDataIter(eval_samples)
             # gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-            gen_tokens = self.generator.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+            gen_tokens = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
             gen_tokens = [sample.split() for sample in gen_tokens]
             # gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i), self.idx2word_dict)
-            gen_tokens_s = self.generator.sample(200, 200, label_i=label_i)
+            gen_tokens_s = self.gen.sample(200, 200, label_i=label_i)
             gen_tokens_s = [sample.split() for sample in gen_tokens_s]
             # clas_data = CatClasDataIter([eval_samples], label_i)
 
@@ -183,8 +183,8 @@ class FixemGANInstructor(BasicInstructor):
         return [metric.get_score() for metric in self.all_metrics]
 
     def sample_for_metrics(self):
-        gen_tokens = self.generator.sample(cfg.samples_num, 4 * cfg.batch_size)
+        gen_tokens = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
         gen_tokens = [sample.split() for sample in gen_tokens]
-        gen_tokens_s = self.generator.sample(200, 200)
+        gen_tokens_s = self.gen.sample(200, 200)
         gen_tokens_s = [sample.split() for sample in gen_tokens_s]
         return None, gen_tokens, gen_tokens_s

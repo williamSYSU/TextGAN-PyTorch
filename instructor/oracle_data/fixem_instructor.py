@@ -58,7 +58,6 @@ class FixemGANInstructor(RealDataFixemGANInstructor, BasicInstructor):
 
         # Metrics
         self.nll_oracle = NLL('NLL_oracle', if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
-        self.all_metrics = [self.nll_oracle]
 
     def build_embedding(self):
         # train embedding on available dataset or oracle
