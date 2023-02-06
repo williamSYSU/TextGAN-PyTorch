@@ -46,15 +46,9 @@ class FixemGANInstructor(BasicInstructor):
         self.train_data_supplier = DataSupplier(train_data, labels, w2v, cfg.batch_size, cfg.batches_per_epoch)
 
         self.dis = Discriminator(cfg.discriminator_complexity)
-        self.log.info(
-            "discriminator total tranable parameters:",
-            number_of_parameters(self.dis.parameters())
-        )
+        self.log.info(f"discriminator total tranable parameters: {number_of_parameters(self.dis.parameters())}")
         self.gen = Generator(cfg.generator_complexity, cfg.noise_size, w2v, cfg.w2v_embedding_size)
-        self.log.info(
-            "generator total tranable parameters:",
-            number_of_parameters(self.gen.parameters())
-        )
+        self.log.info(f"generator total tranable parameters: {number_of_parameters(self.gen.parameters())}")
 
         if cfg.CUDA:
             self.dis = self.dis.cuda()
@@ -138,8 +132,8 @@ class FixemGANInstructor(BasicInstructor):
             if cfg.run_model == 'fixemgan':
                 scores = self.cal_metrics(fmt_str=True)
             if cfg.run_model == 'cat_fixemgan':
-                scores = ' '.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
-            self.log.info('epoch:', i, scores)
+                scores = '\n\n'.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
+            self.log.info('epoch: {i} \n {scores}')
 
 
     def one_more_batch_for_generator(

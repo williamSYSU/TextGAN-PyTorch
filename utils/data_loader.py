@@ -141,7 +141,15 @@ class DataSupplier:
 
         self.labels = torch.tensor(labels, dtype=int)
 
-        self.vectors = [vectorize_sentence(tokens, w2v, target_len=cfg.target_len, padding_token = cfg.padding_token) for tokens in tokenized]
+        self.vectors = [
+            vectorize_sentence(
+                tokens,
+                w2v,
+                target_len=cfg.target_len,
+                padding_token = cfg.padding_token,
+            )
+            for tokens in tqdm(tokenized, desc='vectorizing dataset')
+        ]
         self.vectors = np.stack(self.vectors, axis=0)
         self.vectors = torch.tensor(self.vectors, dtype=torch.float32)
 
