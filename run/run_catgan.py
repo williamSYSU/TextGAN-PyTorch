@@ -4,7 +4,7 @@
 # @FileName     : run_catgan.py
 # @Time         : Created at 2019-08-04
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 import sys
 from subprocess import call
@@ -34,7 +34,7 @@ scriptname = 'main.py'
 # CatGAN: Catgory text generation model
 # EvoGAN: General text generation model
 if_test = int(False)
-run_model = ['catgan', 'catgan', 'catgan', 'evogan', 'evogan', 'evogan']
+run_model = ['evogan', 'catgan', 'catgan', 'catgan', 'evogan', 'evogan']
 k_label = 2
 CUDA = int(True)
 ora_pretrain = int(True)
@@ -46,8 +46,8 @@ ADV_train_epoch = 2000
 tips = '{} experiments'
 
 # ===Oracle or Real===
-if_real_data = [int(False), int(True), int(True), int(False), int(True), int(True)]
-dataset = ['oracle', 'mr15', 'amazon_app_book', 'oracle', 'image_coco', 'emnlp_news']
+if_real_data = [int(True), int(False), int(True), int(False), int(True), int(True)]
+dataset = ['amazon_app_book', 'oracle', 'mr15', 'oracle', 'image_coco', 'emnlp_news']
 vocab_size = [5000, 0, 0, 5000, 0, 0]
 
 # ===CatGAN Param===

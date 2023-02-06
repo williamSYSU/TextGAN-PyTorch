@@ -33,7 +33,7 @@ scriptname = 'main.py'
 # ===Program===
 # EvoGAN: General text generation model
 if_test = int(False)
-run_model = ['fixemgan', 'cat_fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan', 'cat_fixemgan', 'cat_fixemgan']
+run_model = ['fixemgan', 'cat_fixemgan', 'fixemgan', 'cat_fixemgan', 'fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan', 'fixemgan']
 k_label = 2
 CUDA = int(True)
 batch_size = 32
@@ -43,14 +43,14 @@ batches_per_epoch = 200
 tips = '{} experiments'
 
 # ===Oracle or Real===
-if_real_data = [int(True), int(True), int(True), int(True), int(True)]
-dataset = ['amazon_app_book', 'mr20', 'mr15', 'oracle', 'amazon_app_book', 'image_coco', 'emnlp_news']
-w2v_embedding_size = [128, 256, 512, 128, 128, 128]
+if_real_data = [int(True), int(True), int(True), int(True), int(True), int(True), int(True), int(False), int(False)]
+dataset = ['amazon_app_book', 'mr20', 'mr20', 'mr15', 'mr15', 'image_coco', 'emnlp_news', 'oracle', 'oracle']
+w2v_embedding_size = 512 #hyperparam
 w2v_window = 5
 w2v_min_count = 30
 w2v_workers = 30
-w2v_samples_num = 100_000
-vocab_size = [5000, 0, 0, 5000, 0, 0]
+w2v_samples_num = 5_000_000
+vocab_size = 5000
 
 # ===CatGAN Param===
 loss_type = 'fixem'
@@ -62,13 +62,13 @@ model_type = 'fixem'
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
 batch_size = 64
-target_len = [20, 40, 20, 16, 52, 36]
+target_len = [40, 20, 20, 16, 16, 16, 48, 20, 20]
 
 # ===Generator===
-generator_complexity = [768, 512, 512, 512, 512, 512]
+generator_complexity = 768 #hyperparam
 
 # ===Discriminator===
-discriminator_complexity = [512, 512, 512, 512, 512]
+discriminator_complexity = 512 #hyperparam
 
 # ===Metrics===
 use_nll_oracle = int(True)
@@ -91,10 +91,10 @@ args = [
     # Oracle or Real
     '--if_real_data', if_real_data[job_id],
     '--dataset', dataset[job_id],
-    '--vocab_size', vocab_size[job_id],
+    '--vocab_size', vocab_size,
 
     # W2V embeddings
-    '--w2v_embedding_size', w2v_embedding_size[job_id],
+    '--w2v_embedding_size', w2v_embedding_size,
     '--w2v_window', w2v_window,
     '--w2v_min_count', w2v_min_count,
     '--w2v_workers', w2v_workers,
@@ -109,10 +109,10 @@ args = [
     '--oracle_train_samples_num', oracle_train_samples_num,
 
     # Generator
-    '--generator_complexity', generator_complexity[job_id],
+    '--generator_complexity', generator_complexity,
 
     # Discriminator
-    '--discriminator_complexity', discriminator_complexity[job_id],
+    '--discriminator_complexity', discriminator_complexity,
 
     # Metrics
     '--use_nll_oracle', use_nll_oracle,
