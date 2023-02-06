@@ -124,16 +124,15 @@ class FixemGANInstructor(BasicInstructor):
                     generator_acc = self.generator_train_one_batch()
 
 
-            samples = self.gen.sample(20, 20)
-            for sample in samples:
-                self.log.info(sample)
+            self.log.info('\n'.join(self.gen.sample(20, 20)))
 
             # if (i + 1) % 10 == 0:
             if cfg.run_model == 'fixemgan':
                 scores = self.cal_metrics(fmt_str=True)
             if cfg.run_model == 'cat_fixemgan':
                 scores = '\n\n'.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
-            self.log.info('epoch: {i} \n {scores}')
+            self.log.info(f'epoch: {i}')
+            self.log.info(f'{scores}')
 
 
     def one_more_batch_for_generator(

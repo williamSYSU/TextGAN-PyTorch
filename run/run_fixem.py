@@ -44,8 +44,8 @@ tips = '{} experiments'
 
 # ===Oracle or Real===
 if_real_data = [int(True), int(True), int(True), int(True), int(True), int(True), int(True), int(False), int(False)]
-dataset = ['amazon_app_book', 'mr20', 'mr20', 'mr15', 'mr15', 'image_coco', 'emnlp_news', 'oracle', 'oracle']
-w2v_embedding_size = 128 #low on ram #hyperparam
+dataset = ['image_coco', 'mr20', 'mr20', 'mr15', 'mr15', 'amazon_app_book', 'emnlp_news', 'oracle', 'oracle']
+w2v_embedding_size = 512 #low on ram #hyperparam
 w2v_window = 5
 w2v_min_count = 30
 w2v_workers = 30
@@ -62,7 +62,7 @@ model_type = 'fixem'
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
 batch_size = 64
-target_len = [40, 20, 20, 16, 16, 16, 48, 20, 20]
+target_len = [16, 20, 20, 16, 16, 40, 48, 20, 20] # architechture requires to be divisible by 4
 
 # ===Generator===
 generator_complexity = 768 #hyperparam

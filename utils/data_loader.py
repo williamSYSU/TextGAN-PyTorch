@@ -11,7 +11,7 @@ import random
 
 import torch
 from torch.utils.data import Dataset, DataLoader
-from tqdm import trange
+from tqdm import tqdm, trange
 
 import config as cfg
 from utils.text_process import *

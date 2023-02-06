@@ -34,10 +34,6 @@ from models.FixemGAN_D import Discriminator
 # check target real/fake to be right (Uniform or const)
 # random data portion generator - data supplier sample from randomint
 
-# half of page idea explained
-# current status
-# plans for future, implementation tweaks
-
 class FixemGANInstructor(RealDataFixemGANInstructor, BasicInstructor):
     def __init__(self, opt):
         self.oracle = Oracle(32, 32, cfg.vocab_size, cfg.max_seq_len,cfg.padding_idx, gpu=cfg.CUDA)
