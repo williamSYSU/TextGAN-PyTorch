@@ -12,7 +12,7 @@ import random
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
@@ -93,7 +93,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # # ===ADVERSARIAL TRAINING===
         self.log.info('Starting Adversarial Training...')
-        progress = tqdm(range(cfg.ADV_train_epoch))
+        progress = trange(cfg.ADV_train_epoch)
         for adv_epoch in progress:
             if cfg.temperature == 1:
                 score, fit_score, select_mu = self.evolve_generator(cfg.ADV_g_step)
@@ -126,7 +126,7 @@ class EvoGANInstructor(BasicInstructor):
         """
         Max Likelihood Pre-training for the generator
         """
-        for epoch in range(epochs):
+        for epoch in trange(epochs):
             self.sig.update()
             if self.sig.pre_sig:
                 # ===Train===
@@ -136,6 +136,11 @@ class EvoGANInstructor(BasicInstructor):
                 if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
+
+                    eval_samples = self.gen.sample(20, 20)
+                    gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
+                    for sample in gen_tokens:
+                        self.log.info(' '.join(sample))
 
                     if cfg.if_save and not cfg.if_test:
                         self._save('MLE', epoch)

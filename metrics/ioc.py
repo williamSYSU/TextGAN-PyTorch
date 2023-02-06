@@ -10,15 +10,14 @@ from metrics.basic import Metrics
 
 class IOC(Metrics):
     def __init__(self, name=None, test_text=None, real_text=None, if_use=True):
-        super(IOC, self).__init__('Index of Coincedense')
+        super(IOC, self).__init__('Index of Coincidence')
 
         self.if_use = if_use
         self.test_text = test_text
         self.real_text_ioc = self.get_ioc(real_text) if real_text else None
-        print(f'Dataset Index of coincedense: {self.real_text_ioc}')
+        print(f'Dataset Index of coincidence: {self.real_text_ioc}')
         self.reference = None
         self.is_first = True
-        self.portion = 0.01#portion  # how many portions to use in the evaluation, default to use the whole test dataset
 
     def get_score(self):
         """Get IOC score."""
@@ -31,7 +30,7 @@ class IOC(Metrics):
         self.real_text_ioc = self.get_ioc(real_text) if real_text else self.real_text_ioc
 
     def get_ioc(self, list_tokens):
-        """Index Of Coincedense: probability of 2 random tokens in text to equal."""
+        """Index Of coincidence: probability of 2 random tokens in text to equal."""
         tokens = list(chain(*list_tokens))
         counts = Counter(tokens)
         total = sum(ni * (ni - 1) for ni in counts.values())
