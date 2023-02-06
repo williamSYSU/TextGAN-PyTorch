@@ -45,7 +45,7 @@ tips = '{} experiments'
 # ===Oracle or Real===
 if_real_data = [int(True), int(True), int(True), int(True), int(True), int(True), int(True), int(False), int(False)]
 dataset = ['amazon_app_book', 'mr20', 'mr20', 'mr15', 'mr15', 'image_coco', 'emnlp_news', 'oracle', 'oracle']
-w2v_embedding_size = 512 #hyperparam
+w2v_embedding_size = 128 #low on ram #hyperparam
 w2v_window = 5
 w2v_min_count = 30
 w2v_workers = 30
