@@ -8,7 +8,11 @@
 # Copyrights (C) 2018. All Rights Reserved.
 from __future__ import print_function
 
+import random
+
 import argparse
+import torch
+import numpy as np
 
 import config as cfg
 from utils.text_process import load_test_dict, text_process
@@ -124,6 +128,11 @@ def program_config(parser):
 
 # MAIN
 if __name__ == '__main__':
+    #seed everything
+    torch.manual_seed(0)
+    random.seed(0)
+    np.random.seed(0)
+
     # Hyper Parameters
     parser = argparse.ArgumentParser()
     parser = program_config(parser)
