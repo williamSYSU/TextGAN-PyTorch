@@ -213,6 +213,14 @@ class BasicInstructor:
         gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200), self.idx2word_dict)
         return gen_data, gen_tokens, gen_tokens_s
 
+    def sample_for_metrics_with_label(self, label_i):
+        eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+        gen_data = GenDataIter(eval_samples)
+        gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
+        gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i), self.idx2word_dict)
+        clas_data = CatClasDataIter([eval_samples], label_i)
+        return gen_data, gen_tokens, gen_tokens_s, clas_data
+
     def cal_metrics(self, fmt_str=False):
         """
         Calculate metrics
@@ -226,26 +234,20 @@ class BasicInstructor:
             self.nll_gen.reset(self.gen, self.train_data.loader)
             self.nll_div.reset(self.gen, gen_data.loader)
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
-            self.ppl.reset(test_text=gen_tokens)
+            self.ppl.reset(gen_tokens=gen_tokens)
             self.ioc.reset(test_text=gen_tokens)
             self.nll_oracle.reset(test_text=gen_tokens)
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
-        else:
-            return [metric.get_score() for metric in self.all_metrics]
+            return '\n'.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+        return [metric.get_score() for metric in self.all_metrics]
 
-    def cal_metrics_with_label(self, label_i):
+    def cal_metrics_with_label(self, label_i, fmt_str=False):
         assert type(label_i) == int, 'missing label'
 
         with torch.no_grad():
             # Prepare data for evaluation
-            eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
-            gen_data = GenDataIter(eval_samples)
-            gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-            gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i), self.idx2word_dict)
-            clas_data = CatClasDataIter([eval_samples], label_i)
-
+            gen_data, gen_tokens, gen_tokens_s, clas_data = sample_for_metrics_with_label(label_i)
             # Reset metrics
             self.bleu.reset(test_text=gen_tokens, real_text=self.test_data_list[label_i].tokens)
             self.nll_gen.reset(self.gen, self.train_data_list[label_i].loader, label_i)
@@ -254,6 +256,8 @@ class BasicInstructor:
             self.clas_acc.reset(self.clas, clas_data.loader)
             self.ppl.reset(gen_tokens)
 
+        if fmt_str:
+            return '\n'.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
         return [metric.get_score() for metric in self.all_metrics]
 
     def comb_metrics(self, fmt_str=False):

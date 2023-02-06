@@ -15,6 +15,7 @@ from instructor.real_data.instructor import BasicInstructor
 from utils.gan_loss import GANLoss
 from utils.text_process import text_file_iterator
 from utils.data_loader import DataSupplier, GenDataIter, GANDataset
+from utils.cat_data_loader import CatClasDataIter
 from utils.nn_helpers import create_noise, number_of_parameters
 from utils.create_embeddings import EmbeddingsTrainer, load_embedding
 from models.FixemGAN_G import Generator
@@ -150,39 +151,16 @@ class FixemGANInstructor(BasicInstructor):
             return True
         return False
 
-
-    def cal_metrics_with_label(self, label_i, fmt_str=False):
-        assert type(label_i) == int, 'missing label'
-        with torch.no_grad():
-            # Prepare data for evaluation
-            # eval_samples = self.generator.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
-            # gen_data = GenDataIter(eval_samples)
-            # gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-            gen_tokens = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
-            gen_tokens = [sample.split() for sample in gen_tokens]
-            # gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i), self.idx2word_dict)
-            gen_tokens_s = self.gen.sample(200, 200, label_i=label_i)
-            gen_tokens_s = [sample.split() for sample in gen_tokens_s]
-            # clas_data = CatClasDataIter([eval_samples], label_i)
-
-            # Reset metrics
-            self.bleu.reset(test_text=gen_tokens, real_text=self.test_data_list[label_i].tokens)
-            # self.nll_gen.reset(self.gen, self.train_data_list[label_i].loader, label_i)
-            # self.nll_div.reset(self.gen, gen_data.loader, label_i)
-            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
-            # self.clas_acc.reset(self.clas, clas_data.loader)
-            # self.ppl.reset(gen_tokens)
-            self.ioc.reset(test_text=gen_tokens)
-            self.gpt_nll.reset(test_text=gen_tokens)
-
-        if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
-
-        return [metric.get_score() for metric in self.all_metrics]
-
     def sample_for_metrics(self):
         gen_tokens = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
         gen_tokens = [sample.split() for sample in gen_tokens]
         gen_tokens_s = self.gen.sample(200, 200)
         gen_tokens_s = [sample.split() for sample in gen_tokens_s]
         return GenDataIter(gen_tokens), gen_tokens, gen_tokens_s
+
+    def sample_for_metrics_with_label(self, label_i):
+        gen_tokens = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
+        gen_tokens = [sample.split() for sample in gen_tokens]
+        gen_tokens_s = self.gen.sample(200, 200, label_i=label_i)
+        gen_tokens_s = [sample.split() for sample in gen_tokens_s]
+        return GenDataIter(gen_tokens), gen_tokens, gen_tokens_s, CatClasDataIter([gen_tokens], label_i)
