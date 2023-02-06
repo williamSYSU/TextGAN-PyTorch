@@ -26,16 +26,13 @@ from models.FixemGAN_D import Discriminator
 
 
 # TO DO:
-# 6. add new interested scores (IOC, NLL on GPT) (split quick metric and slow metric)
 # 4. save? or save each 10 epochs
-# 7. logger
-# 11. make run_fixem clean
 # 10. cat_oracle
 # 12. class accuracy
 
 # afterwards:
 # check target real/fake to be right (Uniform or const)
-# random data portion generator?
+# random data portion generator - data supplier sample from randomint
 
 # half of page idea explained
 # current status
@@ -61,7 +58,7 @@ class FixemGANInstructor(RealDataFixemGANInstructor, BasicInstructor):
 
     def build_embedding(self):
         # train embedding on available dataset or oracle
-        print(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
-        print("Will train new one, it may take a while...")
+        self.log.info(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
+        self.log.info("Will train new one, it may take a while...")
         sources = [cfg.oracle_samples_path.format(cfg.w2v_samples_num)]
         EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()

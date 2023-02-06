@@ -46,12 +46,12 @@ class FixemGANInstructor(BasicInstructor):
         self.train_data_supplier = DataSupplier(train_data, labels, w2v, cfg.batch_size, cfg.batches_per_epoch)
 
         self.dis = Discriminator(cfg.discriminator_complexity)
-        print(
+        self.log.info(
             "discriminator total tranable parameters:",
             number_of_parameters(self.dis.parameters())
         )
         self.gen = Generator(cfg.generator_complexity, cfg.noise_size, w2v, cfg.w2v_embedding_size)
-        print(
+        self.log.info(
             "generator total tranable parameters:",
             number_of_parameters(self.gen.parameters())
         )
@@ -64,8 +64,8 @@ class FixemGANInstructor(BasicInstructor):
         self.D_criterion = GANLoss(cfg.loss_type, which_net=None, which_D=None, target_real_label=0.8, target_fake_label=0.2, CUDA=cfg.CUDA)
 
     def build_embedding(self):
-        print(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
-        print("Will train new one, it may take a while...")
+        self.log.info(f"Didn't find embeddings in {cfg.pretrain_embedding_path}")
+        self.log.info("Will train new one, it may take a while...")
         sources = list(Path(cfg.texts_pile).glob('*.txt'))
         EmbeddingsTrainer(sources, cfg.pretrain_embedding_path).make_embeddings()
 
@@ -132,14 +132,14 @@ class FixemGANInstructor(BasicInstructor):
 
             samples = self.gen.sample(20, 20)
             for sample in samples:
-                print(sample)
+                self.log.info(sample)
 
             # if (i + 1) % 10 == 0:
             if cfg.run_model == 'fixemgan':
                 scores = self.cal_metrics(fmt_str=True)
             if cfg.run_model == 'cat_fixemgan':
                 scores = ' '.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
-            print('epoch:', i, scores)
+            self.log.info('epoch:', i, scores)
 
 
     def one_more_batch_for_generator(
