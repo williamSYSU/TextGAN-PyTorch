@@ -141,17 +141,7 @@ class DataSupplier:
 
         self.labels = torch.tensor(labels, dtype=int)
 
-        self.vectors = [
-            vectorize_sentence(
-                tokens,
-                w2v,
-                target_len=cfg.target_len,
-                padding_token = cfg.padding_token,
-            )
-            for tokens in tqdm(tokenized, desc='vectorizing dataset')
-        ]
-        self.vectors = np.stack(self.vectors, axis=0)
-        self.vectors = torch.tensor(self.vectors, dtype=torch.float32)
+        self.tokenized = tokenized
 
         self.batches_per_epoch = batches_per_epoch
         self.batch_size = batch_size
@@ -159,6 +149,19 @@ class DataSupplier:
         self.texts = set(" ".join(tokens[-cfg.target_len:]) for tokens in tokenized)
         print('dataset random texts examples', [txt for txt in self.texts][:3])
 
+    def vectorize_batch(self, tokenized):
+        vectors = [
+            vectorize_sentence(
+                tokens,
+                w2v,
+                target_len=cfg.target_len,
+                padding_token = cfg.padding_token,
+            )
+            for tokens in tokenized
+        ]
+        vectors = np.stack(vectors, axis=0)
+        vectors = torch.tensor(vectors, dtype=torch.float32)
+        return vectors
 
     def __iter__(self):
         permutation = torch.randperm(len(self))
@@ -170,11 +173,16 @@ class DataSupplier:
             index += self.batch_size
             if index > len(self):
                 # concatenating beginning of self.vectors
-                yield (torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])),
-                torch.cat((self.vectors[index - self.batch_size: index], self.vectors[:index-len(self)])))
+                yield (
+                    torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])),
+                    torch.cat((
+                        self.vectorize_batch(self.vectors[index - self.batch_size: index]),
+                        self.vectorize_batch(self.vectors[:index-len(self)])
+                    ))
+                )
                 index = index % len(self)
             else:
-                yield self.labels[index - self.batch_size: index], self.vectors[index - self.batch_size: index]
+                yield self.labels[index - self.batch_size: index], self.vectorize_batch(self.vectors[index - self.batch_size: index])
 
 
     def __len__(self):
