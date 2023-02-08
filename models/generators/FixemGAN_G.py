@@ -15,7 +15,7 @@ from utils.nn_helpers import (
 )
 
 import config as cfg
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
 

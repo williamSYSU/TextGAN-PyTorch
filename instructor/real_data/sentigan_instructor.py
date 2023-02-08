@@ -12,8 +12,8 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from models.SentiGAN_D import SentiGAN_D, SentiGAN_C
-from models.SentiGAN_G import SentiGAN_G
+from models.discriminators.SentiGAN_D import SentiGAN_D, SentiGAN_C
+from models.generators.SentiGAN_G import SentiGAN_G
 from utils import rollout
 from utils.cat_data_loader import CatClasDataIter
 from utils.data_loader import GenDataIter

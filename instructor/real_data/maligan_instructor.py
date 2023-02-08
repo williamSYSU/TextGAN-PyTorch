@@ -4,7 +4,7 @@
 # @FileName     : maligan_instructor.py
 # @Time         : Created at 2019/11/29
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 
@@ -14,8 +14,8 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from models.MaliGAN_D import MaliGAN_D
-from models.MaliGAN_G import MaliGAN_G
+from models.discriminators.MaliGAN_D import MaliGAN_D
+from models.generators.MaliGAN_G import MaliGAN_G
 from utils.data_loader import GenDataIter, DisDataIter
 
 

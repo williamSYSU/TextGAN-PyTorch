@@ -4,14 +4,14 @@
 # @FileName     : SentiGAN_G.py
 # @Time         : Created at 2019-07-26
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 
 import torch
 import torch.nn.functional as F
 
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
 class SentiGAN_G(LSTMGenerator):

@@ -7,7 +7,7 @@
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
 class Oracle(LSTMGenerator):

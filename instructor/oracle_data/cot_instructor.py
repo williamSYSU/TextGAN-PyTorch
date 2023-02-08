@@ -4,7 +4,7 @@
 # @FileName     : cot_instructor.py
 # @Time         : Created at 2020/4/20
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import numpy as np
@@ -14,8 +14,8 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.CoT_D import Cot_D
-from models.CoT_G import CoT_G
+from models.discriminators.CoT_D import Cot_D
+from models.generators.CoT_G import CoT_G
 from utils.data_loader import GenDataIter
 
 

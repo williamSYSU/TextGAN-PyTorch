@@ -4,7 +4,7 @@
 # @FileName     : sentigan_instructor.py
 # @Time         : Created at 2019-07-26
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import os
@@ -14,8 +14,8 @@ import torch.optim as optim
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from models.Oracle import Oracle
-from models.SentiGAN_D import SentiGAN_D
-from models.SentiGAN_G import SentiGAN_G
+from models.discriminators.SentiGAN_D import SentiGAN_D
+from models.generators.SentiGAN_G import SentiGAN_G
 from utils import rollout
 from utils.cat_data_loader import CatClasDataIter
 from utils.data_loader import GenDataIter

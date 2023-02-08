@@ -4,7 +4,7 @@
 # @FileName     : CatGAN_G.py
 # @Time         : Created at 2019-07-18
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import config as cfg
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 from models.relational_rnn_general import RelationalMemory
 
 

@@ -17,8 +17,8 @@ from tqdm import tqdm, trange
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from metrics.nll import NLL
-from models.EvoGAN_D import EvoGAN_D
-from models.EvoGAN_G import EvoGAN_G
+from models.discriminators.EvoGAN_D import EvoGAN_D
+from models.generators.EvoGAN_G import EvoGAN_G
 from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss
 from utils.helpers import get_fixed_temperature, get_losses

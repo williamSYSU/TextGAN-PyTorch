@@ -18,8 +18,8 @@ from utils.data_loader import DataSupplier, GenDataIter, GANDataset
 from utils.cat_data_loader import CatClasDataIter
 from utils.nn_helpers import create_noise, number_of_parameters
 from utils.create_embeddings import EmbeddingsTrainer, load_embedding
-from models.FixemGAN_G import Generator
-from models.FixemGAN_D import Discriminator
+from models.generators.FixemGAN_G import Generator
+from models.discriminators.FixemGAN_D import Discriminator
 
 
 class FixemGANInstructor(BasicInstructor):

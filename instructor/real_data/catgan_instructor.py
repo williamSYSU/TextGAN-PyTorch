@@ -17,8 +17,8 @@ from tqdm import tqdm
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from metrics.nll import NLL
-from models.CatGAN_D import CatGAN_D, CatGAN_C
-from models.CatGAN_G import CatGAN_G
+from models.discriminators.CatGAN_D import CatGAN_D, CatGAN_C
+from models.generators.CatGAN_G import CatGAN_G
 from utils.cat_data_loader import CatGenDataIter
 from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss

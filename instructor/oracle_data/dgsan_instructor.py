@@ -4,7 +4,7 @@
 # @FileName     : dgsan_instructor.py
 # @Time         : Created at 2020/4/12
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 import copy
 import numpy as np
@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.DGSAN_G import DGSAN_G
+from models.generatos.DGSAN_G import DGSAN_G
 from utils.data_loader import GenDataIter
 from utils.helpers import create_oracle
 

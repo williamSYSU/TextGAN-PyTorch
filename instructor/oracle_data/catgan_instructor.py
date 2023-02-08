@@ -19,8 +19,8 @@ from tqdm import tqdm
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
 from metrics.nll import NLL
-from models.CatGAN_D import CatGAN_D
-from models.CatGAN_G import CatGAN_G
+from models.descriminators.CatGAN_D import CatGAN_D
+from models.generators.CatGAN_G import CatGAN_G
 from models.Oracle import Oracle
 from utils.cat_data_loader import CatGenDataIter
 from utils.data_loader import GenDataIter

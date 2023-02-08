@@ -4,7 +4,7 @@
 # @FileName     : leakgan_instructor.py
 # @Time         : Created at 2019-06-05
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
@@ -12,8 +12,8 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from models.LeakGAN_D import LeakGAN_D
-from models.LeakGAN_G import LeakGAN_G
+from models.discriminators.LeakGAN_D import LeakGAN_D
+from models.generators.LeakGAN_G import LeakGAN_G
 from utils import rollout
 from utils.data_loader import GenDataIter, DisDataIter
 from utils.text_process import tensor_to_tokens, write_tokens

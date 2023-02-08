@@ -4,14 +4,14 @@
 # @FileName     : RelGAN_D.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.discriminator import CNNDiscriminator
+from models.discriminators.discriminator import CNNDiscriminator
 
 dis_filter_sizes = [2, 3, 4, 5]
 dis_num_filters = [300, 300, 300, 300]

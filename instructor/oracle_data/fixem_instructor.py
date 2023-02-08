@@ -21,8 +21,8 @@ from utils.helpers import create_oracle
 from metrics.nll import NLL
 from utils.create_embeddings import EmbeddingsTrainer, load_embedding
 from models.Oracle import Oracle
-from models.FixemGAN_G import Generator
-from models.FixemGAN_D import Discriminator
+from models.generators.FixemGAN_G import Generator
+from models.discriminators.FixemGAN_D import Discriminator
 
 
 # TO DO:

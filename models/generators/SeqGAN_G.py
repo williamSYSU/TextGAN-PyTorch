@@ -4,13 +4,13 @@
 # @FileName     : SeqGAN_G.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
 import torch.nn.functional as F
 
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
 class SeqGAN_G(LSTMGenerator):

@@ -2,7 +2,7 @@ import torch.nn as nn
 
 import config as cfg
 from utils.nn_helpers import get_optimizer, MyConvLayer, MyTransformerEncoderLayer, Flatten, Dummy
-from models.discriminator import CNNDiscriminator
+from models.discriminators.discriminator import CNNDiscriminator
 
 class Discriminator(nn.Module):
     def __init__(self, complexity):

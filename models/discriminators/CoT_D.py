@@ -4,13 +4,13 @@
 # @FileName     : CoT_Medicator.py
 # @Time         : Created at 2020/4/20
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
 import torch.nn.functional as F
 
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
 class Cot_D(LSTMGenerator):

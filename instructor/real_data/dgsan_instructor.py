@@ -4,7 +4,7 @@
 # @FileName     : dgsan_instructor.py
 # @Time         : Created at 2020/4/16
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import copy
@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from models.DGSAN_G import DGSAN_G
+from models.generators.DGSAN_G import DGSAN_G
 from utils.data_loader import GenDataIter
 
 
