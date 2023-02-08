@@ -177,7 +177,7 @@ class DataSupplier:
         self.tokenized = self.tokenized[permutation]
         self.labels = self.labels[permutation]
 
-        for _ in trange(self.batches_per_epoch, leave=False, desc='epoch train'):
+        for _ in range(self.batches_per_epoch):
             index = 0
             index += self.batch_size
             if index > len(self):

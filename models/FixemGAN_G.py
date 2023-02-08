@@ -142,7 +142,7 @@ class Generator(LSTMGenerator):
         fakes = self.forward(*noise)
         fakes = fakes.detach().cpu().numpy()
         assert len(fakes.shape) == 3
-        return [self.recover_sentence(fake) for fake in fakes]
+        return [self.recover_sentence(fake) for fake in tqdm(fakes, desc='recovering messages')]
 
     def recover_sentence(self, fake):
         fake = fake.T
