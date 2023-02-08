@@ -195,8 +195,8 @@ pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sl{}_sn{}.pt'.format(r
 pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                  samples_num)
 
-emebedding_root = 'pretrain/real_data/' if if_real_data else 'pretrain/real_data/'
-pretrain_embedding_path = emebedding_root + 'w2v_embedding_size_{}.model'.format(w2v_embedding_size)
+embedding_root = 'pretrain/real_data/' if if_real_data else 'pretrain/oracle_data/'
+pretrain_embedding_path = embedding_root + 'w2v_embedding_size_{}.model'.format(w2v_embedding_size)
 texts_pile = 'dataset/' # do not include testdata
 
 signal_file = 'run_signal.txt'
@@ -360,8 +360,8 @@ def init_param(opt):
                                                                                    samples_num)
     pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                      samples_num)
-    emebedding_root = 'pretrain/real_data/' if if_real_data else 'pretrain/oracle_data/'
-    pretrain_embedding_path = emebedding_root + 'w2v_embedding_size_{}.model'.format(w2v_embedding_size)
+    embedding_root = 'pretrain/real_data/' if if_real_data else 'pretrain/oracle_data/'
+    pretrain_embedding_path = embedding_root + 'w2v_embedding_size_{}.model'.format(w2v_embedding_size)
     # Assertion
     assert k_label >= 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)
     assert eval_b_num >= n_parent * ADV_d_step, 'Error: eval_b_num = {}, which should be >= n_parent * ADV_d_step ({})!'.format(
