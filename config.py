@@ -75,6 +75,7 @@ temperature = 1
 
 # ===Basic Train===
 samples_num = 100  # 10000, mr15: 2000,
+small_sample_num = 20 # used for self-blue
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 10
 inter_epoch = 15  # LeakGAN-10

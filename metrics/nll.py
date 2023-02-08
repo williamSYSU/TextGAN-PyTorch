@@ -50,7 +50,7 @@ class NLL(Metrics):
         """NLL score for general text generation model."""
         total_loss = 0
         with torch.no_grad():
-            for i, data in enumerate(tqdm(data_loader, desc=self.name)):
+            for i, data in enumerate(data_loader):
                 inp, target = data['input'], data['target']
                 if gpu:
                     inp, target = inp.cuda(), target.cuda()
@@ -67,7 +67,7 @@ class NLL(Metrics):
         assert type(label_i) == int, 'missing label'
         total_loss = 0
         with torch.no_grad():
-            for i, data in enumerate(tqdm(data_loader, desc=self.name)):
+            for i, data in enumerate(data_loader):
                 inp, target = data['input'], data['target']
                 label = torch.LongTensor([label_i] * data_loader.batch_size)
                 if gpu:
@@ -87,7 +87,7 @@ class NLL(Metrics):
         """NLL score for LeakGAN."""
         total_loss = 0
         with torch.no_grad():
-            for i, data in enumerate(tqdm(data_loader, desc=self.name)):
+            for i, data in enumerate(data_loader):
                 inp, target = data['input'], data['target']
                 if gpu:
                     inp, target = inp.cuda(), target.cuda()

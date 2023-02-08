@@ -98,7 +98,7 @@ class BLEU(Metrics):
         weight = tuple((1. / ngram for _ in range(ngram)))
         pool = Pool(os.cpu_count())
         result = list()
-        for idx, hypothesis in enumerate(tqdm(self.test_text[:self.sample_size], desc=self.name)):
+        for idx, hypothesis in enumerate(self.test_text[:self.sample_size]):
             result.append(pool.apply_async(self.cal_bleu, args=(reference, hypothesis, weight)))
         score = 0.0
         cnt = 0

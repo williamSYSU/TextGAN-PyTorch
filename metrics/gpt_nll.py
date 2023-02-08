@@ -42,7 +42,7 @@ class GPTNLL(Metrics):
             messages = [' '.join(msg) for msg in messages]
 
         all_logits = []
-        for message in tqdm(messages, desc=self.name):
+        for message in messages:
             message = self.tokenizer.eos_token + message + self.tokenizer.eos_token
             inputs = self.tokenizer(message, return_tensors="pt")
             logits = self.model(**inputs)[0][0]

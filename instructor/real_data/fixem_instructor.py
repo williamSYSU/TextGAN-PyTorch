@@ -147,13 +147,13 @@ class FixemGANInstructor(BasicInstructor):
     def sample_for_metrics(self):
         gen_tokens = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
         gen_tokens = [sample.split() for sample in gen_tokens]
-        gen_tokens_s = self.gen.sample(200, 200)
+        gen_tokens_s = self.gen.sample(cfg.small_sample_num, 8 * cfg.batch_size)
         gen_tokens_s = [sample.split() for sample in gen_tokens_s]
         return GenDataIter(gen_tokens), gen_tokens, gen_tokens_s
 
     def sample_for_metrics_with_label(self, label_i):
         gen_tokens = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
         gen_tokens = [sample.split() for sample in gen_tokens]
-        gen_tokens_s = self.gen.sample(200, 200, label_i=label_i)
+        gen_tokens_s = self.gen.sample(cfg.small_sample_num, 8 * cfg.batch_size, label_i=label_i)
         gen_tokens_s = [sample.split() for sample in gen_tokens_s]
         return GenDataIter(gen_tokens), gen_tokens, gen_tokens_s, CatClasDataIter([gen_tokens], label_i)

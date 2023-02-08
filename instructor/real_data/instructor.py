@@ -210,14 +210,14 @@ class BasicInstructor:
         eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
         gen_data = GenDataIter(eval_samples)
         gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-        gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200), self.idx2word_dict)
+        gen_tokens_s = tensor_to_tokens(self.gen.sample(cfg.small_sample_num, 8 * cfg.batch_size), self.idx2word_dict)
         return gen_data, gen_tokens, gen_tokens_s
 
     def sample_for_metrics_with_label(self, label_i):
         eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
         gen_data = GenDataIter(eval_samples)
         gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-        gen_tokens_s = tensor_to_tokens(self.gen.sample(200, 200, label_i=label_i), self.idx2word_dict)
+        gen_tokens_s = tensor_to_tokens(self.gen.sample(cfg.small_sample_num, 8 * cfg.batch_size, label_i=label_i), self.idx2word_dict)
         clas_data = CatClasDataIter([eval_samples], label_i)
         return gen_data, gen_tokens, gen_tokens_s, clas_data
 
