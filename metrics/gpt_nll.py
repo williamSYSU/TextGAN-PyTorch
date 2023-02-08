@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from tqdm import tqdm
 
 from metrics.basic import Metrics
 
@@ -41,7 +42,7 @@ class GPTNLL(Metrics):
             messages = [' '.join(msg) for msg in messages]
 
         all_logits = []
-        for message in messages:
+        for message in tqdm(messages, desc=self.name):
             message = self.tokenizer.eos_token + message + self.tokenizer.eos_token
             inputs = self.tokenizer(message, return_tensors="pt")
             logits = self.model(**inputs)[0][0]

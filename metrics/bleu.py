@@ -8,10 +8,12 @@
 # Copyrights (C) 2018. All Rights Reserved.
 from multiprocessing import Pool
 
-import nltk
 import os
 import random
+
+import nltk
 from nltk.translate.bleu_score import SmoothingFunction
+from tqdm import tqdm
 
 from metrics.basic import Metrics
 
@@ -62,22 +64,20 @@ class BLEU(Metrics):
 
     def get_bleu(self, given_gram=None):
         if given_gram is not None:  # for single gram
-            bleu = list()
-            reference = self.get_reference()
-            weight = tuple((1. / given_gram for _ in range(given_gram)))
-            for idx, hypothesis in enumerate(self.test_text[:self.sample_size]):
-                bleu.append(self.cal_bleu(reference, hypothesis, weight))
-            return round(sum(bleu) / len(bleu), 3)
-        else:  # for multiple gram
-            all_bleu = []
-            for ngram in self.gram:
-                bleu = list()
-                reference = self.get_reference()
-                weight = tuple((1. / ngram for _ in range(ngram)))
-                for idx, hypothesis in enumerate(self.test_text[:self.sample_size]):
-                    bleu.append(self.cal_bleu(reference, hypothesis, weight))
-                all_bleu.append(round(sum(bleu) / len(bleu), 3))
-            return all_bleu
+            return self.get_blue_for_single_gram(given_gram)
+        # for multiple gram
+        all_bleu = []
+        for ngram in self.gram:
+            all_bleu.append(self.get_blue_for_single_gram(ngram))
+        return all_bleu
+
+    def get_blue_for_single_gram(self, ngram):
+        bleu = list()
+        reference = self.get_reference()
+        weight = tuple((1. / ngram for _ in range(ngram)))
+        for idx, hypothesis in enumerate(tqdm(self.test_text[:self.sample_size], desc=self.name)):
+            bleu.append(self.cal_bleu(reference, hypothesis, weight))
+        return round(sum(bleu) / len(bleu), 3)
 
     @staticmethod
     def cal_bleu(reference, hypothesis, weight):
@@ -98,7 +98,7 @@ class BLEU(Metrics):
         weight = tuple((1. / ngram for _ in range(ngram)))
         pool = Pool(os.cpu_count())
         result = list()
-        for idx, hypothesis in enumerate(self.test_text[:self.sample_size]):
+        for idx, hypothesis in enumerate(tqdm(self.test_text[:self.sample_size], desc=self.name)):
             result.append(pool.apply_async(self.cal_bleu, args=(reference, hypothesis, weight)))
         score = 0.0
         cnt = 0

@@ -4,7 +4,7 @@
 # @FileName     : nll.py
 # @Time         : Created at 2019-05-31
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
@@ -34,11 +34,10 @@ class NLL(Metrics):
 
         if self.leak_dis is not None:  # For LeakGAN
             return self.cal_nll_with_leak_dis(self.model, self.data_loader, self.leak_dis, self.gpu)
-        elif self.label_i is not None:  # For category text generation
+        if self.label_i is not None:  # For category text generation
             return self.cal_nll_with_label(self.model, self.data_loader, self.label_i,
                                            self.criterion, self.gpu)
-        else:
-            return self.cal_nll(self.model, self.data_loader, self.criterion, self.gpu)
+        return self.cal_nll(self.model, self.data_loader, self.criterion, self.gpu)
 
     def reset(self, model=None, data_loader=None, label_i=None, leak_dis=None):
         self.model = model
@@ -51,7 +50,7 @@ class NLL(Metrics):
         """NLL score for general text generation model."""
         total_loss = 0
         with torch.no_grad():
-            for i, data in enumerate(data_loader):
+            for i, data in enumerate(tqdm(data_loader, desc=self.name)):
                 inp, target = data['input'], data['target']
                 if gpu:
                     inp, target = inp.cuda(), target.cuda()
@@ -68,7 +67,7 @@ class NLL(Metrics):
         assert type(label_i) == int, 'missing label'
         total_loss = 0
         with torch.no_grad():
-            for i, data in enumerate(data_loader):
+            for i, data in enumerate(tqdm(data_loader, desc=self.name)):
                 inp, target = data['input'], data['target']
                 label = torch.LongTensor([label_i] * data_loader.batch_size)
                 if gpu:
@@ -88,7 +87,7 @@ class NLL(Metrics):
         """NLL score for LeakGAN."""
         total_loss = 0
         with torch.no_grad():
-            for i, data in enumerate(data_loader):
+            for i, data in enumerate(tqdm(data_loader, desc=self.name)):
                 inp, target = data['input'], data['target']
                 if gpu:
                     inp, target = inp.cuda(), target.cuda()

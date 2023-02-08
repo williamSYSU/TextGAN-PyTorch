@@ -9,12 +9,19 @@
 
 import random
 
+import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm, trange
 
 import config as cfg
-from utils.text_process import *
+from utils.text_process import (
+    tokens_to_tensor,
+    get_tokenlized,
+    load_dict,
+    load_test_dict,
+    vectorize_sentence,
+)
 
 
 class GANDataset(Dataset):
@@ -141,19 +148,21 @@ class DataSupplier:
 
         self.labels = torch.tensor(labels, dtype=int)
 
-        self.tokenized = tokenized
+        self.tokenized = np.array(tokenized)
 
         self.batches_per_epoch = batches_per_epoch
         self.batch_size = batch_size
 
+        self.w2v = w2v
+
         self.texts = set(" ".join(tokens[-cfg.target_len:]) for tokens in tokenized)
-        print('dataset random texts examples', [txt for txt in self.texts][:3])
+        print('dataset random texts examples\n', '\n'.join([txt for txt in self.texts][:5]))
 
     def vectorize_batch(self, tokenized):
         vectors = [
             vectorize_sentence(
                 tokens,
-                w2v,
+                self.w2v,
                 target_len=cfg.target_len,
                 padding_token = cfg.padding_token,
             )
@@ -165,10 +174,10 @@ class DataSupplier:
 
     def __iter__(self):
         permutation = torch.randperm(len(self))
-        self.vectors = self.vectors[permutation]
+        self.tokenized = self.tokenized[permutation]
         self.labels = self.labels[permutation]
 
-        for _ in range(self.batches_per_epoch):
+        for _ in trange(self.batches_per_epoch, leave=False, desc='epoch train'):
             index = 0
             index += self.batch_size
             if index > len(self):
@@ -176,17 +185,17 @@ class DataSupplier:
                 yield (
                     torch.cat((self.labels[index - self.batch_size: index], self.labels[:index-len(self)])),
                     torch.cat((
-                        self.vectorize_batch(self.vectors[index - self.batch_size: index]),
-                        self.vectorize_batch(self.vectors[:index-len(self)])
+                        self.vectorize_batch(self.tokenized[index - self.batch_size: index]),
+                        self.vectorize_batch(self.tokenized[:index-len(self)])
                     ))
                 )
                 index = index % len(self)
             else:
-                yield self.labels[index - self.batch_size: index], self.vectorize_batch(self.vectors[index - self.batch_size: index])
+                yield self.labels[index - self.batch_size: index], self.vectorize_batch(self.tokenized[index - self.batch_size: index])
 
 
     def __len__(self):
-        return len(self.vectors)
+        return len(self.tokenized)
 
     def is_this_message_in_dataset(self, text):
         return text in self.texts

@@ -4,7 +4,7 @@
 # @FileName     : ppl.py
 # @Time         : Created at 2019/12/5
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 import math
 import string
