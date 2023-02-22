@@ -45,6 +45,7 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 
 ### General Text Generation
 
+- **FixemGAN** - [FixemGAN: Continious Space Text GAN on Fixed Embeddings](https://www.com)
 - **SeqGAN** - [SeqGAN: Sequence Generative Adversarial Nets with Policy Gradient](https://arxiv.org/abs/1609.05473)
 - **LeakGAN** - [Long Text Generation via Adversarial Training with Leaked Information](https://arxiv.org/abs/1709.08624)
 - **MaliGAN** - [Maximum-Likelihood Augmented Discrete Generative Adversarial Networks](https://arxiv.org/abs/1702.07983)
@@ -116,13 +117,25 @@ python3 run_seqgan.py 0 0
 
 ## Implementation Details
 
+### FixemGAN
+
+- run file: [run_fixem.py](run/run_fixem.py)
+
+- Instructors: [oracle_data](instructor/oracle_data/fixem_instructor.py), [real_data](instructor/real_data/fixem_instructor.py)
+
+- Models: [generator](models/generators/FixemGAN_G.py), [discriminator](models/discriminators/FixemGAN_D.py)
+
+- Structure (from [FixemGAM](https://www.com))
+
+  ![model_fixem](./assets/model_fixem.png)
+
 ### SeqGAN
 
 - run file: [run_seqgan.py](run/run_seqgan.py)
 
 - Instructors: [oracle_data](instructor/oracle_data/seqgan_instructor.py), [real_data](instructor/real_data/seqgan_instructor.py)
 
-- Models: [generator](models/SeqGAN_G.py), [discriminator](models/SeqGAN_D.py)
+- Models: [generator](models/generators/SeqGAN_G.py), [discriminator](models/discriminators/SeqGAN_D.py)
 
 - Structure (from [SeqGAN](https://arxiv.org/pdf/1609.05473.pdf))
 
@@ -134,7 +147,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/leakgan_instructor.py), [real_data](instructor/real_data/leakgan_instructor.py)
 
-- Models: [generator](models/LeakGAN_G.py), [discriminator](models/LeakGAN_D.py)
+- Models: [generator](models/generators/LeakGAN_G.py), [discriminator](models/discriminators/LeakGAN_D.py)
 
 - Structure (from [LeakGAN](https://arxiv.org/pdf/1709.08624.pdf))
 
@@ -146,7 +159,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/maligan_instructor.py), [real_data](instructor/real_data/maligan_instructor.py)
 
-- Models: [generator](models/MaliGAN_G.py), [discriminator](models/MaliGAN_D.py)
+- Models: [generator](models/generators/MaliGAN_G.py), [discriminator](models/discriminators/MaliGAN_D.py)
 
 - Structure (from my understanding)
 
@@ -158,7 +171,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/jsdgan_instructor.py), [real_data](instructor/real_data/jsdgan_instructor.py)
 
-- Models: [generator](models/JSDGAN_G.py) (No discriminator)
+- Models: [generator](models/generators/JSDGAN_G.py) (No discriminator)
 
 - Structure (from my understanding)
 
@@ -170,7 +183,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/relgan_instructor.py), [real_data](instructor/real_data/relgan_instructor.py)
 
-- Models: [generator](models/RelGAN_G.py), [discriminator](models/RelGAN_D.py)
+- Models: [generator](models/generators/RelGAN_G.py), [discriminator](models/discriminators/RelGAN_D.py)
 
 - Structure  (from my understanding)
 
@@ -182,7 +195,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/dpgan_instructor.py), [real_data](instructor/real_data/dpgan_instructor.py)
 
-- Models: [generator](models/DPGAN_G.py), [discriminator](models/DPGAN_D.py)
+- Models: [generator](models/generators/DPGAN_G.py), [discriminator](models/discriminators/DPGAN_D.py)
 
 - Structure  (from [DPGAN](https://arxiv.org/abs/1802.01345))
 
@@ -194,7 +207,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/dgsan_instructor.py), [real_data](instructor/real_data/dgsan_instructor.py)
 
-- Models: [generator](models/DGSAN_G.py), [discriminator](models/DGSAN_D.py)
+- Models: [generator](models/generators/DGSAN_G.py), [discriminator](models/discriminators/DGSAN_D.py)
 
 ### CoT
 
@@ -202,7 +215,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/cot_instructor.py), [real_data](instructor/real_data/cot_instructor.py)
 
-- Models: [generator](models/CoT_G.py), [discriminator](models/CoT_D.py)
+- Models: [generator](models/generators/CoT_G.py), [discriminator](models/discriminators/CoT_D.py)
 
 - Structure  (from [CoT](https://arxiv.org/abs/1804.03782))
 
@@ -214,7 +227,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/sentigan_instructor.py), [real_data](instructor/real_data/sentigan_instructor.py)
 
-- Models: [generator](models/SentiGAN_G.py), [discriminator](models/SentiGAN_D.py)
+- Models: [generator](models/generators/SentiGAN_G.py), [discriminator](models/discriminators/SentiGAN_D.py)
 
 - Structure (from [SentiGAN](https://www.ijcai.org/proceedings/2018/0618.pdf))
 
@@ -226,7 +239,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/catgan_instructor.py), [real_data](instructor/real_data/catgan_instructor.py)
 
-- Models: [generator](models/CatGAN_G.py), [discriminator](models/CatGAN_D.py)
+- Models: [generator](models/generators/CatGAN_G.py), [discriminator](models/discriminators/CatGAN_D.py)
 
 - Structure (from [CatGAN](https://arxiv.org/abs/1911.06641))
 
