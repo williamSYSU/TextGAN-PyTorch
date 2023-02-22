@@ -69,10 +69,10 @@ class BasicInstructor:
         self.clas_opt = None
 
         # Metrics
-        self.bleu = BLEU('BLEU', gram=[2, 3, 4, 5], if_use=cfg.use_bleu)
+        self.bleu = BLEU('BLEU', gram=3, if_use=cfg.use_bleu)
         self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
         self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div, gpu=cfg.CUDA)
-        self.self_bleu = BLEU('Self-BLEU', gram=[2, 3, 4], if_use=cfg.use_self_bleu)
+        self.self_bleu = BLEU('Self-BLEU', gram=3, if_use=cfg.use_self_bleu)
         self.clas_acc = ACC(if_use=cfg.use_clas_acc)
         self.ioc = IOC(if_use=cfg.use_ioc, real_text=self.test_data.tokens)
         self.nll_oracle = GPTNLL(if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
