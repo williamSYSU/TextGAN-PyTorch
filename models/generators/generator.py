@@ -76,7 +76,7 @@ class LSTMGenerator(nn.Module):
 
             for i in range(self.max_seq_len):
                 out, hidden = self.forward(inp, hidden, need_hidden=True)  # out: batch_size * vocab_size
-                next_token = torch.multinomial(torch.exp(out), 1)  # batch_size * 1 (sampling from each row)
+                next_token = torch.multinomial(torch.exp(out), 1, replacement=True)  # batch_size * 1 (sampling from each row)
                 samples[b * batch_size:(b + 1) * batch_size, i] = next_token.view(-1)
                 inp = next_token.view(-1)
         samples = samples[:num_samples]
