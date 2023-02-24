@@ -13,8 +13,8 @@ from metrics.basic import Metrics
 
 
 class GPTNLL(Metrics):
-    def __init__(self, name=None, test_text=None, real_text=None, if_use=True):
-        super(GPTNLL, self).__init__('GPT2 as oracle')
+    def __init__(self, weight, name=None, test_text=None, real_text=None, if_use=True):
+        super(GPTNLL, self).__init__('GPT2 as oracle', weight=weight)
 
         self.if_use = if_use
         self.test_text = test_text
@@ -34,10 +34,11 @@ class GPTNLL(Metrics):
         return self.get_NLL(self.test_text) - self.real_text_nll
 
     def reset(self, test_text=None, real_text=None):
+        self._reset()
         self.test_text = test_text if test_text else self.test_text
         self.real_text_nll = self.get_NLL(real_text) if real_text else self.real_text_nll
 
-    def get_NLL(self, messages, baseline=0):
+    def calculate_metric(self, messages, baseline=0):
         if type(messages[0]) == list: #we received list of tokens
             messages = [' '.join(msg) for msg in messages]
 
@@ -51,4 +52,4 @@ class GPTNLL(Metrics):
             all_logits.append(
                 self.NLLloss(logits[:-1], inputs["input_ids"][0][1:]).detach().numpy()
             )
-        return np.mean(all_logits)
+        return np.mean(all_logits) - self.real_text_nll

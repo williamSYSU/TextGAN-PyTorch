@@ -56,7 +56,8 @@ class BasicInstructor:
         self.nll_oracle = NLL('NLL_oracle', if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
         self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
         self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div, gpu=cfg.CUDA)
-        self.all_metrics = [self.nll_oracle, self.nll_gen, self.nll_div]
+        self.self_bleu = BLEU('Self-BLEU', gram=3, if_use=cfg.use_self_bleu)
+        self.all_metrics = [self.nll_oracle, self.nll_gen, self.nll_div, self.self_bleu]
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -163,6 +164,20 @@ class BasicInstructor:
             self.log.info('>>> {0}: {1}'.format(arg, getattr(self.opt, arg)))
         self.log.info(100 * '=')
 
+    def sample_for_metrics(self):
+        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
+        gen_data = GenDataIter(eval_samples)
+        gen_tokens = eval_samples
+        gen_tokens_s = self.gen.sample(cfg.small_sample_num, 4 * cfg.batch_size)
+        return gen_data, gen_tokens, gen_tokens_s
+
+    def sample_for_metrics_with_label(self, label_i):
+        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i)
+        gen_data = GenDataIter(eval_samples)
+        gen_tokens = eval_samples
+        gen_tokens_s = self.gen.sample(cfg.small_sample_num, 8 * cfg.batch_size, label_i=label_i)
+        return gen_data, gen_tokens, gen_tokens_s
+
     def cal_metrics(self, fmt_str=False):
         """
         Calculate metrics
@@ -170,30 +185,32 @@ class BasicInstructor:
         """
         with torch.no_grad():
             # Prepare data for evaluation
-            gen_data = GenDataIter(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
+            gen_data, gen_tokens, gen_tokens_s = sample_for_metrics()
 
             # Reset metrics
             self.nll_oracle.reset(self.oracle, gen_data.loader)
             self.nll_gen.reset(self.gen, self.oracle_data.loader)
             self.nll_div.reset(self.gen, gen_data.loader)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
-        else:
-            return [metric.get_score() for metric in self.all_metrics]
+            return ', '.join(['%s = %s' % (metric.name, metric.get_score()) for metric in self.all_metrics])
+        return [metric.get_score() for metric in self.all_metrics]
 
-    def cal_metrics_with_label(self, label_i):
+    def cal_metrics_with_label(self, label_i, fmt_str=False):
         assert type(label_i) == int, 'missing label'
         with torch.no_grad():
             # Prepare data for evaluation
-            eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
-            gen_data = GenDataIter(eval_samples)
+            gen_data, gen_tokens, gen_tokens_s = sample_for_metrics_with_label()
 
             # Reset metrics
             self.nll_oracle.reset(self.oracle_list[label_i], gen_data.loader, label_i)
             self.nll_gen.reset(self.gen, self.oracle_data_list[label_i].loader, label_i)
             self.nll_div.reset(self.gen, gen_data.loader, label_i)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
 
+        if fmt_str:
+            return f'label: {label_i}' + ', '.join(['%s = %s' % (metric.name, metric.get_score()) for metric in self.all_metrics])
         return [metric.get_score() for metric in self.all_metrics]
 
     def comb_metrics(self, fmt_str=False):
@@ -201,7 +218,7 @@ class BasicInstructor:
         all_scores = np.array(all_scores).T.tolist()  # each row for each metric
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), score)
+            return ', '.join(['%s = %s' % (metric.name, score)
                               for (metric, score) in zip(self.all_metrics, all_scores)])
         return all_scores
 

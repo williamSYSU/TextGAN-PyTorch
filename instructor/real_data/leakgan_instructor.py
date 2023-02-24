@@ -185,7 +185,7 @@ class LeakGANInstructor(BasicInstructor):
             self.ppl.reset(gen_tokens)
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+            return ', '.join(['%s = %s' % (metric.name, metric.get_score()) for metric in self.all_metrics])
         else:
             return [metric.get_score() for metric in self.all_metrics]
 

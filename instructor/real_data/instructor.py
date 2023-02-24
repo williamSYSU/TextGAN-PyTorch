@@ -69,14 +69,14 @@ class BasicInstructor:
         self.clas_opt = None
 
         # Metrics
-        self.bleu = BLEU('BLEU', gram=3, if_use=cfg.use_bleu)
-        self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
-        self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div, gpu=cfg.CUDA)
-        self.self_bleu = BLEU('Self-BLEU', gram=3, if_use=cfg.use_self_bleu)
-        self.clas_acc = ACC(if_use=cfg.use_clas_acc)
-        self.ioc = IOC(if_use=cfg.use_ioc, real_text=self.test_data.tokens)
-        self.nll_oracle = GPTNLL(if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
-        self.ppl = PPL(self.train_data, self.test_data, n_gram=5, if_use=cfg.use_ppl)
+        self.bleu = BLEU('BLEU', weitht=1, gram=3, if_use=cfg.use_bleu)
+        self.nll_gen = NLL('NLL_gen', weight=-1, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
+        self.nll_div = NLL('NLL_div', weight=1, if_use=cfg.use_nll_div, gpu=cfg.CUDA)
+        self.self_bleu = BLEU('Self-BLEU', weight=-1, gram=3, if_use=cfg.use_self_bleu)
+        self.clas_acc = ACC(weight=1, if_use=cfg.use_clas_acc)
+        self.ioc = IOC(weight=-1, if_use=cfg.use_ioc, real_text=self.test_data.tokens)
+        self.nll_oracle = GPTNLL(weight=-1, if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
+        self.ppl = PPL(self.train_data, self.test_data, weight=-1, n_gram=5, if_use=cfg.use_ppl)
         self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.nll_oracle, self.ppl]
 
     def _run(self):
@@ -239,7 +239,9 @@ class BasicInstructor:
             self.nll_oracle.reset(test_text=gen_tokens)
 
         if fmt_str:
-            return '\n'.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+            return "\n" \
+            "\n".join([f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]) \
+            f"\n Overal_score: {sum(metric.weight * metric.get_score() for metric in metrics)}"
         return [metric.get_score() for metric in self.all_metrics]
 
     def cal_metrics_with_label(self, label_i, fmt_str=False):
@@ -257,7 +259,9 @@ class BasicInstructor:
             self.ppl.reset(gen_tokens)
 
         if fmt_str:
-            return '\n'.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+            return f"label: {label_i}" \
+            '\n'.join([f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]) \
+            f"\n Overal_score: {sum(metric.weight * metric.get_score() for metric in metrics)}"
         return [metric.get_score() for metric in self.all_metrics]
 
     def comb_metrics(self, fmt_str=False):
@@ -265,8 +269,7 @@ class BasicInstructor:
         all_scores = np.array(all_scores).T.tolist()  # each row for each metric
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), score)
-                              for (metric, score) in zip(self.all_metrics, all_scores)])
+            return ', '.join([f"{metric.name} = {score}" for (metric, score) in zip(self.all_metrics, all_scores)])
         return all_scores
 
     def _save(self, phase, epoch):
