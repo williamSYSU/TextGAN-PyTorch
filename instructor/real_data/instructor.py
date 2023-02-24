@@ -239,8 +239,9 @@ class BasicInstructor:
             self.nll_oracle.reset(test_text=gen_tokens)
 
         if fmt_str:
-            return "\n".join([f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]) + "" \
-            f"\nOveral_score: {sum(metric.weight * metric.get_score() for metric in self.all_metrics)}"
+            pp_metrics = [f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]
+            pp_metrics.append(f"Overal_score: {sum(metric.weight * metric.get_score() for metric in self.all_metrics)}")
+            return "\n".join(pp_metrics)
         return [metric.get_score() for metric in self.all_metrics]
 
     def cal_metrics_with_label(self, label_i, fmt_str=False):
@@ -258,9 +259,9 @@ class BasicInstructor:
             self.ppl.reset(gen_tokens)
 
         if fmt_str:
-            return f"label: {label_i}" \
-            "\n".join([f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]) + "" \
-            f"\nOveral_score: {sum(metric.weight * metric.get_score() for metric in self.all_metrics)}"
+            pp_metrics = [f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]
+            pp_metrics.append(f"Overal_score: {sum(metric.weight * metric.get_score() for metric in self.all_metrics)}")
+            return f"label: {label_i}\n" + "\n".join(pp_metrics)
         return [metric.get_score() for metric in self.all_metrics]
 
     def comb_metrics(self, fmt_str=False):

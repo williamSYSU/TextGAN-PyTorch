@@ -31,7 +31,7 @@ class BLEU(Metrics):
         self.if_use = if_use
         self.test_text = test_text
         self.real_text = real_text
-        self.gram = [gram] if type(gram) == int else gram
+        self.gram = gram if type(gram) == int else gram
         self.sample_size = 200  # BLEU scores remain nearly unchanged for self.sample_size >= 200
         self.portion = portion  # how many portions to use in the evaluation, default to use the whole test dataset
 
@@ -50,8 +50,8 @@ class BLEU(Metrics):
         return reference
 
     def get_bleu(self, given_gram=None):
-        if given_gram is not None:  # for single gram
-            return self.get_blue_for_single_gram(given_gram)
+        if type(self.gram) == int: # for single gram
+            return self.get_blue_for_single_gram(self.gram)
         # for multiple gram
         all_bleu = []
         for ngram in self.gram:
@@ -62,7 +62,7 @@ class BLEU(Metrics):
         bleu = list()
         reference = self.get_reference()
         weight = tuple((1. / ngram for _ in range(ngram)))
-        for idx, hypothesis in enumerate(tqdm(self.test_text[:self.sample_size], desc=self.name)):
+        for idx, hypothesis in enumerate(self.test_text[:self.sample_size], desc=self.name):
             bleu.append(self.cal_bleu(reference, hypothesis, weight))
         return round(sum(bleu) / len(bleu), 3)
 
@@ -71,15 +71,15 @@ class BLEU(Metrics):
         return nltk.translate.bleu_score.sentence_bleu(reference, hypothesis, weight,
                                                        smoothing_function=SmoothingFunction().method1)
 
-    def calculate_metric(self, given_gram=None):
+    def calculate_metric(self):
+        if type(self.gram) == int: # for single gram
+            return self.get_blue_for_single_gram(self.gram)
+        # for multiple gram
         reference = self.get_reference()
-        if given_gram is not None:  # for single gram
-            return self.get_bleu_parallel(ngram=given_gram, reference=reference)
-        else:  # for multiple gram
-            all_bleu = []
-            for ngram in self.gram:
-                all_bleu.append(self.get_bleu_parallel(ngram=ngram, reference=reference))
-            return all_bleu
+        all_bleu = []
+        for ngram in self.gram:
+            all_bleu.append(self.get_bleu_parallel(ngram=ngram, reference=reference))
+        return all_bleu
 
     def get_bleu_parallel(self, ngram, reference):
         weight = tuple((1. / ngram for _ in range(ngram)))
