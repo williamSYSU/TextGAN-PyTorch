@@ -55,7 +55,7 @@ class MaliGANInstructor(BasicInstructor):
 
         # ===ADVERSARIAL TRAINING===
         self.log.info('Starting Adversarial Training...')
-        self.log.info('Initial generator: %s\n' % (self.cal_metrics(fmt_str=True)))
+        self.log.info('Initial generator: %s' % (self.cal_metrics(fmt_str=True)))
 
         for adv_epoch in range(cfg.ADV_train_epoch):
             self.log.info('-----\nADV EPOCH %d\n-----' % adv_epoch)
@@ -89,7 +89,7 @@ class MaliGANInstructor(BasicInstructor):
                 # ===Test===
                 if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
-                        '[MLE-GEN] epoch %d : pre_loss = %.4f\n%s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
+                        '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
                     if cfg.if_save and not cfg.if_test:
                         self._save('MLE', epoch)
             else:
@@ -111,7 +111,7 @@ class MaliGANInstructor(BasicInstructor):
             total_g_loss += adv_loss.item()
 
         # ===Test===
-        self.log.info('[ADV-GEN]: g_loss = %.4f\n%s' % (total_g_loss, self.cal_metrics(fmt_str=True)))
+        self.log.info('[ADV-GEN]: g_loss = %.4f, %s' % (total_g_loss, self.cal_metrics(fmt_str=True)))
 
     def train_discriminator(self, d_step, d_epoch, phase='MLE'):
         """

@@ -62,7 +62,7 @@ class BLEU(Metrics):
         bleu = list()
         reference = self.get_reference()
         weight = tuple((1. / ngram for _ in range(ngram)))
-        for idx, hypothesis in enumerate(self.test_text[:self.sample_size], desc=self.name):
+        for idx, hypothesis in enumerate(self.test_text[:self.sample_size]):
             bleu.append(self.cal_bleu(reference, hypothesis, weight))
         return round(sum(bleu) / len(bleu), 3)
 

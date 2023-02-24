@@ -123,10 +123,6 @@ class FixemGANInstructor(BasicInstructor):
                 while self.one_more_batch_for_generator(generator_acc):
                     generator_acc = self.generator_train_one_batch()
 
-
-            self.log.info('\n'.join(self.gen.sample(20, 20)))
-
-            # if (i + 1) % 10 == 0:
             if cfg.run_model == 'fixemgan':
                 scores = self.cal_metrics(fmt_str=True)
             if cfg.run_model == 'cat_fixemgan':

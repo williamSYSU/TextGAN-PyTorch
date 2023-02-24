@@ -137,11 +137,6 @@ class EvoGANInstructor(BasicInstructor):
                     self.log.info(
                         '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
 
-                    eval_samples = self.gen.sample(20, 20)
-                    gen_tokens = tensor_to_tokens(eval_samples, self.idx2word_dict)
-                    for sample in gen_tokens:
-                        self.log.info(' '.join(sample))
-
                     if cfg.if_save and not cfg.if_test:
                         self._save('MLE', epoch)
             else:
