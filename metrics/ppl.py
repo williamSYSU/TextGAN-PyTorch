@@ -21,7 +21,7 @@ kenlm_path = '/home/zhiwei/kenlm'  # specify the kenlm path
 
 
 class PPL(Metrics):
-    def __init__(self, train_data, test_data, weight, n_gram=5, if_use=False, weight=1):
+    def __init__(self, train_data, test_data, weight, n_gram=5, if_use=False):
         """
         Calculate Perplexity scores, including forward and reverse.
         PPL-F: PPL_forward, PPL-R: PPL_reverse
@@ -30,7 +30,7 @@ class PPL(Metrics):
         @param n_gram: calculate with n-gram
         @param if_use: if use
         """
-        super(PPL, self).__init__('[PPL-F, PPL-R]', weight)
+        super(PPL, self).__init__('[PPL-F, PPL-R]', weight, if_use)
 
         self.n_gram = n_gram
         self.if_use = if_use

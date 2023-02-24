@@ -14,7 +14,7 @@ from metrics.basic import Metrics
 
 class ACC(Metrics):
     def __init__(self, weight, if_use=True, gpu=True):
-        super(ACC, self).__init__('clas_acc', weight=weight)
+        super(ACC, self).__init__('clas_acc', weight, if_use)
 
         self.if_use = if_use
         self.model = None

@@ -11,18 +11,18 @@ from abc import abstractmethod
 
 
 class Metrics:
-    def __init__(self, name='Metric', wight=1):
+    def __init__(self, name, weight, if_use):
         self.name = name
         # represents effect on final score
         # ex.: self-bleu has weight = -1 (less is better)
         # bleu has weight = 1 (more is better)
         # weights needed for combined metric evaluation
         self.weight = weight
-        self.in_use = False
+        self.if_use = if_use
         self.metric_value_with_current_state = None
 
     def get_score(self):
-        if not self.in_use:
+        if not self.if_use:
             return 0
 
         if self.metric_value_with_current_state is not None:
@@ -32,7 +32,8 @@ class Metrics:
         return self.metric_value_with_current_state
 
     @abstractmethod
-    def calculate_metric(self)
+    def calculate_metric(self):
+        pass
 
     @abstractmethod
     def reset(self):

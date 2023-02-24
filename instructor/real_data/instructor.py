@@ -69,7 +69,7 @@ class BasicInstructor:
         self.clas_opt = None
 
         # Metrics
-        self.bleu = BLEU('BLEU', weitht=1, gram=3, if_use=cfg.use_bleu)
+        self.bleu = BLEU('BLEU', weight=1, gram=3, if_use=cfg.use_bleu)
         self.nll_gen = NLL('NLL_gen', weight=-1, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
         self.nll_div = NLL('NLL_div', weight=1, if_use=cfg.use_nll_div, gpu=cfg.CUDA)
         self.self_bleu = BLEU('Self-BLEU', weight=-1, gram=3, if_use=cfg.use_self_bleu)
@@ -239,9 +239,8 @@ class BasicInstructor:
             self.nll_oracle.reset(test_text=gen_tokens)
 
         if fmt_str:
-            return "\n" \
-            "\n".join([f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]) \
-            f"\n Overal_score: {sum(metric.weight * metric.get_score() for metric in metrics)}"
+            return "\n".join([f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]) + "" \
+            f"\nOveral_score: {sum(metric.weight * metric.get_score() for metric in self.all_metrics)}"
         return [metric.get_score() for metric in self.all_metrics]
 
     def cal_metrics_with_label(self, label_i, fmt_str=False):
@@ -249,7 +248,7 @@ class BasicInstructor:
 
         with torch.no_grad():
             # Prepare data for evaluation
-            gen_data, gen_tokens, gen_tokens_s, clas_data = sample_for_metrics_with_label(label_i)
+            gen_data, gen_tokens, gen_tokens_s, clas_data = self.sample_for_metrics_with_label(label_i)
             # Reset metrics
             self.bleu.reset(test_text=gen_tokens, real_text=self.test_data_list[label_i].tokens)
             self.nll_gen.reset(self.gen, self.train_data_list[label_i].loader, label_i)
@@ -260,8 +259,8 @@ class BasicInstructor:
 
         if fmt_str:
             return f"label: {label_i}" \
-            '\n'.join([f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]) \
-            f"\n Overal_score: {sum(metric.weight * metric.get_score() for metric in metrics)}"
+            "\n".join([f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]) + "" \
+            f"\nOveral_score: {sum(metric.weight * metric.get_score() for metric in self.all_metrics)}"
         return [metric.get_score() for metric in self.all_metrics]
 
     def comb_metrics(self, fmt_str=False):

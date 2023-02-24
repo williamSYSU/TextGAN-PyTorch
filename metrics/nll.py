@@ -16,7 +16,7 @@ from metrics.basic import Metrics
 
 class NLL(Metrics):
     def __init__(self, name, weight, if_use=False, gpu=False):
-        super(NLL, self).__init__(name, weight)
+        super(NLL, self).__init__(name, weight, if_use)
         self.if_use = if_use
         self.model = None
         self.data_loader = None

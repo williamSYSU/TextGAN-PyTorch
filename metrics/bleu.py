@@ -24,9 +24,9 @@ class BLEU(Metrics):
     :param is_fast: Fast mode
     :param given_gram: Calculate specific n-gram BLEU score
     """
-    def __init__(self, weight, name=None, test_text=None, real_text=None, gram=3, portion=1, if_use=False):
+    def __init__(self, name=None, weight=1, test_text=None, real_text=None, gram=3, portion=1, if_use=False):
         assert type(gram) == int or type(gram) == list, 'Gram format error!'
-        super(BLEU, self).__init__('%s-%s' % (name, gram), weight=weight)
+        super(BLEU, self).__init__('%s-%s' % (name, gram), weight, if_use)
 
         self.if_use = if_use
         self.test_text = test_text
