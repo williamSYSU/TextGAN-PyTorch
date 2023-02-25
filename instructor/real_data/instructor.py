@@ -69,14 +69,22 @@ class BasicInstructor:
         self.clas_opt = None
 
         # Metrics
-        self.bleu = BLEU('BLEU', weight=1, gram=3, if_use=cfg.use_bleu)
-        self.nll_gen = NLL('NLL_gen', weight=-1, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
-        self.nll_div = NLL('NLL_div', weight=1, if_use=cfg.use_nll_div, gpu=cfg.CUDA)
-        self.self_bleu = BLEU('Self-BLEU', weight=-1, gram=3, if_use=cfg.use_self_bleu)
+        # bleu, more-bettter, changes in range 0.3 - 0.4, will have relatively high weight
+        self.bleu = BLEU('BLEU', weight=3, gram=3, if_use=cfg.use_bleu)
+        # nll-gen, less-better, changes in range 1.5 - 3 will have smaller wight
+        self.nll_gen = NLL('NLL_gen', weight=0, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
+        # nll-div, more-better, changes in range 0.5 - 1.5 will have smaller wight
+        self.nll_div = NLL('NLL_div', weight=0, if_use=cfg.use_nll_div, gpu=cfg.CUDA)
+        # self-bleu, less-bettter, changes in range 0.7 - 0.9, will have relatively high weight
+        self.self_bleu = BLEU('Self-BLEU', weight=-2, gram=3, if_use=cfg.use_self_bleu)
+        # class-acc, more-bettter, changes in range 0.7 - 1.0, moderate weight
         self.clas_acc = ACC(weight=1, if_use=cfg.use_clas_acc)
-        self.ioc = IOC(weight=-1, if_use=cfg.use_ioc, real_text=self.test_data.tokens)
+        # IOC, less-bettter, changes in range 0.8 - 2.0, smaller weight
+        self.ioc = IOC(weight=-0.3, if_use=cfg.use_ioc, real_text=self.test_data.tokens)
+        # nll_oracle, less-bettter, changes in range -0.1 - 0.5, moderate weight
         self.nll_oracle = GPTNLL(weight=-1, if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
-        self.ppl = PPL(self.train_data, self.test_data, weight=-1, n_gram=5, if_use=cfg.use_ppl)
+        # perplexity, less-bettter, changes in range 3 - 4, moderate weight
+        self.ppl = PPL(self.train_data, self.test_data, weight=0, n_gram=5, if_use=cfg.use_ppl)
         self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.nll_oracle, self.ppl]
 
     def _run(self):
