@@ -59,15 +59,15 @@ class GenDataIter:
         """
         input: same as target, but start with start_letter.
         """
-        # global all_data
+        all_data = None
         if isinstance(samples, torch.Tensor):  # Tensor
             inp, target = self.prepare(samples)
             all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
         elif isinstance(samples, str):  # filename
             inp, target = self.load_data(samples)
             all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
-        else:
-            all_data = None
+        elif isinstance(samples, list):  # list of tockens
+            all_data = [{'input': i, 'target': t} for (i, t) in zip(samples[:-1], samples[1:])]
         return all_data
 
     def random_batch(self):
