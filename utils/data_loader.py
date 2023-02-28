@@ -66,8 +66,11 @@ class GenDataIter:
         elif isinstance(samples, str):  # filename
             inp, target = self.load_data(samples)
             all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
-        elif isinstance(samples, list):  # list of tockens
-            all_data = [{'input': i, 'target': t} for (i, t) in zip(samples[:-1], samples[1:])]
+        elif isinstance(samples, list):  # list of tokens, required for generator NLL
+            all_data = [
+                {'input': torch.zeros(1), 'target': torch.zeros(1)}
+                for (i, t) in zip(samples[:-1], samples[1:])
+            ]
         return all_data
 
     def random_batch(self):
