@@ -13,6 +13,7 @@ import random
 import argparse
 import torch
 import numpy as np
+import wandb
 
 import config as cfg
 from utils.text_process import load_test_dict, text_process
@@ -191,8 +192,19 @@ if __name__ == '__main__':
         'cat_fixemgan': FixemGANInstructor
     }
 
+
+    # start a new wandb run to track this script
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="TextGAN",
+        # track hyperparameters and run metadata
+        config=vars(opt)
+    )
+
     inst = instruction_dict[cfg.run_model](opt)
     if not cfg.if_test:
         inst._run()
     else:
         inst._test()
+
+    wandb.finish()

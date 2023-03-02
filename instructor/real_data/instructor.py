@@ -10,6 +10,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import wandb
 
 import config as cfg
 from metrics.bleu import BLEU
@@ -18,6 +19,7 @@ from metrics.ioc import IOC
 from metrics.gpt_nll import GPTNLL
 from metrics.nll import NLL
 from metrics.ppl import PPL
+from metrics.dummy import Dummy
 from utils.cat_data_loader import CatClasDataIter
 from utils.data_loader import GenDataIter
 from utils.helpers import Signal, create_logger, get_fixed_temperature
@@ -71,9 +73,9 @@ class BasicInstructor:
         # Metrics
         # bleu, more-better, changes in range 0.4 - 0.6, will have relatively high weight
         self.bleu = BLEU('BLEU', weight=3, gram=3, if_use=cfg.use_bleu)
-        # nll-gen, less-better, changes in range 1.5 - 3 will have smaller wight
+        # nll-gen, less-better, changes in range 1.5 - 3 will have smaller wight (not in use)
         self.nll_gen = NLL('NLL_gen', weight=0, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
-        # nll-div, more-better, changes in range 0.5 - 1.5 will have smaller wight
+        # nll-div, more-better, changes in range 0.5 - 1.5 will have smaller wight (not in use)
         self.nll_div = NLL('NLL_div', weight=0, if_use=cfg.use_nll_div, gpu=cfg.CUDA)
         # self-bleu, less-bettter, changes in range 0.7 - 0.9, will have relatively high weight
         self.self_bleu = BLEU('Self-BLEU', weight=-3, gram=3, if_use=cfg.use_self_bleu)
@@ -82,10 +84,12 @@ class BasicInstructor:
         # IOC, less-bettter, changes in range 0.8 - 2.0, smaller weight
         self.ioc = IOC(weight=-0.3, if_use=cfg.use_ioc, real_text=self.test_data.tokens)
         # nll_oracle, less-bettter, changes in range -0.1 - 0.6, moderate weight
-        self.nll_oracle = GPTNLL(weight=-2, if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
-        # perplexity, less-bettter, changes in range 3 - 4, moderate weight
+        self.nll_oracle = GPTNLL(weight=-3, if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
+        # perplexity, less-bettter, changes in range 3 - 4, moderate weight (not in use)
         self.ppl = PPL(self.train_data, self.test_data, weight=0, n_gram=5, if_use=cfg.use_ppl)
-        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.nll_oracle, self.ppl]
+        # dummy, add constant value to overall score
+        self.dummy = Dummy(weight=1, value=5, if_use=True)
+        self.all_metrics = [self.bleu, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.nll_oracle, self.ppl, self.dummy]
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -246,11 +250,12 @@ class BasicInstructor:
             self.ioc.reset(test_text=gen_tokens)
             self.nll_oracle.reset(test_text=gen_tokens)
 
+        metrics = {metric.name: metric.get_score() for metric in self.all_metrics}
+        metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
+        wandb.log(metrics)
+
         if fmt_str:
-            pp_metrics = [f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]
-            # added magic number 3 to make overall score positive and more readable
-            pp_metrics.append(f"Overal_score: {3 + sum(metric.weight * metric.get_score() for metric in self.all_metrics)}")
-            return "\n" + "\n".join(pp_metrics)
+            return "\n" + "\n".join([f"{name} = {score}" for name, score in metrics.items()])
         return [metric.get_score() for metric in self.all_metrics]
 
     def cal_metrics_with_label(self, label_i, fmt_str=False):
@@ -267,10 +272,13 @@ class BasicInstructor:
             self.clas_acc.reset(self.clas, clas_data.loader)
             self.ppl.reset(gen_tokens)
 
+        metrics = {"label_i": label_i})
+        metrics.update({metric.name: metric.get_score() for metric in self.all_metrics})
+        metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
+        wandb.log(metrics)
+
         if fmt_str:
-            pp_metrics = [f"{metric.name} = {metric.get_score()}" for metric in self.all_metrics]
-            pp_metrics.append(f"Overal_score: {sum(metric.weight * metric.get_score() for metric in self.all_metrics)}")
-            return "\n" + f"label: {label_i}\n" + "\n".join(pp_metrics)
+            return "\n" + "\n".join([f"{name} = {score}" for name, score in metrics.items()])
         return [metric.get_score() for metric in self.all_metrics]
 
     def comb_metrics(self, fmt_str=False):
