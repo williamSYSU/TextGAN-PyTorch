@@ -14,7 +14,7 @@ import torch.nn as nn
 
 import config as cfg
 from metrics.nll import NLL
-from models.generators.Oracle import Oracle
+from models.Oracle import Oracle
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
 from utils.helpers import Signal, create_logger, create_oracle, get_fixed_temperature

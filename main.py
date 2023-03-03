@@ -131,6 +131,7 @@ def program_config(parser):
 if __name__ == '__main__':
     #seed everything
     torch.manual_seed(0)
+    torch.use_deterministic_algorithms(True)
     random.seed(0)
     np.random.seed(0)
 

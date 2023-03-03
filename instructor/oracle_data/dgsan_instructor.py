@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.generatos.DGSAN_G import DGSAN_G
+from models.generators.DGSAN_G import DGSAN_G
 from utils.data_loader import GenDataIter
 from utils.helpers import create_oracle
 

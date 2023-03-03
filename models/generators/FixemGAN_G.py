@@ -129,8 +129,7 @@ class Generator(LSTMGenerator):
 
     def forward(self, noise, target_labels):
         target_labels = torch.nn.functional.one_hot(target_labels, num_classes=cfg.k_label)
-        x = self.main([noise, target_labels])
-        return x
+        return self.main([noise, target_labels])
 
     def sample(self, num_samples, batch_size, label_i = 'random', start_letter=cfg.start_letter):
         noise = create_noise(num_samples, self.noise_size, cfg.k_label)

@@ -24,12 +24,6 @@ from models.Oracle import Oracle
 from models.generators.FixemGAN_G import Generator
 from models.discriminators.FixemGAN_D import Discriminator
 
-
-# TO DO:
-# 4. save? or save each 10 epochs
-# 10. cat_oracle
-# 12. class accuracy
-
 # afterwards:
 # check target real/fake to be right (Uniform or const)
 # random data portion generator - data supplier sample from randomint

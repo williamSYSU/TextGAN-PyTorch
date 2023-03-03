@@ -271,6 +271,8 @@ class BasicInstructor:
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
             self.clas_acc.reset(self.clas, clas_data.loader)
             self.ppl.reset(gen_tokens)
+            self.ioc.reset(test_text=gen_tokens)
+            self.nll_oracle.reset(test_text=gen_tokens)
 
         metrics = {"label_i": label_i}
         metrics.update({metric.name: metric.get_score() for metric in self.all_metrics})
