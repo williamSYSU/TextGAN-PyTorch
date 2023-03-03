@@ -27,8 +27,7 @@ class GPTNLL(Metrics):
         print(f'dataset NLL based on GPT2 is {self.real_text_nll}')
         print('GPT2 as oracle metric will be calculated relative to this value')
 
-    def reset(self, test_text=None, real_text=None):
-        self._reset()
+    def _reset(self, test_text=None, real_text=None):
         self.test_text = test_text if test_text else self.test_text
         self.real_text_nll = self.calcualte_NLL(real_text) if real_text else self.real_text_nll
 

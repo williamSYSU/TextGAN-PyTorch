@@ -35,8 +35,7 @@ class BLEU(Metrics):
         self.sample_size = 200  # BLEU scores remain nearly unchanged for self.sample_size >= 200
         self.portion = portion  # how many portions to use in the evaluation, default to use the whole test dataset
 
-    def reset(self, test_text=None, real_text=None):
-        self._reset()
+    def _reset(self, test_text=None, real_text=None):
         self.test_text = test_text if test_text else self.test_text
         self.real_text = real_text if real_text else self.real_text
 

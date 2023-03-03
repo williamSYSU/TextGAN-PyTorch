@@ -39,8 +39,7 @@ class PPL(Metrics):
         self.train_data = train_data
         self.test_data = test_data
 
-    def reset(self, gen_tokens=None):
-        self._reset()
+    def _reset(self, gen_tokens=None):
         self.gen_tokens = gen_tokens
 
     def calculate_metric(self):

@@ -21,8 +21,7 @@ class ACC(Metrics):
         self.data_loader = None
         self.gpu = gpu
 
-    def reset(self, model=None, data_loader=None):
-        self._reset()
+    def _reset(self, model=None, data_loader=None):
         self.model = model
         self.data_loader = data_loader
 

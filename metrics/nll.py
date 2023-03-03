@@ -34,8 +34,7 @@ class NLL(Metrics):
                                            self.criterion, self.gpu)
         return self.cal_nll(self.model, self.data_loader, self.criterion, self.gpu)
 
-    def reset(self, model=None, data_loader=None, label_i=None, leak_dis=None):
-        self._reset()
+    def _reset(self, model=None, data_loader=None, label_i=None, leak_dis=None):
         self.model = model
         self.data_loader = data_loader
         self.label_i = label_i

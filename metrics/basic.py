@@ -31,13 +31,14 @@ class Metrics:
         self.metric_value_with_current_state = self.calculate_metric()
         return self.metric_value_with_current_state
 
-    @abstractmethod
+    def reset(*args, **kwargs):
+        self.metric_value_with_current_state = None
+        self._reset(*args, **kwargs)
+
+     @abstractmethod
     def calculate_metric(self):
         pass
 
     @abstractmethod
-    def reset(self):
-        pass
-
     def _reset(self):
-        self.metric_value_with_current_state = None
+        pass
