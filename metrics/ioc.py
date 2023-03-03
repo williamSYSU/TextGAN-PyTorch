@@ -14,14 +14,14 @@ class IOC(Metrics):
 
         self.if_use = if_use
         self.test_text = test_text
-        self.real_text_ioc = self.calculate_ioc(real_text) if real_text else None
+        self.real_text_ioc = self.calculate_ioc(real_text.tokens) if real_text else None
         print(f'Dataset Index of coincidence: {self.real_text_ioc}')
         self.reference = None
         self.is_first = True
 
     def _reset(self, test_text=None, real_text=None):
         self.test_text = test_text if test_text else self.test_text
-        self.real_text_ioc = self.get_ioc(real_text) if real_text else self.real_text_ioc
+        self.real_text_ioc = self.get_ioc(real_text.tokens) if real_text else self.real_text_ioc
 
     def calculate_metric(self):
         return self.calculate_ioc(self.test_text) / self.real_text_ioc

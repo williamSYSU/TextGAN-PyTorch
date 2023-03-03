@@ -35,7 +35,7 @@ class Metrics:
         self.metric_value_with_current_state = None
         self._reset(*args, **kwargs)
 
-     @abstractmethod
+    @abstractmethod
     def calculate_metric(self):
         pass
 

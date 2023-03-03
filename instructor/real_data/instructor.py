@@ -84,9 +84,9 @@ class BasicInstructor:
         # class-acc, more-bettter, changes in range 0.7 - 1.0, moderate weight
         self.clas_acc = ACC(weight=1, if_use=cfg.use_clas_acc)
         # IOC, less-bettter, changes in range 0.8 - 2.0, smaller weight
-        self.ioc = IOC(weight=-0.3, if_use=cfg.use_ioc, real_text=self.test_data.tokens)
+        self.ioc = IOC(weight=-0.3, if_use=cfg.use_ioc, real_text=self.test_data)
         # nll_oracle, less-bettter, changes in range -0.1 - 0.6, moderate weight
-        self.nll_oracle = GPTNLL(weight=-3, if_use=cfg.use_nll_oracle, real_text=self.test_data.tokens)
+        self.nll_oracle = GPTNLL(weight=-3, if_use=cfg.use_nll_oracle, real_text=self.test_data)
         # perplexity, less-bettter, changes in range 3 - 4, moderate weight (not in use)
         self.ppl = PPL(self.train_data, self.test_data, weight=0, n_gram=5, if_use=cfg.use_ppl)
         # dummy, add constant value to overall score
