@@ -204,10 +204,6 @@ signal_file = 'run_signal.txt'
 
 tips = ''
 
-if samples_num == 5000 or samples_num == 2000:
-    assert 'c' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num, run_model)
-
-
 # Init settings according to parser
 def init_param(opt):
     global run_model, model_type, loss_type, CUDA, device, data_shuffle, samples_num, vocab_size, \

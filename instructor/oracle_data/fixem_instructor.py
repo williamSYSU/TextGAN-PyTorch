@@ -28,7 +28,7 @@ from models.discriminators.FixemGAN_D import Discriminator
 # check target real/fake to be right (Uniform or const)
 # random data portion generator - data supplier sample from randomint
 
-class FixemGANInstructor(RealDataFixemGANInstructor, BasicInstructor):
+class FixemGANInstructor(BasicInstructor, RealDataFixemGANInstructor):
     def __init__(self, opt):
         self.oracle = Oracle(32, 32, cfg.vocab_size, cfg.max_seq_len,cfg.padding_idx, gpu=cfg.CUDA)
         if cfg.oracle_pretrain:
@@ -41,10 +41,6 @@ class FixemGANInstructor(RealDataFixemGANInstructor, BasicInstructor):
             self.oracle = self.oracle.cuda()
 
         super().__init__(opt)
-
-
-        # Metrics
-        self.nll_oracle = NLL('NLL_oracle', if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
 
     def build_embedding(self):
         # train embedding on available dataset or oracle

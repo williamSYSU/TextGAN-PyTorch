@@ -31,15 +31,16 @@ rootdir = '../'
 scriptname = 'main.py'
 
 # ===Program===
-# EvoGAN: General text generation model
+# FixemGAN: General text generation model
 if_test = int(False)
-run_model = ['fixemgan', 'cat_fixemgan', 'fixemgan', 'cat_fixemgan', 'fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan', 'fixemgan']
+run_model = ['fixemgan', 'cat_fixemgan', 'fixemgan', 'cat_fixemgan', 'fixemgan', 'fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan']
 k_label = 2
 CUDA = int(True)
 batch_size = 32
 noise_size = 1000
 max_epochs = 20
 batches_per_epoch = 200
+samples_num = 100_000 # training samples size
 tips = '{} experiments'
 
 # ===Oracle or Real===
@@ -52,13 +53,10 @@ w2v_workers = 30
 w2v_samples_num = 5_000_000
 vocab_size = 5000
 
-# ===CatGAN Param===
-loss_type = 'fixem'
-oracle_train_samples_num = 100_000
-
 # === Basic Param ===
 data_shuffle = int(False)
 model_type = 'fixem'
+loss_type = 'fixem'
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
 batch_size = 64

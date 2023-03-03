@@ -14,7 +14,13 @@ import torch.nn as nn
 import wandb
 
 import config as cfg
+from metrics.bleu import BLEU
+from metrics.clas_acc import ACC
+from metrics.ioc import IOC
+from metrics.gpt_nll import GPTNLL
 from metrics.nll import NLL
+from metrics.ppl import PPL
+from metrics.dummy import Dummy
 from models.Oracle import Oracle
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
@@ -54,11 +60,19 @@ class BasicInstructor:
         self.dis_criterion = nn.CrossEntropyLoss()
 
         # Metrics
-        self.nll_oracle = NLL('NLL_oracle', if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
-        self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
-        self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div, gpu=cfg.CUDA)
-        self.self_bleu = BLEU('Self-BLEU', gram=3, if_use=cfg.use_self_bleu)
-        self.all_metrics = [self.nll_oracle, self.nll_gen, self.nll_div, self.self_bleu]
+        # nll_oracle, less-better, changes in range -0.1 - 0.6, moderate weight
+        self.nll_oracle = NLL('NLL_oracle', weight=1, if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
+        # nll-gen, less-better, changes in range 1.5 - 3 will have smaller wight (not in use)
+        self.nll_gen = NLL('NLL_gen', weight=0, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
+        # nll-div, more-better, changes in range 0.5 - 1.5 will have smaller wight (not in use)
+        self.nll_div = NLL('NLL_div', weight=0, if_use=cfg.use_nll_div, gpu=cfg.CUDA)
+        # self-bleu, less-better, changes in range 0.7 - 0.9, will have relatively high weight
+        self.self_bleu = BLEU('Self-BLEU', weight=-3, gram=3, if_use=cfg.use_self_bleu)
+        # IOC, less-better, changes in range 0.8 - 2.0, smaller weight
+        self.ioc = IOC(weight=-0.3, if_use=cfg.use_ioc, real_text=self.oracle_data)
+        # dummy, add constant value to overall score
+        self.dummy = Dummy(weight=1, value=5, if_use=True)
+        self.all_metrics = [self.nll_oracle, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.dummy]
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')

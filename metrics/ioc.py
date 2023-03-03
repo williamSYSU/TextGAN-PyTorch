@@ -15,7 +15,8 @@ class IOC(Metrics):
         self.if_use = if_use
         self.test_text = test_text
         self.real_text_ioc = self.calculate_ioc(real_text.tokens) if real_text else None
-        print(f'Dataset Index of coincidence: {self.real_text_ioc}')
+        if real_text_ioc:
+            print(f'Dataset Index of coincidence: {self.real_text_ioc}')
         self.reference = None
         self.is_first = True
 

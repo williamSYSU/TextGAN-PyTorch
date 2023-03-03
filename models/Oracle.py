@@ -19,3 +19,8 @@ class Oracle(LSTMGenerator):
         # initialise oracle network with N(0,1)
         # otherwise variance of initialisation is very small => high NLL for loader sampled from the same model
         self.init_oracle()
+
+    def init_oracle(self):
+        for param in self.parameters():
+            if param.requires_grad:
+                torch.nn.init.normal_(param, mean=0, std=1)

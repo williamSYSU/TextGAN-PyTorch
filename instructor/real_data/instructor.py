@@ -79,15 +79,15 @@ class BasicInstructor:
         self.nll_gen = NLL('NLL_gen', weight=0, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
         # nll-div, more-better, changes in range 0.5 - 1.5 will have smaller wight (not in use)
         self.nll_div = NLL('NLL_div', weight=0, if_use=cfg.use_nll_div, gpu=cfg.CUDA)
-        # self-bleu, less-bettter, changes in range 0.7 - 0.9, will have relatively high weight
+        # self-bleu, less-better, changes in range 0.7 - 0.9, will have relatively high weight
         self.self_bleu = BLEU('Self-BLEU', weight=-3, gram=3, if_use=cfg.use_self_bleu)
-        # class-acc, more-bettter, changes in range 0.7 - 1.0, moderate weight
+        # class-acc, more-better, changes in range 0.7 - 1.0, moderate weight
         self.clas_acc = ACC(weight=1, if_use=cfg.use_clas_acc)
-        # IOC, less-bettter, changes in range 0.8 - 2.0, smaller weight
+        # IOC, less-better, changes in range 0.8 - 2.0, smaller weight
         self.ioc = IOC(weight=-0.3, if_use=cfg.use_ioc, real_text=self.test_data)
-        # nll_oracle, less-bettter, changes in range -0.1 - 0.6, moderate weight
+        # nll_oracle, less-better, changes in range -0.1 - 0.6, moderate weight
         self.nll_oracle = GPTNLL(weight=-3, if_use=cfg.use_nll_oracle, real_text=self.test_data)
-        # perplexity, less-bettter, changes in range 3 - 4, moderate weight (not in use)
+        # perplexity, less-better, changes in range 3 - 4, moderate weight (not in use)
         self.ppl = PPL(self.train_data, self.test_data, weight=0, n_gram=5, if_use=cfg.use_ppl)
         # dummy, add constant value to overall score
         self.dummy = Dummy(weight=1, value=5, if_use=True)
