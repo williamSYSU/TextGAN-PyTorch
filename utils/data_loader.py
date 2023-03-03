@@ -37,7 +37,11 @@ class GANDataset(Dataset):
 
 class GenDataIter:
     def __init__(self, samples, if_test_data=False, shuffle=None):
-        self.samples = samples
+        if type(samples) == str: # we received filename
+            self.samples = get_tokenlized(samples)
+        else:
+            self.samples = samples
+
         self.shuffle = cfg.data_shuffle if not shuffle else shuffle
 
         if cfg.if_real_data:
@@ -46,7 +50,7 @@ class GenDataIter:
             self.word2idx_dict, self.idx2word_dict = load_test_dict(cfg.dataset)
 
         self.loader = DataLoader(
-            dataset=GANDataset(self.__read_data__(samples)),
+            dataset=GANDataset(self.__read_data__(self.samples)),
             batch_size=cfg.batch_size,
             shuffle=self.shuffle,
             drop_last=True)
@@ -58,10 +62,12 @@ class GenDataIter:
         """
         input: same as target, but start with start_letter.
         """
-        if isinstance(samples, list):  # list of strings
+        if isinstance(samples[0], str):  # list of strings
+            # we directly generated string, skip NLL
             return []
-        elif isinstance(samples, str):  # filename
-            samples = self.load_file_indexed(samples)
+        if isinstance(samples[0], list) and isinstance(samples[0], str):
+            # need to transform to indexes
+            samples = tokens_to_tensor(tokens, self.word2idx_dict)
         inp, target = self.prepare_for_NLL(samples)
         all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
         return all_data
@@ -93,11 +99,6 @@ class GenDataIter:
         if gpu:
             return inp.cuda(), target.cuda()
         return inp, target
-
-    def load_file_indexed(self, filename):
-        """Load real data from local file"""
-        tokens = get_tokenlized(filename)
-        return tokens_to_tensor(tokens, self.word2idx_dict)
 
 
 class DisDataIter:

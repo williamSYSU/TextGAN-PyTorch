@@ -104,7 +104,6 @@ args = [
     '--batches_per_epoch', batches_per_epoch,
     '--noise_size', noise_size,
     '--target_len', target_len[job_id],
-    '--oracle_train_samples_num', oracle_train_samples_num,
 
     # Generator
     '--generator_complexity', generator_complexity,
