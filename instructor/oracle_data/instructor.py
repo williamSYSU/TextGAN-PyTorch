@@ -11,6 +11,7 @@ import numpy as np
 import os
 import torch
 import torch.nn as nn
+import wandb
 
 import config as cfg
 from metrics.nll import NLL
@@ -192,6 +193,12 @@ class BasicInstructor:
             self.nll_gen.reset(self.gen, self.oracle_data.loader)
             self.nll_div.reset(self.gen, gen_data.loader)
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            self.ioc.reset(test_text=gen_tokens)
+            self.nll_oracle.reset(test_text=gen_tokens)
+
+        metrics = {metric.name: metric.get_score() for metric in self.all_metrics}
+        metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
+        wandb.log(metrics)
 
         if fmt_str:
             return ', '.join(['%s = %s' % (metric.name, metric.get_score()) for metric in self.all_metrics])
@@ -208,6 +215,13 @@ class BasicInstructor:
             self.nll_gen.reset(self.gen, self.oracle_data_list[label_i].loader, label_i)
             self.nll_div.reset(self.gen, gen_data.loader, label_i)
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            self.ioc.reset(test_text=gen_tokens)
+            self.nll_oracle.reset(test_text=gen_tokens)
+
+        metrics = {"label_i": label_i}
+        metrics.update({metric.name: metric.get_score() for metric in self.all_metrics})
+        metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
+        wandb.log(metrics)
 
         if fmt_str:
             return f'label: {label_i}' + ', '.join(['%s = %s' % (metric.name, metric.get_score()) for metric in self.all_metrics])
