@@ -272,7 +272,7 @@ class BasicInstructor:
             self.clas_acc.reset(self.clas, clas_data.loader)
             self.ppl.reset(gen_tokens)
 
-        metrics = {"label_i": label_i})
+        metrics = {"label_i": label_i}
         metrics.update({metric.name: metric.get_score() for metric in self.all_metrics})
         metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
         wandb.log(metrics)
