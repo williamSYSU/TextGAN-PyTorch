@@ -31,7 +31,7 @@ class Metrics:
         self.metric_value_with_current_state = self.calculate_metric()
         return self.metric_value_with_current_state
 
-    def reset(*args, **kwargs):
+    def reset(self, *args, **kwargs):
         self.metric_value_with_current_state = None
         self._reset(*args, **kwargs)
 

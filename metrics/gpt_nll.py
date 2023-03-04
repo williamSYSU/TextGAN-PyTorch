@@ -29,8 +29,8 @@ class GPTNLL(Metrics):
             print('GPT2 as oracle metric will be calculated relative to this value')
 
     def _reset(self, test_text=None, real_text=None):
-        self.test_text = test_text if test_text else self.test_text
-        self.real_text_nll = self.calcualte_NLL(real_text.tokens) if real_text else self.real_text_nll
+        self.test_text = test_text if test_text is not None else self.test_text
+        self.real_text_nll = self.calcualte_NLL(real_text.tokens) if real_text is not None else self.real_text_nll
 
     def calculate_metric(self):
         """Get gpt2 NLL score difference with dataset NLL."""

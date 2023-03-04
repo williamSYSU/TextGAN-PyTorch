@@ -6,6 +6,7 @@
 # @Blog         : http://zhiweil.ml/
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
+from typing import Dict, Optional
 
 import numpy as np
 import os
@@ -127,7 +128,7 @@ def load_test_dict(dataset):
     return word2idx_dict, idx2word_dict
 
 
-def tensor_to_tokens(tensor, dictionary):
+def tensor_to_tokens(tensor, dictionary: Optional[Dict[torch.Tensor, str]] = None):
     """transform Tensor to word tokens"""
     tokens = []
     for sent in tensor:
@@ -135,7 +136,10 @@ def tensor_to_tokens(tensor, dictionary):
         for word in sent.tolist():
             if word == cfg.padding_idx:
                 break
-            sent_token.append(dictionary[str(word)])
+            word = str(word)
+            if dictionary:
+                word = dictionary[word]
+            sent_token.append(word)
         tokens.append(sent_token)
     return tokens
 

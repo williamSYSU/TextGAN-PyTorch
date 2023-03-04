@@ -276,9 +276,8 @@ class BasicInstructor:
             self.ioc.reset(test_text=gen_tokens)
             self.nll_oracle.reset(test_text=gen_tokens)
 
-        metrics = {"label_i": label_i}
-        metrics.update({metric.name: metric.get_score() for metric in self.all_metrics})
-        metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
+        metrics = {f"label {label_i}_{metric.name}": metric.get_score() for metric in self.all_metrics}
+        metrics.update({f"label {label_i} Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
         wandb.log(metrics)
 
         if fmt_str:
@@ -287,11 +286,13 @@ class BasicInstructor:
 
     def comb_metrics(self, fmt_str=False):
         all_scores = [self.cal_metrics_with_label(label_i) for label_i in range(cfg.k_label)]
-        all_scores = np.array(all_scores).T.tolist()  # each row for each metric
 
         if fmt_str:
-            return ', '.join([f"{metric.name} = {score}" for (metric, score) in zip(self.all_metrics, all_scores)])
-        return all_scores
+            return ', '.join([
+                f'{name} = {[scores[name] for scores in all_scores]}'
+                for name in all_scores[0]
+            ])
+        return [scores.values() for scores in all_scores]
 
     def _save(self, phase, epoch):
         """Save model state dict and generator's samples"""

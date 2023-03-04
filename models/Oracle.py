@@ -7,6 +7,8 @@
 # @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
+import torch
+
 from models.generators.generator import LSTMGenerator
 
 

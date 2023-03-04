@@ -62,12 +62,15 @@ class GenDataIter:
         """
         input: same as target, but start with start_letter.
         """
-        if isinstance(samples[0], str):  # list of strings
+        if isinstance(samples[0], str) or isinstance(samples[0][0], str):  # list of strings
             # we directly generated string, skip NLL
-            return []
-        if isinstance(samples[0], list) and isinstance(samples[0], str):
+            return [
+              {'input': i, 'target': t}
+              for i, t in zip(torch.zeros(2), torch.zeros(2))
+            ]
+        if isinstance(samples[0], list):
             # need to transform to indexes
-            samples = tokens_to_tensor(tokens, self.word2idx_dict)
+            samples = tokens_to_tensor(samples, self.word2idx_dict)
         inp, target = self.prepare_for_NLL(samples)
         all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
         return all_data
@@ -86,7 +89,7 @@ class GenDataIter:
         or list of tokens in case if input string."""
         if type(self.samples[0]) == str: # we have list of strings
             return [smpl.split() for smpl in self.samples]
-        return samples
+        return list(self.samples)
 
     @staticmethod
     def prepare_for_NLL(samples, gpu=False):

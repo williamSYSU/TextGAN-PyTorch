@@ -34,7 +34,7 @@ scriptname = 'main.py'
 # CatGAN: Catgory text generation model
 # EvoGAN: General text generation model
 if_test = int(False)
-run_model = ['evogan', 'catgan', 'catgan', 'catgan', 'evogan', 'evogan']
+run_model = ['evogan', 'catgan', 'catgan', 'evogan', 'evogan', 'evogan']
 k_label = 2
 CUDA = int(True)
 ora_pretrain = int(True)

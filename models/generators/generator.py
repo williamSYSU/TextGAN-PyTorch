@@ -94,11 +94,6 @@ class LSTMGenerator(nn.Module):
                 elif cfg.gen_init == 'truncated_normal':
                     truncated_normal_(param, std=stddev)
 
-    def init_oracle(self):
-        for param in self.parameters():
-            if param.requires_grad:
-                torch.nn.init.normal_(param, mean=0, std=1)
-
     def init_hidden(self, batch_size=cfg.batch_size):
         h = torch.zeros(1, batch_size, self.hidden_dim)
         c = torch.zeros(1, batch_size, self.hidden_dim)

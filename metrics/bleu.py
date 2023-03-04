@@ -36,8 +36,8 @@ class BLEU(Metrics):
         self.portion = portion  # how many portions to use in the evaluation, default to use the whole test dataset
 
     def _reset(self, test_text=None, real_text=None):
-        self.test_text = test_text if test_text else self.test_text
-        self.real_text = real_text if real_text else self.real_text
+        self.test_text = test_text if test_text is not None else self.test_text
+        self.real_text = real_text if real_text is not None else self.real_text
 
     def get_reference(self):
         reference = self.real_text.copy()

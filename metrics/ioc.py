@@ -21,14 +21,18 @@ class IOC(Metrics):
         self.is_first = True
 
     def _reset(self, test_text=None, real_text=None):
-        self.test_text = test_text if test_text else self.test_text
-        self.real_text_ioc = self.get_ioc(real_text.tokens) if real_text else self.real_text_ioc
+        self.test_text = test_text if test_text is not None else self.test_text
+        self.real_text_ioc = self.get_ioc(real_text.tokens) if real_text is not None else self.real_text_ioc
 
     def calculate_metric(self):
         return self.calculate_ioc(self.test_text) / self.real_text_ioc
 
     def calculate_ioc(self, tokenized_text):
         """Index Of coincidence: probability of 2 random tokens in text to equal."""
+        tokenized_text = [
+          [str(token) for token in tokens]
+          for tokens in tokenized_text
+        ]
         tokens = list(chain(*tokenized_text))
         counts = Counter(tokens)
         total = sum(ni * (ni - 1) for ni in counts.values())

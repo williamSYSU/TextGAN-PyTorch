@@ -25,7 +25,7 @@ from models.Oracle import Oracle
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
 from utils.helpers import Signal, create_logger, create_oracle, get_fixed_temperature
-from utils.text_process import write_tensor
+from utils.text_process import write_tensor, tensor_to_tokens
 
 
 class BasicInstructor:
@@ -61,7 +61,7 @@ class BasicInstructor:
 
         # Metrics
         # nll_oracle, less-better, changes in range -0.1 - 0.6, moderate weight
-        self.nll_oracle = NLL('NLL_oracle', weight=1, if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
+        self.nll_oracle = NLL('NLL_oracle', weight=-3, if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
         # nll-gen, less-better, changes in range 1.5 - 3 will have smaller wight (not in use)
         self.nll_gen = NLL('NLL_gen', weight=0, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
         # nll-div, more-better, changes in range 0.5 - 1.5 will have smaller wight (not in use)
@@ -182,15 +182,15 @@ class BasicInstructor:
     def sample_for_metrics(self):
         eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
         gen_data = GenDataIter(eval_samples)
-        gen_tokens = eval_samples
-        gen_tokens_s = self.gen.sample(cfg.small_sample_num, 4 * cfg.batch_size)
+        gen_tokens = tensor_to_tokens(eval_samples)
+        gen_tokens_s = tensor_to_tokens(self.gen.sample(cfg.small_sample_num, 4 * cfg.batch_size))
         return gen_data, gen_tokens, gen_tokens_s
 
     def sample_for_metrics_with_label(self, label_i):
         eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i)
         gen_data = GenDataIter(eval_samples)
-        gen_tokens = eval_samples
-        gen_tokens_s = self.gen.sample(cfg.small_sample_num, 8 * cfg.batch_size, label_i=label_i)
+        gen_tokens = tensor_to_tokens(eval_samples)
+        gen_tokens_s = tensor_to_tokens(self.gen.sample(cfg.small_sample_num, 8 * cfg.batch_size, label_i=label_i))
         return gen_data, gen_tokens, gen_tokens_s
 
     def cal_metrics(self, fmt_str=False):
@@ -200,7 +200,7 @@ class BasicInstructor:
         """
         with torch.no_grad():
             # Prepare data for evaluation
-            gen_data, gen_tokens, gen_tokens_s = sample_for_metrics()
+            gen_data, gen_tokens, gen_tokens_s = self.sample_for_metrics()
 
             # Reset metrics
             self.nll_oracle.reset(self.oracle, gen_data.loader)
@@ -208,21 +208,20 @@ class BasicInstructor:
             self.nll_div.reset(self.gen, gen_data.loader)
             self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
             self.ioc.reset(test_text=gen_tokens)
-            self.nll_oracle.reset(test_text=gen_tokens)
 
         metrics = {metric.name: metric.get_score() for metric in self.all_metrics}
         metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
         wandb.log(metrics)
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.name, metric.get_score()) for metric in self.all_metrics])
+            return "\n" + "\n".join([f"{name} = {score}" for name, score in metrics.items()])
         return [metric.get_score() for metric in self.all_metrics]
 
     def cal_metrics_with_label(self, label_i, fmt_str=False):
         assert type(label_i) == int, 'missing label'
         with torch.no_grad():
             # Prepare data for evaluation
-            gen_data, gen_tokens, gen_tokens_s = sample_for_metrics_with_label()
+            gen_data, gen_tokens, gen_tokens_s = self.sample_for_metrics_with_label()
 
             # Reset metrics
             self.nll_oracle.reset(self.oracle_list[label_i], gen_data.loader, label_i)
@@ -232,23 +231,23 @@ class BasicInstructor:
             self.ioc.reset(test_text=gen_tokens)
             self.nll_oracle.reset(test_text=gen_tokens)
 
-        metrics = {"label_i": label_i}
-        metrics.update({metric.name: metric.get_score() for metric in self.all_metrics})
-        metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
+        metrics = {f"label {label_i}_{metric.name}": metric.get_score() for metric in self.all_metrics}
+        metrics.update({f"label {label_i} Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
         wandb.log(metrics)
 
         if fmt_str:
-            return f'label: {label_i}' + ', '.join(['%s = %s' % (metric.name, metric.get_score()) for metric in self.all_metrics])
-        return [metric.get_score() for metric in self.all_metrics]
+            return "\n" + "\n".join([f"{name} = {score}" for name, score in metrics.items()])
+        return metrics
 
     def comb_metrics(self, fmt_str=False):
         all_scores = [self.cal_metrics_with_label(label_i) for label_i in range(cfg.k_label)]
-        all_scores = np.array(all_scores).T.tolist()  # each row for each metric
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.name, score)
-                              for (metric, score) in zip(self.all_metrics, all_scores)])
-        return all_scores
+            return ', '.join([
+                f'{name} = {[scores[name] for scores in all_scores]}'
+                for name in all_scores[0]
+            ])
+        return [scores.values() for scores in all_scores]
 
     def _save(self, phase, epoch):
         """Save model state dict and generator's samples"""
