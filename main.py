@@ -199,7 +199,7 @@ if __name__ == '__main__':
     print('sweep_configuration', sweep_configuration)
 
     sweep_id = wandb.sweep(sweep=sweep_configuration, project="TorchGAN-fixem")
-    sweep_id = "qdpnjvhf"
+    # sweep_id = "qdpnjvhf"
     print('sweep_id', sweep_id)
 
     def function_for_parameters_choice():
