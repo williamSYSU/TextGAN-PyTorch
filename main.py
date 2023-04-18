@@ -193,31 +193,30 @@ if __name__ == '__main__':
     }
 
 
-    # start a new wandb run to track this script
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="TextGAN",
-        # track hyperparameters and run metadata
-        config=vars(opt)
-    )
-
-    import wandb
-
     # Example sweep configuration
     with open('sweep.yml') as sweep_yml:
         sweep_configuration = yaml.safe_load(sweep_yml)
-    print(sweep_configuration)
+    print('sweep_configuration', sweep_configuration)
 
-    sweep_id = wandb.sweep(sweep=sweep_configuration, project="project-name")
-    print(sweep_id)
-    print(opt)
+    # sweep_id = wandb.sweep(sweep=sweep_configuration, project="TorchGAN-fixem")
+    sweep_id = "qdpnjvhf"
+    print('sweep_id', sweep_id)
 
-    wandb.agent(sweep_id=sweep_id, function=function_name)
+    def function_for_parameters_choice():
+        run = wandb.init()  # Initialize a new wandb run
+        config = run.config  # Get the config dictionary for the current run
+        print('config', config)
 
-    inst = instruction_dict[cfg.run_model](opt)
-    if not cfg.if_test:
-        inst._run()
-    else:
-        inst._test()
+        # Update 'opt' with the hyperparameters from 'config'
+        for name, value in config.items():
+            setattr(opt, name, value)
 
-    wandb.finish()
+        inst = instruction_dict[cfg.run_model](opt)
+        if not cfg.if_test:
+            inst._run()
+        else:
+            inst._test()
+
+        run.finish()  # Make sure to finish the run
+
+    wandb.agent(sweep_id=sweep_id, function=function_for_parameters_choice)

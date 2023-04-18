@@ -4,15 +4,13 @@ metric:
   goal: minimize
   name: Overal_score
 parameters:
-  oracle_train_samples_num:
-    value: 10000
   discriminator_complexity:
-    max: 1024
-    min: 256
+    max: 256 # must be multiplied by 4
+    min: 64
     distribution: int_uniform
   generator_complexity:
-    max: 1536
-    min: 384
+    max: 256 # must be multiplied by 4
+    min: 64
     distribution: int_uniform
   w2v_embedding_size:
     values:
