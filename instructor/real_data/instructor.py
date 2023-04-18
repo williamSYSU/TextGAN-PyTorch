@@ -252,7 +252,9 @@ class BasicInstructor:
             self.ioc.reset(test_text=gen_tokens)
             self.nll_oracle.reset(test_text=gen_tokens)
 
+        print('all reset')
         metrics = {metric.name: metric.get_score() for metric in self.all_metrics}
+        print('get_score called')
         metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
         wandb.log(metrics)
 

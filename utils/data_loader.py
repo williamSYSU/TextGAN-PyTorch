@@ -188,7 +188,6 @@ class DataSupplier:
             else:
                 yield self.labels[index - self.batch_size: index], self.vectorize_batch(self.tokenized[index - self.batch_size: index])
 
-
     def __len__(self):
         return self.batches_per_epoch
 

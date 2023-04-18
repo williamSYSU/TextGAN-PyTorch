@@ -113,7 +113,7 @@ class FixemGANInstructor(BasicInstructor):
 
     def _run(self):
         for i in trange(cfg.max_epochs):
-            for labels, text_vector in self.train_data_supplier:
+            for labels, text_vector in tqdm(self.train_data_supplier, leave=False):
                 if cfg.CUDA:
                     labels, text_vector = labels.cuda(), text_vector.cuda()
                 discriminator_acc = self.discriminator_train_one_batch(text_vector, labels)
@@ -124,6 +124,7 @@ class FixemGANInstructor(BasicInstructor):
                     generator_acc = self.generator_train_one_batch()
 
             if cfg.run_model == 'fixemgan':
+                print('calculating_metrics')
                 scores = self.cal_metrics(fmt_str=True)
             if cfg.run_model == 'cat_fixemgan':
                 scores = '\n\n'.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
