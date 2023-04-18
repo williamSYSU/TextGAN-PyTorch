@@ -40,7 +40,7 @@ batch_size = 32
 noise_size = 1000
 max_epochs = 20
 batches_per_epoch = 200
-samples_num = 100_000 # training samples size
+samples_num = 1000 # training samples size
 tips = '{} experiments'
 
 # ===Oracle or Real===
