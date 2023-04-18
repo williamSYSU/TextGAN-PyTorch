@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torchtext
-from tqdm import trange
+from tqdm import trange, tqdm
 
 
 import config as cfg
@@ -110,7 +110,6 @@ class FixemGANInstructor(BasicInstructor):
         )
         return discriminator_acc
 
-
     def _run(self):
         for i in trange(cfg.max_epochs):
             for labels, text_vector in tqdm(self.train_data_supplier, leave=False):
@@ -130,7 +129,6 @@ class FixemGANInstructor(BasicInstructor):
                 scores = '\n\n'.join([self.cal_metrics_with_label(label_i=label_i, fmt_str=True) for label_i in range(cfg.k_label)])
             self.log.info(f'epoch: {i}')
             self.log.info(f'{scores}')
-
 
     def one_more_batch_for_generator(
         self, generator_acc, leave_in_generator_min=0.1, leave_in_generator_max=0.9
