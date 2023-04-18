@@ -1,0 +1,21 @@
+program: train.py
+method: bayes
+metric:
+  goal: minimize
+  name: Overal_score
+parameters:
+  oracle_train_samples_num:
+    value: 10000
+  discriminator_complexity:
+    max: 1024
+    min: 256
+    distribution: int_uniform
+  generator_complexity:
+    max: 1536
+    min: 384
+    distribution: int_uniform
+  w2v_embedding_size:
+    values:
+      - 128
+      - 256
+      - 512

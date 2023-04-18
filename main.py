@@ -9,9 +9,10 @@
 from __future__ import print_function
 
 import random
+import yaml
 
 import argparse
-import torch
+# import torch
 import numpy as np
 import wandb
 
@@ -129,7 +130,7 @@ def program_config(parser):
 # MAIN
 if __name__ == '__main__':
     #seed everything
-    torch.manual_seed(0)
+    # torch.manual_seed(0)
     random.seed(0)
     np.random.seed(0)
 
@@ -199,6 +200,19 @@ if __name__ == '__main__':
         # track hyperparameters and run metadata
         config=vars(opt)
     )
+
+    import wandb
+
+    # Example sweep configuration
+    with open('sweep.yml') as sweep_yml:
+        sweep_configuration = yaml.safe_load(sweep_yml)
+    print(sweep_configuration)
+
+    sweep_id = wandb.sweep(sweep=sweep_configuration, project="project-name")
+    print(sweep_id)
+    print(opt)
+
+    wandb.agent(sweep_id=sweep_id, function=function_name)
 
     inst = instruction_dict[cfg.run_model](opt)
     if not cfg.if_test:

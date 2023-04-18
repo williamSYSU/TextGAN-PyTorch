@@ -37,10 +37,9 @@ class GANDataset(Dataset):
 
 class GenDataIter:
     def __init__(self, samples, if_test_data=False, shuffle=None):
-        if type(samples) == str: # we received filename
-            self.samples = get_tokenlized(samples)
-        else:
-            self.samples = samples
+        self.samples = samples
+        if type(self.samples) == str: # we received filename
+            self.samples = get_tokenlized(self.samples)
 
         self.shuffle = cfg.data_shuffle if not shuffle else shuffle
 
@@ -191,7 +190,7 @@ class DataSupplier:
 
 
     def __len__(self):
-        return len(self.tokenized)
+        return self.batches_per_epoch
 
     def is_message_in_dataset(self, text):
         return text in self.texts
