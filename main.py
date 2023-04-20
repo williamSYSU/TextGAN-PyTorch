@@ -124,6 +124,11 @@ def program_config(parser):
     parser.add_argument('--signal_file', default=cfg.signal_file, type=str)
     parser.add_argument('--tips', default=cfg.tips, type=str)
 
+    # Loss coefficients
+    parser.add_argument('--real_fake_coeff', default=1.0, type=float)
+    parser.add_argument('--labels_coeff', default=1.0, type=float)
+    parser.add_argument('--diversity_coeff', default=1.0, type=float)
+
     return parser
 
 
