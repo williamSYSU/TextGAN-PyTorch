@@ -36,7 +36,6 @@ if_test = int(False)
 run_model = ['fixemgan', 'cat_fixemgan', 'fixemgan', 'cat_fixemgan', 'fixemgan', 'fixemgan', 'fixemgan', 'fixemgan', 'cat_fixemgan']
 k_label = 2
 CUDA = int(True)
-batch_size = 32
 noise_size = 1000
 max_epochs = 20
 batches_per_epoch = 200
@@ -61,6 +60,9 @@ gen_init = 'truncated_normal'
 dis_init = 'uniform'
 batch_size = 64
 target_len = [16, 20, 20, 16, 16, 40, 48, 20, 20] # architechture requires to be divisible by 4
+real_fake_coeff = 1.0
+labels_coeff = 1.0
+diversity_coeff = 1.0
 
 # ===Generator===
 generator_complexity = 768 #hyperparam
@@ -104,6 +106,10 @@ args = [
     '--batches_per_epoch', batches_per_epoch,
     '--noise_size', noise_size,
     '--target_len', target_len[job_id],
+    '--batch_size', batch_size,
+    '--real_fake_coeff', real_fake_coeff,
+    '--labels_coeff', labels_coeff,
+    '--diversity_coeff', diversity_coeff,
 
     # Generator
     '--generator_complexity', generator_complexity,

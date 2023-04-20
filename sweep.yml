@@ -17,3 +17,15 @@ parameters:
       - 128
       - 256
       - 512
+  real_fake_coeff:
+    max: 4.0
+    min: 0.1
+    distribution: uniform
+  labels_coeff:
+    max: 4.0
+    min: 0.0
+    distribution: uniform
+  diversity_coeff:
+    max: 4.0
+    min: 0.0
+    distribution: uniform

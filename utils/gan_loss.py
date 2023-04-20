@@ -145,9 +145,9 @@ class GANLoss(nn.Module):
 
     def G_loss_fixem(self, real_fake_predicts, label_predicts, target_labels, fakes):
         target_fake = self.get_target_tensor(real_fake_predicts, target_is_real=True)
-        real_fake_loss = self.real_fake_criterion(real_fake_predicts, target_fake)
-        labels_loss = self.label_criterion(label_predicts, target_labels)
-        diversity_loss = self.diversity_criterion(fakes)
+        real_fake_loss = cfg.real_fake_coeff * self.real_fake_criterion(real_fake_predicts, target_fake)
+        labels_loss = cfg.labels_coeff * self.label_criterion(label_predicts, target_labels)
+        diversity_loss = cfg.diversity_coeff * self.diversity_criterion(fakes)
         loss = real_fake_loss + diversity_loss
         loss = loss + labels_loss if cfg.run_model == 'cat_fixemgan' else loss
         return loss
@@ -156,8 +156,8 @@ class GANLoss(nn.Module):
         target_real = self.get_target_tensor(real_fake_predicts.chunk(2)[0], target_is_real=True)
         target_fake = self.get_target_tensor(real_fake_predicts.chunk(2)[1], target_is_real=False)
         target_real_fake = torch.cat((target_real, target_fake))
-        real_fake_loss = self.real_fake_criterion(real_fake_predicts, target_real_fake)
-        labels_loss = self.label_criterion(label_predicts, target_labels)
+        real_fake_loss = cfg.real_fake_coeff * self.real_fake_criterion(real_fake_predicts, target_real_fake)
+        labels_loss = cfg.labels_coeff * self.label_criterion(label_predicts, target_labels)
         loss = real_fake_loss
         loss = loss + labels_loss if cfg.run_model == 'cat_fixemgan' else loss
         return loss
