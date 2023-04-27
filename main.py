@@ -128,7 +128,6 @@ def program_config(parser):
     parser.add_argument('--real_fake_coeff', default=1.0, type=float)
     parser.add_argument('--labels_coeff', default=1.0, type=float)
     parser.add_argument('--diversity_coeff', default=1.0, type=float)
-
     return parser
 
 
@@ -207,7 +206,12 @@ if __name__ == '__main__':
     # sweep_id = "qdpnjvhf"
     print('sweep_id', sweep_id)
 
-    def function_for_parameters_choice():
+
+    def full_train_run(opt):
+        inst = instruction_dict[cfg.run_model](opt)
+        inst._run()
+
+    def function_for_parameters_sweep():
         run = wandb.init()  # Initialize a new wandb run
         config = run.config  # Get the config dictionary for the current run
         print('config', config)
@@ -215,13 +219,8 @@ if __name__ == '__main__':
         # Update 'opt' with the hyperparameters from 'config'
         for name, value in config.items():
             setattr(opt, name, value)
-
-        inst = instruction_dict[cfg.run_model](opt)
-        if not cfg.if_test:
-            inst._run()
-        else:
-            inst._test()
-
+        full_train_run(opt)
         run.finish()  # Make sure to finish the run
 
-    wandb.agent(sweep_id=sweep_id, function=function_for_parameters_choice)
+
+    # wandb.agent(sweep_id=sweep_id, function=function_for_parameters_sweep)
