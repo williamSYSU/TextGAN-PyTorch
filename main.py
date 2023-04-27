@@ -202,8 +202,8 @@ if __name__ == '__main__':
         sweep_configuration = yaml.safe_load(sweep_yml)
     print('sweep_configuration', sweep_configuration)
 
-    sweep_id = wandb.sweep(sweep=sweep_configuration, project="TorchGAN-fixem")
-    # sweep_id = "qdpnjvhf"
+    # sweep_id = wandb.sweep(sweep=sweep_configuration, project="TorchGAN-fixem")
+    sweep_id = "7g6po2bd"
     print('sweep_id', sweep_id)
 
 
@@ -223,4 +223,4 @@ if __name__ == '__main__':
         run.finish()  # Make sure to finish the run
 
 
-    # wandb.agent(sweep_id=sweep_id, function=function_for_parameters_sweep)
+    wandb.agent(sweep_id=sweep_id, function=function_for_parameters_sweep)
