@@ -16,7 +16,7 @@ parameters:
     values:
       - 512
   real_fake_coeff:
-    max: 1.0
+    max: 1.5
     min: 1.0
     distribution: uniform
   labels_coeff:
