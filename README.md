@@ -45,7 +45,7 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 
 ### General Text Generation
 
-- **FixemGAN** - [FixemGAN: Continious Space Text GAN on Fixed Embeddings](https://www.com)
+- **FixemGAN** - [FixemGAN: Continious Space Text GAN on Fixed Embeddings](https://medium.com/@salaxieb.ildar/text-gan-on-embeddings-debb9a006fff)
 - **SeqGAN** - [SeqGAN: Sequence Generative Adversarial Nets with Policy Gradient](https://arxiv.org/abs/1609.05473)
 - **LeakGAN** - [Long Text Generation via Adversarial Training with Leaked Information](https://arxiv.org/abs/1709.08624)
 - **MaliGAN** - [Maximum-Likelihood Augmented Discrete Generative Adversarial Networks](https://arxiv.org/abs/1702.07983)
