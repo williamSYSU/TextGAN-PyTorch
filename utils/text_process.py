@@ -4,15 +4,22 @@
 # @FileName     : text_process.py
 # @Time         : Created at 2019-05-14
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
+from typing import Dict, Optional
 
-import nltk
 import numpy as np
 import os
 import torch
+from tqdm import tqdm
 
 import config as cfg
+
+
+def text_file_iterator(file):
+    with open(file) as raw:
+        for line in raw.readlines():
+            yield line.strip('\n').split()
 
 
 def get_tokenlized(file):
@@ -20,7 +27,7 @@ def get_tokenlized(file):
     tokenlized = list()
     with open(file) as raw:
         for text in raw:
-            text = nltk.word_tokenize(text.lower())
+            text = text.strip('\n').lower().split()
             tokenlized.append(text)
     return tokenlized
 
@@ -121,7 +128,7 @@ def load_test_dict(dataset):
     return word2idx_dict, idx2word_dict
 
 
-def tensor_to_tokens(tensor, dictionary):
+def tensor_to_tokens(tensor, dictionary: Optional[Dict[torch.Tensor, str]] = None):
     """transform Tensor to word tokens"""
     tokens = []
     for sent in tensor:
@@ -129,7 +136,10 @@ def tensor_to_tokens(tensor, dictionary):
         for word in sent.tolist():
             if word == cfg.padding_idx:
                 break
-            sent_token.append(dictionary[str(word)])
+            word = str(word)
+            if dictionary:
+                word = dictionary[word]
+            sent_token.append(word)
         tokens.append(sent_token)
     return tokens
 
@@ -344,10 +354,79 @@ def build_embedding_matrix(dataset):
         torch.save(embedding_matrix, embed_filename)
     return embedding_matrix
 
+def pad_sequences(
+    sequence, w2v, target_len: int = 52, embedding_size: int = 300, padding_token = None
+) -> np.array:
+    sequence = np.array(sequence)
+    current_length = sequence.shape[0]
 
-if __name__ == '__main__':
-    os.chdir('../')
-    # process_cat_text()
-    # load_test_dict('mr15')
-    # extend_clas_train_data()
-    pass
+    if current_length >= target_len:
+        return sequence[-target_len:]
+
+    padding = np.repeat(np.array([w2v.wv[padding_token]]), target_len - current_length,axis=0) if padding_token else np.zeros((target_len - current_length, embedding_size))
+    return np.concatenate((padding, sequence), axis=0)
+
+
+def vectorize_sentence(tokens, w2v, target_len: int = 52, embedding_size: int = 300, padding_token=None):
+    vectorized = pad_sequences(
+        [w2v.wv[token] for token in tokens],
+        w2v,
+        target_len=target_len,
+        embedding_size=embedding_size,
+        padding_token=padding_token,
+    )
+    vectorized = vectorized.T  # required for pytorch
+    return vectorized
+
+
+# if __name__ == '__main__':
+#     os.chdir('../')
+#     # process_cat_text()
+#     # load_test_dict('mr15')
+#     # extend_clas_train_data()
+
+#     # dataset preprocess and saving
+#     import torchtext
+#     import os
+#     import nltk
+#     nltk.download('punkt')
+#     from tqdm.notebook import tqdm
+#     from pathlib import Path
+
+#     def tokenize_and_save(source, path, filename):
+#         with open(Path(path) / filename, 'w') as f:
+#             for _, line in tqdm(source, desc=filename):
+#                 line = line.strip().lower()
+#                 line = ' '.join(nltk.tokenize.word_tokenize(line))
+#                 line = ' '.join(line.split('\n'))
+#                 line = ' '.join(line.split('\\n'))
+#                 line = ' '.join(line.split('\\'))
+#                 f.write(line)
+#                 f.write('\n')
+
+#     AGNEWS_train, AGNEWS_test = torchtext.datasets.AG_NEWS(
+#         root="./data", split=("train", "test")
+#     )
+#     DBpedia_train, DBpedia_test = torchtext.datasets.DBpedia(
+#         root="./data", split=("train", "test")
+#     )
+#     WikiText103_train, WikiText103_valid, WikiText103_test = torchtext.datasets.WikiText103(
+#         root="./data", split=("train", "valid", "test")
+#     )
+#     YahooAnswers_train, YahooAnswers_test = torchtext.datasets.YahooAnswers(
+#         root="./data", split=("train", "test")
+#     )
+#     YelpReviewFull_train, YelpReviewFull_test = torchtext.datasets.YelpReviewFull(
+#         root="./data", split=("train", "test")
+#     )
+#     tokenize_and_save(AGNEWS_train, './dataset/', 'agnews_train.txt')
+#     tokenize_and_save(AGNEWS_test, './dataset/testdata/', 'agnews_test.txt')
+#     tokenize_and_save(DBpedia_train, './dataset/', 'dbpedia_train.txt')
+#     tokenize_and_save(DBpedia_test, './dataset/testdata/', 'dbpedia_test.txt')
+#     tokenize_and_save(enumerate(WikiText103_train), './dataset/', 'wikitext103_train.txt')
+#     tokenize_and_save(enumerate(WikiText103_valid), './dataset/', 'wikitext103_valid.txt')
+#     tokenize_and_save(enumerate(WikiText103_test), './dataset/testdata/', 'wikitext103_test.txt')
+#     tokenize_and_save(YahooAnswers_train, './dataset/', 'yahooanswers_train.txt')
+#     tokenize_and_save(YahooAnswers_test, './dataset/testdata/', 'yahooanswers_test.txt')
+#     tokenize_and_save(YelpReviewFull_train, './dataset/', 'yelpreviewfull_train.txt')
+#     tokenize_and_save(YelpReviewFull_test, './dataset/testdata/', 'yelpreviewfull_test.txt')

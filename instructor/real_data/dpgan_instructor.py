@@ -4,7 +4,7 @@
 # @FileName     : dpgan_instructor.py
 # @Time         : Created at 2019/12/21
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
@@ -12,8 +12,8 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from models.DPGAN_D import DPGAN_D
-from models.DPGAN_G import DPGAN_G
+from models.discriminators.DPGAN_D import DPGAN_D
+from models.generators.DPGAN_G import DPGAN_G
 
 
 class DPGANInstructor(BasicInstructor):

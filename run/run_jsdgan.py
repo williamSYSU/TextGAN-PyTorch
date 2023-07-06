@@ -4,7 +4,7 @@
 # @FileName     : run_jsdgan.py
 # @Time         : Created at 2019/11/29
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import sys
@@ -50,7 +50,6 @@ vocab_size = [5000, 0, 0]
 data_shuffle = int(False)
 model_type = 'vanilla'
 gen_init = 'normal'
-samples_num = 10000
 batch_size = 64
 max_seq_len = 20
 gen_lr = 0.01
@@ -91,7 +90,6 @@ args = [
     '--shuffle', data_shuffle,
     '--model_type', model_type,
     '--gen_init', gen_init,
-    '--samples_num', samples_num,
     '--batch_size', batch_size,
     '--max_seq_len', max_seq_len,
     '--gen_lr', gen_lr,

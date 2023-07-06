@@ -12,13 +12,13 @@ import random
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
 from metrics.nll import NLL
-from models.EvoGAN_D import EvoGAN_D
-from models.EvoGAN_G import EvoGAN_G
+from models.discriminators.EvoGAN_D import EvoGAN_D
+from models.generators.EvoGAN_G import EvoGAN_G
 from utils.data_loader import GenDataIter
 from utils.gan_loss import GANLoss
 from utils.helpers import get_fixed_temperature, get_losses
@@ -93,7 +93,7 @@ class EvoGANInstructor(BasicInstructor):
 
         # # ===ADVERSARIAL TRAINING===
         self.log.info('Starting Adversarial Training...')
-        progress = tqdm(range(cfg.ADV_train_epoch))
+        progress = trange(cfg.ADV_train_epoch)
         for adv_epoch in progress:
             if cfg.temperature == 1:
                 score, fit_score, select_mu = self.evolve_generator(cfg.ADV_g_step)
@@ -126,7 +126,7 @@ class EvoGANInstructor(BasicInstructor):
         """
         Max Likelihood Pre-training for the generator
         """
-        for epoch in range(epochs):
+        for epoch in trange(epochs):
             self.sig.update()
             if self.sig.pre_sig:
                 # ===Train===

@@ -4,13 +4,13 @@
 # @FileName     : CoT_G.py
 # @Time         : Created at 2020/4/20
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 
 import torch
 
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
 class CoT_G(LSTMGenerator):

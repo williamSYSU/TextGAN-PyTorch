@@ -4,7 +4,7 @@
 # @FileName     : JSDGAN_instructor.py
 # @Time         : Created at 2019/11/25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
@@ -12,7 +12,7 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.real_data.instructor import BasicInstructor
-from models.JSDGAN_G import JSDGAN_G
+from models.generators.JSDGAN_G import JSDGAN_G
 
 
 class JSDGANInstructor(BasicInstructor):

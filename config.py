@@ -41,6 +41,22 @@ freeze_clas = False
 use_all_real_fake = False
 use_population = False
 
+# ===FixemGAN===
+batches_per_epoch = 200
+noise_size = 1000
+max_epochs = 20
+target_len = 40
+real_fake_coeff = 1.0
+labels_coeff = 1.0
+diversity_coeff = 1.0
+
+# ===Embedding===
+w2v_embedding_size = 100
+w2v_window = 5
+w2v_min_count = 1
+w2v_workers = 1
+w2v_samples_num = 5_000_000
+
 # ===Oracle or Real, type===
 if_real_data = False  # if use real data
 dataset = 'oracle'  # oracle, image_coco, emnlp_news, amazon_app_book, amazon_app_movie, mr15
@@ -60,7 +76,8 @@ evo_temp_step = 1
 temperature = 1
 
 # ===Basic Train===
-samples_num = 10000  # 10000, mr15: 2000,
+samples_num = 1000 #, mr15: 2000,
+small_sample_num = 20 # used for self-blue
 MLE_train_epoch = 150  # SeqGAN-80, LeakGAN-8, RelGAN-150
 PRE_clas_epoch = 10
 inter_epoch = 15  # LeakGAN-10
@@ -89,6 +106,7 @@ use_nll_gen = True
 use_nll_div = True
 use_bleu = True
 use_self_bleu = False
+use_ioc = True
 use_clas_acc = True
 use_ppl = False
 
@@ -103,6 +121,7 @@ step_size = 4  # LeakGAN-4
 mem_slots = 1  # RelGAN-1
 num_heads = 2  # RelGAN-2
 head_size = 256  # RelGAN-256
+generator_complexity = 512
 
 # ===Discriminator===
 d_step = 5  # SeqGAN-50, LeakGAN-5
@@ -113,6 +132,7 @@ ADV_d_epoch = 3  # SeqGAN,LeakGAN-3
 dis_embed_dim = 64
 dis_hidden_dim = 64
 num_rep = 64  # RelGAN
+discriminator_complexity = 512
 
 # ===log===
 log_time_str = strftime("%m%d_%H%M_%S", localtime())
@@ -177,13 +197,14 @@ pretrained_dis_path = pretrain_root + 'dis_pretrain_{}_{}_sl{}_sn{}.pt'.format(r
                                                                                samples_num)
 pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                  samples_num)
+
+embedding_root = 'pretrain/real_data/' if if_real_data else 'pretrain/oracle_data/'
+pretrain_embedding_path = embedding_root + 'w2v_embedding_size_{}.model'.format(w2v_embedding_size)
+texts_pile = 'dataset/' # do not include testdata
+
 signal_file = 'run_signal.txt'
 
 tips = ''
-
-if samples_num == 5000 or samples_num == 2000:
-    assert 'c' in run_model, 'warning: samples_num={}, run_model={}'.format(samples_num, run_model)
-
 
 # Init settings according to parser
 def init_param(opt):
@@ -198,7 +219,10 @@ def init_param(opt):
         pretrained_clas_path, n_parent, mu_type, eval_type, d_type, eval_b_num, lambda_fd, d_out_mean, \
         lambda_fq, freeze_dis, freeze_clas, use_all_real_fake, use_population, gen_init, dis_init, \
         multi_oracle_samples_path, k_label, cat_train_data, cat_test_data, evo_temp_step, devices, \
-        use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc, use_ppl
+        use_nll_oracle, use_nll_gen, use_nll_div, use_bleu, use_self_bleu, use_clas_acc, use_ppl, \
+        w2v_embedding_size, w2v_window, w2v_min_count, w2v_workers, pretrain_embedding_path, batches_per_epoch, \
+        generator_complexity, discriminator_complexity, noise_size, max_epochs, target_len, w2v_samples_num, \
+        real_fake_coeff, labels_coeff, diversity_coeff
 
     if_test = True if opt.if_test == 1 else False
     run_model = opt.run_model
@@ -226,6 +250,14 @@ def init_param(opt):
     freeze_clas = opt.freeze_clas
     use_all_real_fake = opt.use_all_real_fake
     use_population = opt.use_population
+
+    batches_per_epoch = opt.batches_per_epoch
+    noise_size = opt.noise_size
+    max_epochs = opt.max_epochs
+    target_len = opt.target_len
+    real_fake_coeff = opt.real_fake_coeff
+    labels_coeff = opt.labels_coeff
+    diversity_coeff = opt.diversity_coeff
 
     samples_num = opt.samples_num
     vocab_size = opt.vocab_size
@@ -259,6 +291,7 @@ def init_param(opt):
     mem_slots = opt.mem_slots
     num_heads = opt.num_heads
     head_size = opt.head_size
+    generator_complexity = opt.generator_complexity
 
     d_step = opt.d_step
     d_epoch = opt.d_epoch
@@ -267,6 +300,13 @@ def init_param(opt):
     dis_embed_dim = opt.dis_embed_dim
     dis_hidden_dim = opt.dis_hidden_dim
     num_rep = opt.num_rep
+    discriminator_complexity = opt.discriminator_complexity
+
+    w2v_embedding_size = opt.w2v_embedding_size
+    w2v_window = opt.w2v_window
+    w2v_min_count = opt.w2v_min_count
+    w2v_workers = opt.w2v_workers
+    w2v_samples_num = opt.w2v_samples_num
 
     use_nll_oracle = True if opt.use_nll_oracle == 1 else False
     use_nll_gen = True if opt.use_nll_gen == 1 else False
@@ -306,9 +346,9 @@ def init_param(opt):
     save_samples_root = save_root + 'samples/'
     save_model_root = save_root + 'models/'
 
-    train_data = 'dataset/' + dataset + '.txt'
+    train_data = 'dataset/' + dataset + '.txt' if if_real_data else 'pretrain/oracle_data/' + dataset + '.txt'
     test_data = 'dataset/testdata/' + dataset + '_test.txt'
-    cat_train_data = 'dataset/' + dataset + '_cat{}.txt'
+    cat_train_data = 'dataset/' + dataset + '_cat{}.txt' if if_real_data else 'pretrain/oracle_data/' + dataset + '_cat{}.txt'
     cat_test_data = 'dataset/testdata/' + dataset + '_cat{}_test.txt'
 
     if max_seq_len == 40:
@@ -322,7 +362,8 @@ def init_param(opt):
                                                                                    samples_num)
     pretrained_clas_path = pretrain_root + 'clas_pretrain_{}_{}_sl{}_sn{}.pt'.format(run_model, model_type, max_seq_len,
                                                                                      samples_num)
-
+    embedding_root = 'pretrain/real_data/' if if_real_data else 'pretrain/oracle_data/'
+    pretrain_embedding_path = embedding_root + 'w2v_embedding_size_{}.model'.format(w2v_embedding_size)
     # Assertion
     assert k_label >= 2, 'Error: k_label = {}, which should be >=2!'.format(k_label)
     assert eval_b_num >= n_parent * ADV_d_step, 'Error: eval_b_num = {}, which should be >= n_parent * ADV_d_step ({})!'.format(

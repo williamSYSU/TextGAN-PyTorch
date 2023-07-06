@@ -4,7 +4,7 @@
 # @FileName     : nll.py
 # @Time         : Created at 2019-05-31
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
@@ -15,9 +15,8 @@ from metrics.basic import Metrics
 
 
 class NLL(Metrics):
-    def __init__(self, name, if_use=False, gpu=False):
-        super(NLL, self).__init__(name)
-
+    def __init__(self, name, weight, if_use=False, gpu=False):
+        super(NLL, self).__init__(name, weight, if_use)
         self.if_use = if_use
         self.model = None
         self.data_loader = None
@@ -26,21 +25,16 @@ class NLL(Metrics):
         self.gpu = gpu
         self.criterion = nn.NLLLoss()
 
-    def get_score(self):
+    def calculate_metric(self):
         """note that NLL score need the updated model and data loader each time, use reset() before get_score()"""
-        if not self.if_use:
-            return 0
-        assert self.model and self.data_loader, 'Need to reset() before get_score()!'
-
         if self.leak_dis is not None:  # For LeakGAN
             return self.cal_nll_with_leak_dis(self.model, self.data_loader, self.leak_dis, self.gpu)
-        elif self.label_i is not None:  # For category text generation
+        if self.label_i is not None:  # For category text generation
             return self.cal_nll_with_label(self.model, self.data_loader, self.label_i,
                                            self.criterion, self.gpu)
-        else:
-            return self.cal_nll(self.model, self.data_loader, self.criterion, self.gpu)
+        return self.cal_nll(self.model, self.data_loader, self.criterion, self.gpu)
 
-    def reset(self, model=None, data_loader=None, label_i=None, leak_dis=None):
+    def _reset(self, model=None, data_loader=None, label_i=None, leak_dis=None):
         self.model = model
         self.data_loader = data_loader
         self.label_i = label_i

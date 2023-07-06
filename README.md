@@ -45,6 +45,7 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 
 ### General Text Generation
 
+- **FixemGAN** - [FixemGAN: Continious Space Text GAN on Fixed Embeddings](https://www.com)
 - **SeqGAN** - [SeqGAN: Sequence Generative Adversarial Nets with Policy Gradient](https://arxiv.org/abs/1609.05473)
 - **LeakGAN** - [Long Text Generation via Adversarial Training with Leaked Information](https://arxiv.org/abs/1709.08624)
 - **MaliGAN** - [Maximum-Likelihood Augmented Discrete Generative Adversarial Networks](https://arxiv.org/abs/1702.07983)
@@ -67,9 +68,20 @@ To install, run `pip install -r requirements.txt`. In case of CUDA problems, con
 git clone https://github.com/williamSYSU/TextGAN-PyTorch.git
 cd TextGAN-PyTorch
 ```
+- Downlaod dataset and pretrained embeddings from kaggle dataset or manually:
+```bash
+kaggle datasets download -d salaxieb/texts-corpus-preprocessed
+kaggle datasets download -d salaxieb/pretrained-embeddings
 
-- For real data experiments, all datasets (`Image COCO`, `EMNLP NEWs`, `Movie Review`, `Amazon Review`) can be downloaded from [here](https://drive.google.com/drive/folders/1XvT3GqbK1wh3XhTgqBLWUtH_mLzGnKZP?usp=sharing). 
-- Run with a specific model
+unzip ../texts-corpus-preprocessed.zip -d dataset
+mkdir dataset/testdata
+mv dataset/*_test.txt dataset/testdata/
+
+mkdir pretrain
+unzip ../pretrained-embeddings.zip -d pretrain/real_data
+```
+
+- Manually (`Image COCO`, `EMNLP NEWs`, `Movie Review`, `Amazon Review`) can be downloaded from [here](https://drive.google.com/drive/folders/1XvT3GqbK1wh3XhTgqBLWUtH_mLzGnKZP?usp=sharing).
 
 ```bash
 cd run
@@ -86,13 +98,13 @@ python3 run_seqgan.py 0 0
    For each model, the entire runing process is defined in `instructor/oracle_data/seqgan_instructor.py`. (Take SeqGAN in Synthetic data experiment for example). Some basic functions like `init_model()`and `optimize()` are defined in the base class `BasicInstructor` in `instructor.py`. If you want to add a new GAN-based text generation model, please create a new instructor under `instructor/oracle_data` and define the training process for the model.
 
 2. **Visualization**
-   
+
    Use `utils/visualization.py` to visualize the log file, including model loss and metrics scores. Custom your log files in `log_file_list`, no more than `len(color_list)`. The log filename should exclude `.txt`.
-   
+
 3. **Logging**
 
    The TextGAN-PyTorch use the `logging` module in Python to record the running process, like generator's loss and metric scores. For the convenience of visualization, there would be two same log file saved in `log/log_****_****.txt` and `save/**/log.txt` respectively. Furthermore, The code would automatically save the state dict of models and a batch-size of generator's samples in `./save/**/models` and `./save/**/samples` per log step, where `**` depends on your hyper-parameters.
-   
+
 4. **Running Signal**
 
    You can easily control the training process with the class `Signal` (please refer to `utils/helpers.py`) based on dictionary file `run_signal.txt`.
@@ -105,13 +117,25 @@ python3 run_seqgan.py 0 0
 
 ## Implementation Details
 
+### FixemGAN
+
+- run file: [run_fixem.py](run/run_fixem.py)
+
+- Instructors: [oracle_data](instructor/oracle_data/fixem_instructor.py), [real_data](instructor/real_data/fixem_instructor.py)
+
+- Models: [generator](models/generators/FixemGAN_G.py), [discriminator](models/discriminators/FixemGAN_D.py)
+
+- Structure (from [FixemGAM](https://www.com))
+
+  ![model_fixem](./assets/model_fixem.png)
+
 ### SeqGAN
 
 - run file: [run_seqgan.py](run/run_seqgan.py)
 
 - Instructors: [oracle_data](instructor/oracle_data/seqgan_instructor.py), [real_data](instructor/real_data/seqgan_instructor.py)
 
-- Models: [generator](models/SeqGAN_G.py), [discriminator](models/SeqGAN_D.py)
+- Models: [generator](models/generators/SeqGAN_G.py), [discriminator](models/discriminators/SeqGAN_D.py)
 
 - Structure (from [SeqGAN](https://arxiv.org/pdf/1609.05473.pdf))
 
@@ -123,7 +147,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/leakgan_instructor.py), [real_data](instructor/real_data/leakgan_instructor.py)
 
-- Models: [generator](models/LeakGAN_G.py), [discriminator](models/LeakGAN_D.py)
+- Models: [generator](models/generators/LeakGAN_G.py), [discriminator](models/discriminators/LeakGAN_D.py)
 
 - Structure (from [LeakGAN](https://arxiv.org/pdf/1709.08624.pdf))
 
@@ -135,7 +159,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/maligan_instructor.py), [real_data](instructor/real_data/maligan_instructor.py)
 
-- Models: [generator](models/MaliGAN_G.py), [discriminator](models/MaliGAN_D.py)
+- Models: [generator](models/generators/MaliGAN_G.py), [discriminator](models/discriminators/MaliGAN_D.py)
 
 - Structure (from my understanding)
 
@@ -147,7 +171,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/jsdgan_instructor.py), [real_data](instructor/real_data/jsdgan_instructor.py)
 
-- Models: [generator](models/JSDGAN_G.py) (No discriminator)
+- Models: [generator](models/generators/JSDGAN_G.py) (No discriminator)
 
 - Structure (from my understanding)
 
@@ -159,31 +183,31 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/relgan_instructor.py), [real_data](instructor/real_data/relgan_instructor.py)
 
-- Models: [generator](models/RelGAN_G.py), [discriminator](models/RelGAN_D.py)
+- Models: [generator](models/generators/RelGAN_G.py), [discriminator](models/discriminators/RelGAN_D.py)
 
 - Structure  (from my understanding)
 
   ![model_relgan](assets/model_relgan.png)
-  
+
 ### DPGAN
 
 - run file: [run_dpgan.py](run/run_dpgan.py)
 
 - Instructors: [oracle_data](instructor/oracle_data/dpgan_instructor.py), [real_data](instructor/real_data/dpgan_instructor.py)
 
-- Models: [generator](models/DPGAN_G.py), [discriminator](models/DPGAN_D.py)
+- Models: [generator](models/generators/DPGAN_G.py), [discriminator](models/discriminators/DPGAN_D.py)
 
 - Structure  (from [DPGAN](https://arxiv.org/abs/1802.01345))
 
   ![model_dpgan](assets/model_dpgan.png)
-  
+
 ### DGSAN
 
 - run file: [run_dgsan.py](run/run_dgsan.py)
 
 - Instructors: [oracle_data](instructor/oracle_data/dgsan_instructor.py), [real_data](instructor/real_data/dgsan_instructor.py)
 
-- Models: [generator](models/DGSAN_G.py), [discriminator](models/DGSAN_D.py)
+- Models: [generator](models/generators/DGSAN_G.py), [discriminator](models/discriminators/DGSAN_D.py)
 
 ### CoT
 
@@ -191,7 +215,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/cot_instructor.py), [real_data](instructor/real_data/cot_instructor.py)
 
-- Models: [generator](models/CoT_G.py), [discriminator](models/CoT_D.py)
+- Models: [generator](models/generators/CoT_G.py), [discriminator](models/discriminators/CoT_D.py)
 
 - Structure  (from [CoT](https://arxiv.org/abs/1804.03782))
 
@@ -203,7 +227,7 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/sentigan_instructor.py), [real_data](instructor/real_data/sentigan_instructor.py)
 
-- Models: [generator](models/SentiGAN_G.py), [discriminator](models/SentiGAN_D.py)
+- Models: [generator](models/generators/SentiGAN_G.py), [discriminator](models/discriminators/SentiGAN_D.py)
 
 - Structure (from [SentiGAN](https://www.ijcai.org/proceedings/2018/0618.pdf))
 
@@ -215,15 +239,14 @@ python3 run_seqgan.py 0 0
 
 - Instructors: [oracle_data](instructor/oracle_data/catgan_instructor.py), [real_data](instructor/real_data/catgan_instructor.py)
 
-- Models: [generator](models/CatGAN_G.py), [discriminator](models/CatGAN_D.py)
+- Models: [generator](models/generators/CatGAN_G.py), [discriminator](models/discriminators/CatGAN_D.py)
 
 - Structure (from [CatGAN](https://arxiv.org/abs/1911.06641))
 
   ![model_catgan](assets/model_catgan.png)
 
-  
+
 
 ## Licence
 
 **MIT lincense**
-

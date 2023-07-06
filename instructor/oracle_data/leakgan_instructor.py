@@ -4,7 +4,7 @@
 # @FileName     : leakgan_instructor.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
@@ -12,8 +12,8 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.LeakGAN_D import LeakGAN_D
-from models.LeakGAN_G import LeakGAN_G
+from models.discriminators.LeakGAN_D import LeakGAN_D
+from models.generators.LeakGAN_G import LeakGAN_G
 from utils import rollout
 from utils.data_loader import GenDataIter, DisDataIter
 from utils.text_process import write_tensor
@@ -185,7 +185,7 @@ class LeakGANInstructor(BasicInstructor):
         self.nll_div.reset(self.gen, gen_data.loader, leak_dis=self.dis)
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
+            return ', '.join(['%s = %s' % (metric.name, metric.get_score()) for metric in self.all_metrics])
         else:
             return [metric.get_score() for metric in self.all_metrics]
 

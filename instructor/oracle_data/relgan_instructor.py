@@ -4,7 +4,7 @@
 # @FileName     : relgan_instructor.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 import torch
 import torch.nn.functional as F
@@ -13,8 +13,8 @@ from tqdm import tqdm
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.RelGAN_D import RelGAN_D
-from models.RelGAN_G import RelGAN_G
+from models.discriminators.RelGAN_D import RelGAN_D
+from models.generators.RelGAN_G import RelGAN_G
 from utils.helpers import get_fixed_temperature, get_losses
 
 

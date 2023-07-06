@@ -4,7 +4,7 @@
 # @FileName     : ppl.py
 # @Time         : Created at 2019/12/5
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 import math
 import string
@@ -21,7 +21,7 @@ kenlm_path = '/home/zhiwei/kenlm'  # specify the kenlm path
 
 
 class PPL(Metrics):
-    def __init__(self, train_data, test_data, n_gram=5, if_use=False):
+    def __init__(self, train_data, test_data, weight, n_gram=5, if_use=False):
         """
         Calculate Perplexity scores, including forward and reverse.
         PPL-F: PPL_forward, PPL-R: PPL_reverse
@@ -30,7 +30,7 @@ class PPL(Metrics):
         @param n_gram: calculate with n-gram
         @param if_use: if use
         """
-        super(PPL, self).__init__('[PPL-F, PPL-R]')
+        super(PPL, self).__init__('[PPL-F, PPL-R]', weight, if_use)
 
         self.n_gram = n_gram
         self.if_use = if_use
@@ -39,15 +39,10 @@ class PPL(Metrics):
         self.train_data = train_data
         self.test_data = test_data
 
-    def get_score(self):
-        if not self.if_use:
-            return 0
-        return self.cal_ppl()
-
-    def reset(self, gen_tokens=None):
+    def _reset(self, gen_tokens=None):
         self.gen_tokens = gen_tokens
 
-    def cal_ppl(self):
+    def calculate_metric(self):
         save_path = os.path.join("/tmp", ''.join(random.choice(
             string.ascii_uppercase + string.digits) for _ in range(6)))
         output_path = save_path + ".arpa"

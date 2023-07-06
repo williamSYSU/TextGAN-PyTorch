@@ -1,0 +1,29 @@
+program: train.py
+method: bayes
+metric:
+  goal: minimize
+  name: Overal_score
+parameters:
+  discriminator_complexity:
+    max: 256 # must be multiplied by 4
+    min: 64
+    distribution: int_uniform
+  generator_complexity:
+    max: 256 # must be multiplied by 4
+    min: 64
+    distribution: int_uniform
+  w2v_embedding_size:
+    values:
+      - 512
+  real_fake_coeff:
+    max: 1.5
+    min: 1.0
+    distribution: uniform
+  labels_coeff:
+    max: 2.5
+    min: 2.0
+    distribution: uniform
+  diversity_coeff:
+    max: 2.5
+    min: 2.0
+    distribution: uniform

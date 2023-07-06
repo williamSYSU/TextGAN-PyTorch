@@ -8,7 +8,13 @@
 # Copyrights (C) 2018. All Rights Reserved.
 from __future__ import print_function
 
+import random
+import yaml
+
 import argparse
+# import torch
+import numpy as np
+import wandb
 
 import config as cfg
 from utils.text_process import load_test_dict, text_process
@@ -43,6 +49,10 @@ def program_config(parser):
     parser.add_argument('--freeze_clas', default=cfg.freeze_clas, type=int)
     parser.add_argument('--use_all_real_fake', default=cfg.use_all_real_fake, type=int)
     parser.add_argument('--use_population', default=cfg.use_population, type=int)
+    parser.add_argument('--batches_per_epoch', default=cfg.batches_per_epoch, type=int)
+    parser.add_argument('--noise_size', default=cfg.noise_size, type=int)
+    parser.add_argument('--max_epochs', default=cfg.max_epochs, type=int)
+    parser.add_argument('--target_len', default=cfg.target_len, type=int)
 
     # Basic Train
     parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
@@ -80,6 +90,7 @@ def program_config(parser):
     parser.add_argument('--mem_slots', default=cfg.mem_slots, type=int)
     parser.add_argument('--num_heads', default=cfg.num_heads, type=int)
     parser.add_argument('--head_size', default=cfg.head_size, type=int)
+    parser.add_argument('--generator_complexity', default=cfg.generator_complexity, type=int)
 
     # Discriminator
     parser.add_argument('--d_step', default=cfg.d_step, type=int)
@@ -89,6 +100,14 @@ def program_config(parser):
     parser.add_argument('--dis_embed_dim', default=cfg.dis_embed_dim, type=int)
     parser.add_argument('--dis_hidden_dim', default=cfg.dis_hidden_dim, type=int)
     parser.add_argument('--num_rep', default=cfg.num_rep, type=int)
+    parser.add_argument('--discriminator_complexity', default=cfg.discriminator_complexity, type=int)
+
+    # W2V embeddings
+    parser.add_argument('--w2v_embedding_size', default=cfg.w2v_embedding_size, type=int)
+    parser.add_argument('--w2v_window', default=cfg.w2v_window, type=int)
+    parser.add_argument('--w2v_min_count', default=cfg.w2v_min_count, type=int)
+    parser.add_argument('--w2v_workers', default=cfg.w2v_workers, type=int)
+    parser.add_argument('--w2v_samples_num', default=cfg.w2v_samples_num, type=int)
 
     # Metrics
     parser.add_argument('--use_nll_oracle', default=cfg.use_nll_oracle, type=int)
@@ -105,11 +124,20 @@ def program_config(parser):
     parser.add_argument('--signal_file', default=cfg.signal_file, type=str)
     parser.add_argument('--tips', default=cfg.tips, type=str)
 
+    # Loss coefficients
+    parser.add_argument('--real_fake_coeff', default=1.0, type=float)
+    parser.add_argument('--labels_coeff', default=1.0, type=float)
+    parser.add_argument('--diversity_coeff', default=1.0, type=float)
     return parser
 
 
 # MAIN
 if __name__ == '__main__':
+    #seed everything
+    # torch.manual_seed(0)
+    random.seed(0)
+    np.random.seed(0)
+
     # Hyper Parameters
     parser = argparse.ArgumentParser()
     parser = program_config(parser)
@@ -136,6 +164,7 @@ if __name__ == '__main__':
         from instructor.real_data.catgan_instructor import CatGANInstructor
         from instructor.real_data.dgsan_instructor import DGSANInstructor
         from instructor.real_data.cot_instructor import CoTInstructor
+        from instructor.real_data.fixem_instructor import FixemGANInstructor
 
     else:
         from instructor.oracle_data.seqgan_instructor import SeqGANInstructor
@@ -149,6 +178,7 @@ if __name__ == '__main__':
         from instructor.oracle_data.catgan_instructor import CatGANInstructor
         from instructor.oracle_data.dgsan_instructor import DGSANInstructor
         from instructor.oracle_data.cot_instructor import CoTInstructor
+        from instructor.oracle_data.fixem_instructor import FixemGANInstructor
 
     instruction_dict = {
         'seqgan': SeqGANInstructor,
@@ -162,10 +192,35 @@ if __name__ == '__main__':
         'catgan': CatGANInstructor,
         'dgsan': DGSANInstructor,
         'cot': CoTInstructor,
+        'fixemgan': FixemGANInstructor,
+        'cat_fixemgan': FixemGANInstructor
     }
 
-    inst = instruction_dict[cfg.run_model](opt)
-    if not cfg.if_test:
+
+    # Example sweep configuration
+    with open('sweep.yml') as sweep_yml:
+        sweep_configuration = yaml.safe_load(sweep_yml)
+    print('sweep_configuration', sweep_configuration)
+
+    sweep_id = wandb.sweep(sweep=sweep_configuration, project="TorchGAN-fixem")
+    # sweep_id = "7g6po2bd"
+    print('sweep_id', sweep_id)
+
+
+    def full_train_run(opt):
+        inst = instruction_dict[cfg.run_model](opt)
         inst._run()
-    else:
-        inst._test()
+
+    def function_for_parameters_sweep():
+        run = wandb.init()  # Initialize a new wandb run
+        config = run.config  # Get the config dictionary for the current run
+        print('config', config)
+
+        # Update 'opt' with the hyperparameters from 'config'
+        for name, value in config.items():
+            setattr(opt, name, value)
+        full_train_run(opt)
+        run.finish()  # Make sure to finish the run
+
+
+    wandb.agent(sweep_id=sweep_id, function=function_for_parameters_sweep)

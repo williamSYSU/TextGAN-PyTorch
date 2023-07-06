@@ -4,7 +4,7 @@
 # @FileName     : seqgan_instructor.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
@@ -12,8 +12,8 @@ import torch.optim as optim
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from models.SeqGAN_D import SeqGAN_D
-from models.SeqGAN_G import SeqGAN_G
+from models.discriminators.SeqGAN_D import SeqGAN_D
+from models.generators.SeqGAN_G import SeqGAN_G
 from utils import rollout
 from utils.data_loader import GenDataIter, DisDataIter
 

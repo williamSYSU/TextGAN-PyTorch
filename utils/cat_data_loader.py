@@ -4,7 +4,7 @@
 # @FileName     : cat_data_loader.py
 # @Time         : Created at 2019-05-31
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import random
@@ -135,7 +135,10 @@ class CatClasDataIter:
             - inp: sentences
             - target: label index, 0-label_0, 1-label_1, ..., k-label_k
         """
-        if len(samples_list) == 1 and given_target is not None:
+        if type(samples_list[0][0][0]) == str: # directly generated text
+            inp = torch.zeros(1)
+            target = torch.zeros(1)
+        elif len(samples_list) == 1 and given_target is not None:
             inp = samples_list[0]
             if detach:
                 inp = inp.detach()

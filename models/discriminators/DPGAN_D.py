@@ -11,7 +11,7 @@ import torch
 import torch.nn.functional as F
 
 import config as cfg
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 from utils.data_loader import GenDataIter
 
 

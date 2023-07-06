@@ -1,25 +1,28 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
 # @Project      : TextGAN-william
-# @FileName     : EvoGAN_D.py
-# @Time         : Created at 2019-07-09
+# @FileName     : CatGAN_D.py
+# @Time         : Created at 2019-05-28
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.discriminator import CNNDiscriminator
+from models.discriminators.discriminator import CNNDiscriminator, CNNClassifier
 
 dis_filter_sizes = [2, 3, 4, 5]
 dis_num_filters = [300, 300, 300, 300]
+clas_filter_sizes = [2, 3, 4, 5]
+clas_num_filters = [200]
 
 
-class EvoGAN_D(CNNDiscriminator):
+# Discriminator
+class CatGAN_D(CNNDiscriminator):
     def __init__(self, embed_dim, max_seq_len, num_rep, vocab_size, padding_idx, gpu=False, dropout=0.25):
-        super(EvoGAN_D, self).__init__(embed_dim, vocab_size, dis_filter_sizes, dis_num_filters, padding_idx,
+        super(CatGAN_D, self).__init__(embed_dim, vocab_size, dis_filter_sizes, dis_num_filters, padding_idx,
                                        gpu, dropout)
 
         self.embed_dim = embed_dim
@@ -61,3 +64,13 @@ class EvoGAN_D(CNNDiscriminator):
         logits = self.out2logits(pred).squeeze(1)  # [batch_size * num_rep]
 
         return logits
+
+
+# Classifier
+class CatGAN_C(CNNClassifier):
+    def __init__(self, k_label, embed_dim, max_seq_len, num_rep, vocab_size, padding_idx, gpu=False, dropout=0.25):
+        super(CatGAN_C, self).__init__(k_label, embed_dim, max_seq_len, num_rep, vocab_size, clas_filter_sizes,
+                                       clas_num_filters, padding_idx, gpu, dropout)
+
+        # Use Glove
+        # self.embeddings.from_pretrained(build_embedding_matrix(cfg.dataset))

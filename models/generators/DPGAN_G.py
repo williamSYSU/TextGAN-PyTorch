@@ -10,7 +10,7 @@
 import torch
 import torch.nn.functional as F
 
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
 class DPGAN_G(LSTMGenerator):

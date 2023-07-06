@@ -4,10 +4,10 @@
 # @FileName     : DGSAN_G.py
 # @Time         : Created at 2020/4/12
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
 class DGSAN_G(LSTMGenerator):

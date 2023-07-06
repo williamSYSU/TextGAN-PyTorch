@@ -4,21 +4,28 @@
 # @FileName     : instructor.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import numpy as np
 import os
 import torch
 import torch.nn as nn
+import wandb
 
 import config as cfg
+from metrics.bleu import BLEU
+from metrics.clas_acc import ACC
+from metrics.ioc import IOC
+from metrics.gpt_nll import GPTNLL
 from metrics.nll import NLL
+from metrics.ppl import PPL
+from metrics.dummy import Dummy
 from models.Oracle import Oracle
 from utils.data_loader import GenDataIter
 from utils.data_utils import create_multi_oracle
 from utils.helpers import Signal, create_logger, create_oracle, get_fixed_temperature
-from utils.text_process import write_tensor
+from utils.text_process import write_tensor, tensor_to_tokens
 
 
 class BasicInstructor:
@@ -53,10 +60,19 @@ class BasicInstructor:
         self.dis_criterion = nn.CrossEntropyLoss()
 
         # Metrics
-        self.nll_oracle = NLL('NLL_oracle', if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
-        self.nll_gen = NLL('NLL_gen', if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
-        self.nll_div = NLL('NLL_div', if_use=cfg.use_nll_div, gpu=cfg.CUDA)
-        self.all_metrics = [self.nll_oracle, self.nll_gen, self.nll_div]
+        # nll_oracle, less-better, changes in range -0.1 - 0.6, moderate weight
+        self.nll_oracle = NLL('NLL_oracle', weight=-3, if_use=cfg.use_nll_oracle, gpu=cfg.CUDA)
+        # nll-gen, less-better, changes in range 1.5 - 3 will have smaller wight (not in use)
+        self.nll_gen = NLL('NLL_gen', weight=0, if_use=cfg.use_nll_gen, gpu=cfg.CUDA)
+        # nll-div, more-better, changes in range 0.5 - 1.5 will have smaller wight (not in use)
+        self.nll_div = NLL('NLL_div', weight=0, if_use=cfg.use_nll_div, gpu=cfg.CUDA)
+        # self-bleu, less-better, changes in range 0.7 - 0.9, will have relatively high weight
+        self.self_bleu = BLEU('Self-BLEU', weight=-3, gram=3, if_use=cfg.use_self_bleu)
+        # IOC, less-better, changes in range 0.8 - 2.0, smaller weight
+        self.ioc = IOC(weight=-0.3, if_use=cfg.use_ioc, real_text=self.oracle_data)
+        # dummy, add constant value to overall score
+        self.dummy = Dummy(weight=1, value=5, if_use=True)
+        self.all_metrics = [self.nll_oracle, self.nll_gen, self.nll_div, self.self_bleu, self.ioc, self.dummy]
 
     def _run(self):
         print('Nothing to run in Basic Instructor!')
@@ -163,6 +179,20 @@ class BasicInstructor:
             self.log.info('>>> {0}: {1}'.format(arg, getattr(self.opt, arg)))
         self.log.info(100 * '=')
 
+    def sample_for_metrics(self):
+        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size)
+        gen_data = GenDataIter(eval_samples)
+        gen_tokens = tensor_to_tokens(eval_samples)
+        gen_tokens_s = tensor_to_tokens(self.gen.sample(cfg.small_sample_num, 4 * cfg.batch_size))
+        return gen_data, gen_tokens, gen_tokens_s
+
+    def sample_for_metrics_with_label(self, label_i):
+        eval_samples = self.gen.sample(cfg.samples_num, 4 * cfg.batch_size, label_i=label_i)
+        gen_data = GenDataIter(eval_samples)
+        gen_tokens = tensor_to_tokens(eval_samples)
+        gen_tokens_s = tensor_to_tokens(self.gen.sample(cfg.small_sample_num, 8 * cfg.batch_size, label_i=label_i))
+        return gen_data, gen_tokens, gen_tokens_s
+
     def cal_metrics(self, fmt_str=False):
         """
         Calculate metrics
@@ -170,40 +200,54 @@ class BasicInstructor:
         """
         with torch.no_grad():
             # Prepare data for evaluation
-            gen_data = GenDataIter(self.gen.sample(cfg.samples_num, 4 * cfg.batch_size))
+            gen_data, gen_tokens, gen_tokens_s = self.sample_for_metrics()
 
             # Reset metrics
             self.nll_oracle.reset(self.oracle, gen_data.loader)
             self.nll_gen.reset(self.gen, self.oracle_data.loader)
             self.nll_div.reset(self.gen, gen_data.loader)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            self.ioc.reset(test_text=gen_tokens)
+
+        metrics = {metric.name: metric.get_score() for metric in self.all_metrics}
+        metrics.update({"Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
+        wandb.log(metrics)
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), metric.get_score()) for metric in self.all_metrics])
-        else:
-            return [metric.get_score() for metric in self.all_metrics]
+            return "\n" + "\n".join([f"{name} = {score}" for name, score in metrics.items()])
+        return [metric.get_score() for metric in self.all_metrics]
 
-    def cal_metrics_with_label(self, label_i):
+    def cal_metrics_with_label(self, label_i, fmt_str=False):
         assert type(label_i) == int, 'missing label'
         with torch.no_grad():
             # Prepare data for evaluation
-            eval_samples = self.gen.sample(cfg.samples_num, 8 * cfg.batch_size, label_i=label_i)
-            gen_data = GenDataIter(eval_samples)
+            gen_data, gen_tokens, gen_tokens_s = self.sample_for_metrics_with_label()
 
             # Reset metrics
             self.nll_oracle.reset(self.oracle_list[label_i], gen_data.loader, label_i)
             self.nll_gen.reset(self.gen, self.oracle_data_list[label_i].loader, label_i)
             self.nll_div.reset(self.gen, gen_data.loader, label_i)
+            self.self_bleu.reset(test_text=gen_tokens_s, real_text=gen_tokens)
+            self.ioc.reset(test_text=gen_tokens)
+            self.nll_oracle.reset(test_text=gen_tokens)
 
-        return [metric.get_score() for metric in self.all_metrics]
+        metrics = {f"label {label_i}_{metric.name}": metric.get_score() for metric in self.all_metrics}
+        metrics.update({f"label {label_i} Overal_score": sum(metric.weight * metric.get_score() for metric in self.all_metrics)})
+        wandb.log(metrics)
+
+        if fmt_str:
+            return "\n" + "\n".join([f"{name} = {score}" for name, score in metrics.items()])
+        return metrics
 
     def comb_metrics(self, fmt_str=False):
         all_scores = [self.cal_metrics_with_label(label_i) for label_i in range(cfg.k_label)]
-        all_scores = np.array(all_scores).T.tolist()  # each row for each metric
 
         if fmt_str:
-            return ', '.join(['%s = %s' % (metric.get_name(), score)
-                              for (metric, score) in zip(self.all_metrics, all_scores)])
-        return all_scores
+            return ', '.join([
+                f'{name} = {[scores[name] for scores in all_scores]}'
+                for name in all_scores[0]
+            ])
+        return [scores.values() for scores in all_scores]
 
     def _save(self, phase, epoch):
         """Save model state dict and generator's samples"""

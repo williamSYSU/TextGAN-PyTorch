@@ -4,7 +4,7 @@
 # @FileName     : data_utils.py
 # @Time         : Created at 2019-03-16
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 from time import strftime, localtime
 

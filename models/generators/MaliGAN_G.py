@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
 # @Author       : William
 # @Project      : TextGAN-william
-# @FileName     : SeqGAN_G.py
-# @Time         : Created at 2019-04-25
+# @FileName     : MaliGAN_G.py
+# @Time         : Created at 2019/10/17
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch
 import torch.nn.functional as F
 
-from models.generator import LSTMGenerator
+from models.generators.generator import LSTMGenerator
 
 
-class SeqGAN_G(LSTMGenerator):
+class MaliGAN_G(LSTMGenerator):
     def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
-        super(SeqGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
-        self.name = 'seqgan'
+        super(MaliGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
+        self.name = 'maligan'
 
-    def batchPGLoss(self, inp, target, reward):
+    def adv_loss(self, inp, target, reward):
         """
-        Returns a policy gradient loss
+        Returns a MaliGAN loss
 
         :param inp: batch_size x seq_len, inp should be target with <s> (start letter) prepended
         :param target: batch_size x seq_len

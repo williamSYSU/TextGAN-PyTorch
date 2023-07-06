@@ -4,7 +4,7 @@
 # @FileName     : run_catgan.py
 # @Time         : Created at 2019-08-04
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 import sys
 from subprocess import call
@@ -34,7 +34,7 @@ scriptname = 'main.py'
 # CatGAN: Catgory text generation model
 # EvoGAN: General text generation model
 if_test = int(False)
-run_model = ['catgan', 'catgan', 'catgan', 'evogan', 'evogan', 'evogan']
+run_model = ['evogan', 'catgan', 'catgan', 'evogan', 'evogan', 'evogan']
 k_label = 2
 CUDA = int(True)
 ora_pretrain = int(True)
@@ -46,8 +46,8 @@ ADV_train_epoch = 2000
 tips = '{} experiments'
 
 # ===Oracle or Real===
-if_real_data = [int(False), int(True), int(True), int(False), int(True), int(True)]
-dataset = ['oracle', 'mr15', 'amazon_app_book', 'oracle', 'image_coco', 'emnlp_news']
+if_real_data = [int(True), int(False), int(True), int(False), int(True), int(True)]
+dataset = ['amazon_app_book', 'oracle', 'mr15', 'oracle', 'image_coco', 'emnlp_news']
 vocab_size = [5000, 0, 0, 5000, 0, 0]
 
 # ===CatGAN Param===
@@ -67,7 +67,6 @@ data_shuffle = int(False)
 model_type = 'vanilla'
 gen_init = 'truncated_normal'
 dis_init = 'uniform'
-samples_num = 10000
 batch_size = 64
 max_seq_len = 20
 gen_lr = 0.01
@@ -136,7 +135,6 @@ args = [
     '--model_type', model_type,
     '--gen_init', gen_init,
     '--dis_init', dis_init,
-    '--samples_num', samples_num,
     '--batch_size', batch_size,
     '--max_seq_len', max_seq_len,
     '--gen_lr', gen_lr,

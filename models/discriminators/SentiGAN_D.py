@@ -4,12 +4,12 @@
 # @FileName     : SentiGAN_D.py
 # @Time         : Created at 2019-07-26
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import torch.nn as nn
 
-from models.discriminator import CNNDiscriminator, CNNClassifier
+from models.discriminators.discriminator import CNNDiscriminator, CNNClassifier
 
 dis_filter_sizes = [2, 3, 4, 5]
 dis_num_filters = [200, 200, 200, 200]
