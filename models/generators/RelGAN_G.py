@@ -16,15 +16,29 @@ from models.relational_rnn_general import RelationalMemory
 
 
 class RelGAN_G(LSTMGenerator):
-    def __init__(self, mem_slots, num_heads, head_size, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx,
-                 gpu=False):
-        super(RelGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
-        self.name = 'relgan'
+    def __init__(
+        self,
+        mem_slots,
+        num_heads,
+        head_size,
+        embedding_dim,
+        hidden_dim,
+        vocab_size,
+        max_seq_len,
+        padding_idx,
+        gpu=False,
+    ):
+        super(RelGAN_G, self).__init__(
+            embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu
+        )
+        self.name = "relgan"
 
         self.temperature = 1.0  # init value is 1.0
 
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
-        if cfg.model_type == 'LSTM':
+        self.embeddings = nn.Embedding(
+            vocab_size, embedding_dim, padding_idx=padding_idx
+        )
+        if cfg.model_type == "LSTM":
             # LSTM
             self.hidden_dim = hidden_dim
             self.lstm = nn.LSTM(embedding_dim, self.hidden_dim, batch_first=True)
@@ -32,15 +46,20 @@ class RelGAN_G(LSTMGenerator):
         else:
             # RMC
             self.hidden_dim = mem_slots * num_heads * head_size
-            self.lstm = RelationalMemory(mem_slots=mem_slots, head_size=head_size, input_size=embedding_dim,
-                                         num_heads=num_heads, return_all_outputs=True)
+            self.lstm = RelationalMemory(
+                mem_slots=mem_slots,
+                head_size=head_size,
+                input_size=embedding_dim,
+                num_heads=num_heads,
+                return_all_outputs=True,
+            )
             self.lstm2out = nn.Linear(self.hidden_dim, vocab_size)
 
         self.init_params()
         pass
 
     def init_hidden(self, batch_size=cfg.batch_size):
-        if cfg.model_type == 'LSTM':
+        if cfg.model_type == "LSTM":
             h = torch.zeros(1, batch_size, self.hidden_dim)
             c = torch.zeros(1, batch_size, self.hidden_dim)
 
@@ -79,7 +98,9 @@ class RelGAN_G(LSTMGenerator):
 
         return pred, hidden, next_token, next_token_onehot, next_o
 
-    def sample(self, num_samples, batch_size, one_hot=False, start_letter=cfg.start_letter):
+    def sample(
+        self, num_samples, batch_size, one_hot=False, start_letter=cfg.start_letter
+    ):
         """
         Sample from RelGAN Generator
         - one_hot: if return pred of RelGAN, used for adversarial training
@@ -103,7 +124,7 @@ class RelGAN_G(LSTMGenerator):
 
             for i in range(self.max_seq_len):
                 pred, hidden, next_token, _, _ = self.step(inp, hidden)
-                samples[b * batch_size:(b + 1) * batch_size, i] = next_token
+                samples[b * batch_size : (b + 1) * batch_size, i] = next_token
                 if one_hot:
                     all_preds[:, i] = pred
                 inp = next_token

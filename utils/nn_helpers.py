@@ -193,10 +193,11 @@ class MyLSTMLayerNorm(nn.Module):
             nn.BatchNorm1d(2 * out_channels),
             nn.LeakyReLU(alpha),
         )
+
     def forward(self, x):
         x = torch.transpose(x, 1, 2)
         x, (hn, cn) = self.lstm(x)
-        x = torch.transpose(x, 1,2)
+        x = torch.transpose(x, 1, 2)
         x = self.layers(x)
         return x
 
@@ -257,24 +258,26 @@ class MyLSTMLayer(nn.Module):
             nn.LeakyReLU(alpha),
             nn.Dropout(drop_rate),
         )
+
     def forward(self, x):
         x = torch.transpose(x, 1, 2)
         x, (hn, cn) = self.lstm(x)
-        x = torch.transpose(x, 1,2)
+        x = torch.transpose(x, 1, 2)
         x = self.layers(x)
         return x
 
 
-
 def DiversityLoss():
     cs2 = torch.nn.CosineSimilarity(dim=2)
+
     def cos_sim_loss(generated):
         batch_size = generated.shape[0]
         generated = generated.repeat(batch_size, 1, 1, 1)
         generatedTranspose = torch.transpose(generated, 0, 1)
         loss = cs2(generated, generatedTranspose)
         ind = np.diag_indices(loss.shape[0])
-        loss[ind[0], ind[1], :] = 0 # set 0 to similarity of message to itself
+        loss[ind[0], ind[1], :] = 0  # set 0 to similarity of message to itself
         loss = loss.mean(axis=2).max(axis=0).values.mean()
         return loss
+
     return cos_sim_loss

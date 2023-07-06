@@ -24,15 +24,27 @@ class BLEU(Metrics):
     :param is_fast: Fast mode
     :param given_gram: Calculate specific n-gram BLEU score
     """
-    def __init__(self, name=None, weight=1, test_text=None, real_text=None, gram=3, portion=1, if_use=False):
-        assert type(gram) == int or type(gram) == list, 'Gram format error!'
-        super(BLEU, self).__init__('%s-%s' % (name, gram), weight, if_use)
+
+    def __init__(
+        self,
+        name=None,
+        weight=1,
+        test_text=None,
+        real_text=None,
+        gram=3,
+        portion=1,
+        if_use=False,
+    ):
+        assert type(gram) == int or type(gram) == list, "Gram format error!"
+        super(BLEU, self).__init__("%s-%s" % (name, gram), weight, if_use)
 
         self.if_use = if_use
         self.test_text = test_text
         self.real_text = real_text
         self.gram = gram if type(gram) == int else gram
-        self.sample_size = 200  # BLEU scores remain nearly unchanged for self.sample_size >= 200
+        self.sample_size = (
+            200  # BLEU scores remain nearly unchanged for self.sample_size >= 200
+        )
         self.portion = portion  # how many portions to use in the evaluation, default to use the whole test dataset
 
     def _reset(self, test_text=None, real_text=None):
@@ -45,11 +57,11 @@ class BLEU(Metrics):
         # In-place shuffle
         random.shuffle(reference)
         len_ref = len(reference)
-        reference = reference[:int(self.portion * len_ref)]
+        reference = reference[: int(self.portion * len_ref)]
         return reference
 
     def get_bleu(self, given_gram=None):
-        if type(self.gram) == int: # for single gram
+        if type(self.gram) == int:  # for single gram
             return self.get_blue_for_single_gram(self.gram)
         # for multiple gram
         all_bleu = []
@@ -60,18 +72,22 @@ class BLEU(Metrics):
     def get_blue_for_single_gram(self, ngram):
         bleu = list()
         reference = self.get_reference()
-        weight = tuple((1. / ngram for _ in range(ngram)))
-        for idx, hypothesis in enumerate(self.test_text[:self.sample_size]):
+        weight = tuple((1.0 / ngram for _ in range(ngram)))
+        for idx, hypothesis in enumerate(self.test_text[: self.sample_size]):
             bleu.append(self.cal_bleu(reference, hypothesis, weight))
         return round(sum(bleu) / len(bleu), 3)
 
     @staticmethod
     def cal_bleu(reference, hypothesis, weight):
-        return nltk.translate.bleu_score.sentence_bleu(reference, hypothesis, weight,
-                                                       smoothing_function=SmoothingFunction().method1)
+        return nltk.translate.bleu_score.sentence_bleu(
+            reference,
+            hypothesis,
+            weight,
+            smoothing_function=SmoothingFunction().method1,
+        )
 
     def calculate_metric(self):
-        if type(self.gram) == int: # for single gram
+        if type(self.gram) == int:  # for single gram
             return self.get_blue_for_single_gram(self.gram)
         # for multiple gram
         reference = self.get_reference()
@@ -81,11 +97,13 @@ class BLEU(Metrics):
         return all_bleu
 
     def get_bleu_parallel(self, ngram, reference):
-        weight = tuple((1. / ngram for _ in range(ngram)))
+        weight = tuple((1.0 / ngram for _ in range(ngram)))
         pool = Pool(os.cpu_count())
         result = list()
-        for idx, hypothesis in enumerate(self.test_text[:self.sample_size]):
-            result.append(pool.apply_async(self.cal_bleu, args=(reference, hypothesis, weight)))
+        for idx, hypothesis in enumerate(self.test_text[: self.sample_size]):
+            result.append(
+                pool.apply_async(self.cal_bleu, args=(reference, hypothesis, weight))
+            )
         score = 0.0
         cnt = 0
         for i in result:

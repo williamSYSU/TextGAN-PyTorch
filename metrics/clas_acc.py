@@ -14,7 +14,7 @@ from metrics.basic import Metrics
 
 class ACC(Metrics):
     def __init__(self, weight, if_use=True, gpu=True):
-        super(ACC, self).__init__('clas_acc', weight, if_use)
+        super(ACC, self).__init__("clas_acc", weight, if_use)
 
         self.if_use = if_use
         self.model = None
@@ -30,7 +30,7 @@ class ACC(Metrics):
         total_num = 0
         with torch.no_grad():
             for i, data in enumerate(self.data_loader):
-                inp, target = data['input'], data['target']
+                inp, target = data["input"], data["target"]
                 if self.gpu:
                     inp, target = inp.cuda(), target.cuda()
 

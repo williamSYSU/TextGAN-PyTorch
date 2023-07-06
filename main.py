@@ -12,6 +12,7 @@ import random
 import yaml
 
 import argparse
+
 # import torch
 import numpy as np
 import wandb
@@ -22,118 +23,124 @@ from utils.text_process import load_test_dict, text_process
 
 def program_config(parser):
     # Program
-    parser.add_argument('--if_test', default=cfg.if_test, type=int)
-    parser.add_argument('--run_model', default=cfg.run_model, type=str)
-    parser.add_argument('--k_label', default=cfg.k_label, type=int)
-    parser.add_argument('--dataset', default=cfg.dataset, type=str)
-    parser.add_argument('--model_type', default=cfg.model_type, type=str)
-    parser.add_argument('--loss_type', default=cfg.loss_type, type=str)
-    parser.add_argument('--mu_type', default=cfg.mu_type, type=str)
-    parser.add_argument('--eval_type', default=cfg.eval_type, type=str)
-    parser.add_argument('--d_type', default=cfg.d_type, type=str)
-    parser.add_argument('--if_real_data', default=cfg.if_real_data, type=int)
-    parser.add_argument('--cuda', default=cfg.CUDA, type=int)
-    parser.add_argument('--device', default=cfg.device, type=int)
-    parser.add_argument('--devices', default=cfg.devices, type=str)
-    parser.add_argument('--shuffle', default=cfg.data_shuffle, type=int)
-    parser.add_argument('--gen_init', default=cfg.gen_init, type=str)
-    parser.add_argument('--dis_init', default=cfg.dis_init, type=str)
+    parser.add_argument("--if_test", default=cfg.if_test, type=int)
+    parser.add_argument("--run_model", default=cfg.run_model, type=str)
+    parser.add_argument("--k_label", default=cfg.k_label, type=int)
+    parser.add_argument("--dataset", default=cfg.dataset, type=str)
+    parser.add_argument("--model_type", default=cfg.model_type, type=str)
+    parser.add_argument("--loss_type", default=cfg.loss_type, type=str)
+    parser.add_argument("--mu_type", default=cfg.mu_type, type=str)
+    parser.add_argument("--eval_type", default=cfg.eval_type, type=str)
+    parser.add_argument("--d_type", default=cfg.d_type, type=str)
+    parser.add_argument("--if_real_data", default=cfg.if_real_data, type=int)
+    parser.add_argument("--cuda", default=cfg.CUDA, type=int)
+    parser.add_argument("--device", default=cfg.device, type=int)
+    parser.add_argument("--devices", default=cfg.devices, type=str)
+    parser.add_argument("--shuffle", default=cfg.data_shuffle, type=int)
+    parser.add_argument("--gen_init", default=cfg.gen_init, type=str)
+    parser.add_argument("--dis_init", default=cfg.dis_init, type=str)
 
     # CatGAN
-    parser.add_argument('--n_parent', default=cfg.n_parent, type=int)
-    parser.add_argument('--eval_b_num', default=cfg.eval_b_num, type=int)
-    parser.add_argument('--lambda_fq', default=cfg.lambda_fq, type=float)
-    parser.add_argument('--lambda_fd', default=cfg.lambda_fd, type=float)
-    parser.add_argument('--d_out_mean', default=cfg.d_out_mean, type=int)
-    parser.add_argument('--freeze_dis', default=cfg.freeze_dis, type=int)
-    parser.add_argument('--freeze_clas', default=cfg.freeze_clas, type=int)
-    parser.add_argument('--use_all_real_fake', default=cfg.use_all_real_fake, type=int)
-    parser.add_argument('--use_population', default=cfg.use_population, type=int)
-    parser.add_argument('--batches_per_epoch', default=cfg.batches_per_epoch, type=int)
-    parser.add_argument('--noise_size', default=cfg.noise_size, type=int)
-    parser.add_argument('--max_epochs', default=cfg.max_epochs, type=int)
-    parser.add_argument('--target_len', default=cfg.target_len, type=int)
+    parser.add_argument("--n_parent", default=cfg.n_parent, type=int)
+    parser.add_argument("--eval_b_num", default=cfg.eval_b_num, type=int)
+    parser.add_argument("--lambda_fq", default=cfg.lambda_fq, type=float)
+    parser.add_argument("--lambda_fd", default=cfg.lambda_fd, type=float)
+    parser.add_argument("--d_out_mean", default=cfg.d_out_mean, type=int)
+    parser.add_argument("--freeze_dis", default=cfg.freeze_dis, type=int)
+    parser.add_argument("--freeze_clas", default=cfg.freeze_clas, type=int)
+    parser.add_argument("--use_all_real_fake", default=cfg.use_all_real_fake, type=int)
+    parser.add_argument("--use_population", default=cfg.use_population, type=int)
+    parser.add_argument("--batches_per_epoch", default=cfg.batches_per_epoch, type=int)
+    parser.add_argument("--noise_size", default=cfg.noise_size, type=int)
+    parser.add_argument("--max_epochs", default=cfg.max_epochs, type=int)
+    parser.add_argument("--target_len", default=cfg.target_len, type=int)
 
     # Basic Train
-    parser.add_argument('--samples_num', default=cfg.samples_num, type=int)
-    parser.add_argument('--vocab_size', default=cfg.vocab_size, type=int)
-    parser.add_argument('--mle_epoch', default=cfg.MLE_train_epoch, type=int)
-    parser.add_argument('--clas_pre_epoch', default=cfg.PRE_clas_epoch, type=int)
-    parser.add_argument('--adv_epoch', default=cfg.ADV_train_epoch, type=int)
-    parser.add_argument('--inter_epoch', default=cfg.inter_epoch, type=int)
-    parser.add_argument('--batch_size', default=cfg.batch_size, type=int)
-    parser.add_argument('--max_seq_len', default=cfg.max_seq_len, type=int)
-    parser.add_argument('--start_letter', default=cfg.start_letter, type=int)
-    parser.add_argument('--padding_idx', default=cfg.padding_idx, type=int)
-    parser.add_argument('--gen_lr', default=cfg.gen_lr, type=float)
-    parser.add_argument('--gen_adv_lr', default=cfg.gen_adv_lr, type=float)
-    parser.add_argument('--dis_lr', default=cfg.dis_lr, type=float)
-    parser.add_argument('--clip_norm', default=cfg.clip_norm, type=float)
-    parser.add_argument('--pre_log_step', default=cfg.pre_log_step, type=int)
-    parser.add_argument('--adv_log_step', default=cfg.adv_log_step, type=int)
-    parser.add_argument('--train_data', default=cfg.train_data, type=str)
-    parser.add_argument('--test_data', default=cfg.test_data, type=str)
-    parser.add_argument('--temp_adpt', default=cfg.temp_adpt, type=str)
-    parser.add_argument('--evo_temp_step', default=cfg.evo_temp_step, type=int)
-    parser.add_argument('--temperature', default=cfg.temperature, type=int)
-    parser.add_argument('--ora_pretrain', default=cfg.oracle_pretrain, type=int)
-    parser.add_argument('--gen_pretrain', default=cfg.gen_pretrain, type=int)
-    parser.add_argument('--dis_pretrain', default=cfg.dis_pretrain, type=int)
+    parser.add_argument("--samples_num", default=cfg.samples_num, type=int)
+    parser.add_argument("--vocab_size", default=cfg.vocab_size, type=int)
+    parser.add_argument("--mle_epoch", default=cfg.MLE_train_epoch, type=int)
+    parser.add_argument("--clas_pre_epoch", default=cfg.PRE_clas_epoch, type=int)
+    parser.add_argument("--adv_epoch", default=cfg.ADV_train_epoch, type=int)
+    parser.add_argument("--inter_epoch", default=cfg.inter_epoch, type=int)
+    parser.add_argument("--batch_size", default=cfg.batch_size, type=int)
+    parser.add_argument("--max_seq_len", default=cfg.max_seq_len, type=int)
+    parser.add_argument("--start_letter", default=cfg.start_letter, type=int)
+    parser.add_argument("--padding_idx", default=cfg.padding_idx, type=int)
+    parser.add_argument("--gen_lr", default=cfg.gen_lr, type=float)
+    parser.add_argument("--gen_adv_lr", default=cfg.gen_adv_lr, type=float)
+    parser.add_argument("--dis_lr", default=cfg.dis_lr, type=float)
+    parser.add_argument("--clip_norm", default=cfg.clip_norm, type=float)
+    parser.add_argument("--pre_log_step", default=cfg.pre_log_step, type=int)
+    parser.add_argument("--adv_log_step", default=cfg.adv_log_step, type=int)
+    parser.add_argument("--train_data", default=cfg.train_data, type=str)
+    parser.add_argument("--test_data", default=cfg.test_data, type=str)
+    parser.add_argument("--temp_adpt", default=cfg.temp_adpt, type=str)
+    parser.add_argument("--evo_temp_step", default=cfg.evo_temp_step, type=int)
+    parser.add_argument("--temperature", default=cfg.temperature, type=int)
+    parser.add_argument("--ora_pretrain", default=cfg.oracle_pretrain, type=int)
+    parser.add_argument("--gen_pretrain", default=cfg.gen_pretrain, type=int)
+    parser.add_argument("--dis_pretrain", default=cfg.dis_pretrain, type=int)
 
     # Generator
-    parser.add_argument('--adv_g_step', default=cfg.ADV_g_step, type=int)
-    parser.add_argument('--rollout_num', default=cfg.rollout_num, type=int)
-    parser.add_argument('--gen_embed_dim', default=cfg.gen_embed_dim, type=int)
-    parser.add_argument('--gen_hidden_dim', default=cfg.gen_hidden_dim, type=int)
-    parser.add_argument('--goal_size', default=cfg.goal_size, type=int)
-    parser.add_argument('--step_size', default=cfg.step_size, type=int)
-    parser.add_argument('--mem_slots', default=cfg.mem_slots, type=int)
-    parser.add_argument('--num_heads', default=cfg.num_heads, type=int)
-    parser.add_argument('--head_size', default=cfg.head_size, type=int)
-    parser.add_argument('--generator_complexity', default=cfg.generator_complexity, type=int)
+    parser.add_argument("--adv_g_step", default=cfg.ADV_g_step, type=int)
+    parser.add_argument("--rollout_num", default=cfg.rollout_num, type=int)
+    parser.add_argument("--gen_embed_dim", default=cfg.gen_embed_dim, type=int)
+    parser.add_argument("--gen_hidden_dim", default=cfg.gen_hidden_dim, type=int)
+    parser.add_argument("--goal_size", default=cfg.goal_size, type=int)
+    parser.add_argument("--step_size", default=cfg.step_size, type=int)
+    parser.add_argument("--mem_slots", default=cfg.mem_slots, type=int)
+    parser.add_argument("--num_heads", default=cfg.num_heads, type=int)
+    parser.add_argument("--head_size", default=cfg.head_size, type=int)
+    parser.add_argument(
+        "--generator_complexity", default=cfg.generator_complexity, type=int
+    )
 
     # Discriminator
-    parser.add_argument('--d_step', default=cfg.d_step, type=int)
-    parser.add_argument('--d_epoch', default=cfg.d_epoch, type=int)
-    parser.add_argument('--adv_d_step', default=cfg.ADV_d_step, type=int)
-    parser.add_argument('--adv_d_epoch', default=cfg.ADV_d_epoch, type=int)
-    parser.add_argument('--dis_embed_dim', default=cfg.dis_embed_dim, type=int)
-    parser.add_argument('--dis_hidden_dim', default=cfg.dis_hidden_dim, type=int)
-    parser.add_argument('--num_rep', default=cfg.num_rep, type=int)
-    parser.add_argument('--discriminator_complexity', default=cfg.discriminator_complexity, type=int)
+    parser.add_argument("--d_step", default=cfg.d_step, type=int)
+    parser.add_argument("--d_epoch", default=cfg.d_epoch, type=int)
+    parser.add_argument("--adv_d_step", default=cfg.ADV_d_step, type=int)
+    parser.add_argument("--adv_d_epoch", default=cfg.ADV_d_epoch, type=int)
+    parser.add_argument("--dis_embed_dim", default=cfg.dis_embed_dim, type=int)
+    parser.add_argument("--dis_hidden_dim", default=cfg.dis_hidden_dim, type=int)
+    parser.add_argument("--num_rep", default=cfg.num_rep, type=int)
+    parser.add_argument(
+        "--discriminator_complexity", default=cfg.discriminator_complexity, type=int
+    )
 
     # W2V embeddings
-    parser.add_argument('--w2v_embedding_size', default=cfg.w2v_embedding_size, type=int)
-    parser.add_argument('--w2v_window', default=cfg.w2v_window, type=int)
-    parser.add_argument('--w2v_min_count', default=cfg.w2v_min_count, type=int)
-    parser.add_argument('--w2v_workers', default=cfg.w2v_workers, type=int)
-    parser.add_argument('--w2v_samples_num', default=cfg.w2v_samples_num, type=int)
+    parser.add_argument(
+        "--w2v_embedding_size", default=cfg.w2v_embedding_size, type=int
+    )
+    parser.add_argument("--w2v_window", default=cfg.w2v_window, type=int)
+    parser.add_argument("--w2v_min_count", default=cfg.w2v_min_count, type=int)
+    parser.add_argument("--w2v_workers", default=cfg.w2v_workers, type=int)
+    parser.add_argument("--w2v_samples_num", default=cfg.w2v_samples_num, type=int)
 
     # Metrics
-    parser.add_argument('--use_nll_oracle', default=cfg.use_nll_oracle, type=int)
-    parser.add_argument('--use_nll_gen', default=cfg.use_nll_gen, type=int)
-    parser.add_argument('--use_nll_div', default=cfg.use_nll_div, type=int)
-    parser.add_argument('--use_bleu', default=cfg.use_bleu, type=int)
-    parser.add_argument('--use_self_bleu', default=cfg.use_self_bleu, type=int)
-    parser.add_argument('--use_clas_acc', default=cfg.use_clas_acc, type=int)
-    parser.add_argument('--use_ppl', default=cfg.use_ppl, type=int)
+    parser.add_argument("--use_nll_oracle", default=cfg.use_nll_oracle, type=int)
+    parser.add_argument("--use_nll_gen", default=cfg.use_nll_gen, type=int)
+    parser.add_argument("--use_nll_div", default=cfg.use_nll_div, type=int)
+    parser.add_argument("--use_bleu", default=cfg.use_bleu, type=int)
+    parser.add_argument("--use_self_bleu", default=cfg.use_self_bleu, type=int)
+    parser.add_argument("--use_clas_acc", default=cfg.use_clas_acc, type=int)
+    parser.add_argument("--use_ppl", default=cfg.use_ppl, type=int)
 
     # Log
-    parser.add_argument('--log_file', default=cfg.log_filename, type=str)
-    parser.add_argument('--save_root', default=cfg.save_root, type=str)
-    parser.add_argument('--signal_file', default=cfg.signal_file, type=str)
-    parser.add_argument('--tips', default=cfg.tips, type=str)
+    parser.add_argument("--log_file", default=cfg.log_filename, type=str)
+    parser.add_argument("--save_root", default=cfg.save_root, type=str)
+    parser.add_argument("--signal_file", default=cfg.signal_file, type=str)
+    parser.add_argument("--tips", default=cfg.tips, type=str)
 
     # Loss coefficients
-    parser.add_argument('--real_fake_coeff', default=1.0, type=float)
-    parser.add_argument('--labels_coeff', default=1.0, type=float)
-    parser.add_argument('--diversity_coeff', default=1.0, type=float)
+    parser.add_argument("--real_fake_coeff", default=1.0, type=float)
+    parser.add_argument("--labels_coeff", default=1.0, type=float)
+    parser.add_argument("--diversity_coeff", default=1.0, type=float)
     return parser
 
 
 # MAIN
-if __name__ == '__main__':
-    #seed everything
+if __name__ == "__main__":
+    # seed everything
     # torch.manual_seed(0)
     random.seed(0)
     np.random.seed(0)
@@ -144,8 +151,12 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     if opt.if_real_data:
-        opt.max_seq_len, opt.vocab_size = text_process('dataset/' + opt.dataset + '.txt')
-        cfg.extend_vocab_size = len(load_test_dict(opt.dataset)[0])  # init classifier vocab_size
+        opt.max_seq_len, opt.vocab_size = text_process(
+            "dataset/" + opt.dataset + ".txt"
+        )
+        cfg.extend_vocab_size = len(
+            load_test_dict(opt.dataset)[0]
+        )  # init classifier vocab_size
     cfg.init_param(opt)
     opt.save_root = cfg.save_root
     opt.train_data = cfg.train_data
@@ -181,31 +192,29 @@ if __name__ == '__main__':
         from instructor.oracle_data.fixem_instructor import FixemGANInstructor
 
     instruction_dict = {
-        'seqgan': SeqGANInstructor,
-        'leakgan': LeakGANInstructor,
-        'maligan': MaliGANInstructor,
-        'jsdgan': JSDGANInstructor,
-        'dpgan': DPGANInstructor,
-        'relgan': RelGANInstructor,
-        'sentigan': SentiGANInstructor,
-        'evogan': EvoGANInstructor,
-        'catgan': CatGANInstructor,
-        'dgsan': DGSANInstructor,
-        'cot': CoTInstructor,
-        'fixemgan': FixemGANInstructor,
-        'cat_fixemgan': FixemGANInstructor
+        "seqgan": SeqGANInstructor,
+        "leakgan": LeakGANInstructor,
+        "maligan": MaliGANInstructor,
+        "jsdgan": JSDGANInstructor,
+        "dpgan": DPGANInstructor,
+        "relgan": RelGANInstructor,
+        "sentigan": SentiGANInstructor,
+        "evogan": EvoGANInstructor,
+        "catgan": CatGANInstructor,
+        "dgsan": DGSANInstructor,
+        "cot": CoTInstructor,
+        "fixemgan": FixemGANInstructor,
+        "cat_fixemgan": FixemGANInstructor,
     }
 
-
     # Example sweep configuration
-    with open('sweep.yml') as sweep_yml:
+    with open("sweep.yml") as sweep_yml:
         sweep_configuration = yaml.safe_load(sweep_yml)
-    print('sweep_configuration', sweep_configuration)
+    print("sweep_configuration", sweep_configuration)
 
     sweep_id = wandb.sweep(sweep=sweep_configuration, project="TorchGAN-fixem")
     # sweep_id = "7g6po2bd"
-    print('sweep_id', sweep_id)
-
+    print("sweep_id", sweep_id)
 
     def full_train_run(opt):
         inst = instruction_dict[cfg.run_model](opt)
@@ -214,13 +223,12 @@ if __name__ == '__main__':
     def function_for_parameters_sweep():
         run = wandb.init()  # Initialize a new wandb run
         config = run.config  # Get the config dictionary for the current run
-        print('config', config)
+        print("config", config)
 
         # Update 'opt' with the hyperparameters from 'config'
         for name, value in config.items():
             setattr(opt, name, value)
         full_train_run(opt)
         run.finish()  # Make sure to finish the run
-
 
     wandb.agent(sweep_id=sweep_id, function=function_for_parameters_sweep)

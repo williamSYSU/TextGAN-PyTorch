@@ -15,26 +15,30 @@ import os
 if len(sys.argv) > 2:
     job_id = int(sys.argv[1])
     gpu_id = str(sys.argv[2])
-    print('job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
+    print("job_id: {}, gpu_id: {}".format(job_id, gpu_id))
 elif len(sys.argv) > 1:
     job_id = int(sys.argv[1])
     gpu_id = 0
-    print('job_id: {}, missing gpu_id (use default {})'.format(job_id, gpu_id))
+    print("job_id: {}, missing gpu_id (use default {})".format(job_id, gpu_id))
 else:
     job_id = 0
     gpu_id = 0
-    print('Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}'.format(job_id, gpu_id))
+    print(
+        "Missing argument: job_id and gpu_id. Use default job_id: {}, gpu_id: {}".format(
+            job_id, gpu_id
+        )
+    )
 
 # Executables
-executable = 'python'
-rootdir = '../'
-scriptname = 'main.py'
+executable = "python"
+rootdir = "../"
+scriptname = "main.py"
 
 # ===Program===
 # CatGAN: Catgory text generation model
 # EvoGAN: General text generation model
 if_test = int(False)
-run_model = ['evogan', 'catgan', 'catgan', 'evogan', 'evogan', 'evogan']
+run_model = ["evogan", "catgan", "catgan", "evogan", "evogan", "evogan"]
 k_label = 2
 CUDA = int(True)
 ora_pretrain = int(True)
@@ -43,19 +47,19 @@ dis_pretrain = int(False)
 MLE_train_epoch = 150
 clas_pre_epoch = 5
 ADV_train_epoch = 2000
-tips = '{} experiments'
+tips = "{} experiments"
 
 # ===Oracle or Real===
 if_real_data = [int(True), int(False), int(True), int(False), int(True), int(True)]
-dataset = ['amazon_app_book', 'oracle', 'mr15', 'oracle', 'image_coco', 'emnlp_news']
+dataset = ["amazon_app_book", "oracle", "mr15", "oracle", "image_coco", "emnlp_news"]
 vocab_size = [5000, 0, 0, 5000, 0, 0]
 
 # ===CatGAN Param===
 n_parent = 1
-loss_type = 'ragan'
-mu_type = 'ragan rsgan'
-eval_type = 'Ra'
-temp_adpt = 'exp'
+loss_type = "ragan"
+mu_type = "ragan rsgan"
+eval_type = "Ra"
+temp_adpt = "exp"
 temperature = [1, 100, 100, 1, 100, 100]
 d_out_mean = int(True)
 lambda_fq = 1.0
@@ -64,9 +68,9 @@ eval_b_num = 8
 
 # === Basic Param ===
 data_shuffle = int(False)
-model_type = 'vanilla'
-gen_init = 'truncated_normal'
-dis_init = 'uniform'
+model_type = "vanilla"
+gen_init = "truncated_normal"
+dis_init = "uniform"
 batch_size = 64
 max_seq_len = 20
 gen_lr = 0.01
@@ -100,71 +104,117 @@ use_ppl = int(False)
 
 args = [
     # Program
-    '--if_test', if_test,
-    '--run_model', run_model[job_id],
-    '--k_label', k_label,
-    '--cuda', CUDA,
+    "--if_test",
+    if_test,
+    "--run_model",
+    run_model[job_id],
+    "--k_label",
+    k_label,
+    "--cuda",
+    CUDA,
     # '--device', gpu_id,   # comment for auto GPU
-    '--ora_pretrain', ora_pretrain,
-    '--gen_pretrain', gen_pretrain,
-    '--dis_pretrain', dis_pretrain,
-    '--mle_epoch', MLE_train_epoch,
-    '--clas_pre_epoch', clas_pre_epoch,
-    '--adv_epoch', ADV_train_epoch,
-    '--tips', tips.format(run_model[job_id]),
-
+    "--ora_pretrain",
+    ora_pretrain,
+    "--gen_pretrain",
+    gen_pretrain,
+    "--dis_pretrain",
+    dis_pretrain,
+    "--mle_epoch",
+    MLE_train_epoch,
+    "--clas_pre_epoch",
+    clas_pre_epoch,
+    "--adv_epoch",
+    ADV_train_epoch,
+    "--tips",
+    tips.format(run_model[job_id]),
     # Oracle or Real
-    '--if_real_data', if_real_data[job_id],
-    '--dataset', dataset[job_id],
-    '--vocab_size', vocab_size[job_id],
-
+    "--if_real_data",
+    if_real_data[job_id],
+    "--dataset",
+    dataset[job_id],
+    "--vocab_size",
+    vocab_size[job_id],
     # CatGAN Param
-    '--n_parent', n_parent,
-    '--loss_type', loss_type,
-    '--mu_type', mu_type,
-    '--eval_type', eval_type,
-    '--temp_adpt', temp_adpt,
-    '--temperature', temperature[job_id],
-    '--d_out_mean', d_out_mean,
-    '--lambda_fq', lambda_fq,
-    '--lambda_fd', lambda_fd,
-    '--eval_b_num', eval_b_num,
-
+    "--n_parent",
+    n_parent,
+    "--loss_type",
+    loss_type,
+    "--mu_type",
+    mu_type,
+    "--eval_type",
+    eval_type,
+    "--temp_adpt",
+    temp_adpt,
+    "--temperature",
+    temperature[job_id],
+    "--d_out_mean",
+    d_out_mean,
+    "--lambda_fq",
+    lambda_fq,
+    "--lambda_fd",
+    lambda_fd,
+    "--eval_b_num",
+    eval_b_num,
     # Basic Param
-    '--shuffle', data_shuffle,
-    '--model_type', model_type,
-    '--gen_init', gen_init,
-    '--dis_init', dis_init,
-    '--batch_size', batch_size,
-    '--max_seq_len', max_seq_len,
-    '--gen_lr', gen_lr,
-    '--gen_adv_lr', gen_adv_lr,
-    '--dis_lr', dis_lr,
-    '--pre_log_step', pre_log_step,
-    '--adv_log_step', adv_log_step,
-
+    "--shuffle",
+    data_shuffle,
+    "--model_type",
+    model_type,
+    "--gen_init",
+    gen_init,
+    "--dis_init",
+    dis_init,
+    "--batch_size",
+    batch_size,
+    "--max_seq_len",
+    max_seq_len,
+    "--gen_lr",
+    gen_lr,
+    "--gen_adv_lr",
+    gen_adv_lr,
+    "--dis_lr",
+    dis_lr,
+    "--pre_log_step",
+    pre_log_step,
+    "--adv_log_step",
+    adv_log_step,
     # Generator
-    '--adv_g_step', ADV_g_step,
-    '--gen_embed_dim', gen_embed_dim,
-    '--gen_hidden_dim', gen_hidden_dim,
-    '--mem_slots', mem_slots,
-    '--num_heads', num_heads,
-    '--head_size', head_size[job_id],
-
+    "--adv_g_step",
+    ADV_g_step,
+    "--gen_embed_dim",
+    gen_embed_dim,
+    "--gen_hidden_dim",
+    gen_hidden_dim,
+    "--mem_slots",
+    mem_slots,
+    "--num_heads",
+    num_heads,
+    "--head_size",
+    head_size[job_id],
     # Discriminator
-    '--adv_d_step', ADV_d_step,
-    '--dis_embed_dim', dis_embed_dim,
-    '--dis_hidden_dim', dis_hidden_dim,
-    '--num_rep', num_rep,
-
+    "--adv_d_step",
+    ADV_d_step,
+    "--dis_embed_dim",
+    dis_embed_dim,
+    "--dis_hidden_dim",
+    dis_hidden_dim,
+    "--num_rep",
+    num_rep,
     # Metrics
-    '--use_nll_oracle', use_nll_oracle,
-    '--use_nll_gen', use_nll_gen,
-    '--use_nll_div', use_nll_div,
-    '--use_bleu', use_bleu,
-    '--use_self_bleu', use_self_bleu,
-    '--use_clas_acc', use_clas_acc,
-    '--use_ppl', use_ppl,
+    "--use_nll_oracle",
+    use_nll_oracle,
+    "--use_nll_gen",
+    use_nll_gen,
+    "--use_nll_div",
+    use_nll_div,
+    "--use_bleu",
+    use_bleu,
+    "--use_self_bleu",
+    use_self_bleu,
+    "--use_clas_acc",
+    use_clas_acc,
+    "--use_ppl",
+    use_ppl,
 ]
 
 args = list(map(str, args))

@@ -19,7 +19,7 @@ import config as cfg
 def text_file_iterator(file):
     with open(file) as raw:
         for line in raw.readlines():
-            yield line.strip('\n').split()
+            yield line.strip("\n").split()
 
 
 def get_tokenlized(file):
@@ -27,7 +27,7 @@ def get_tokenlized(file):
     tokenlized = list()
     with open(file) as raw:
         for text in raw:
-            text = text.strip('\n').lower().split()
+            text = text.strip("\n").lower().split()
             tokenlized.append(text)
     return tokenlized
 
@@ -72,7 +72,9 @@ def text_process(train_text_loc, test_text_loc=None):
     if test_text_loc is None:
         sequence_len = len(max(train_tokens, key=len))
     else:
-        sequence_len = max(len(max(train_tokens, key=len)), len(max(test_tokens, key=len)))
+        sequence_len = max(
+            len(max(train_tokens, key=len)), len(max(test_tokens, key=len))
+        )
 
     return sequence_len, len(word2idx_dict)
 
@@ -83,29 +85,31 @@ def init_dict(dataset):
     Initialize dictionaries of dataset, please note that '0': padding_idx, '1': start_letter.
     Finally save dictionary files locally.
     """
-    tokens = get_tokenlized('dataset/{}.txt'.format(dataset))
+    tokens = get_tokenlized("dataset/{}.txt".format(dataset))
     word_set = get_word_list(tokens)
     word2idx_dict, idx2word_dict = get_dict(word_set)
 
-    with open('dataset/{}_wi_dict.txt'.format(dataset), 'w') as dictout:
+    with open("dataset/{}_wi_dict.txt".format(dataset), "w") as dictout:
         dictout.write(str(word2idx_dict))
-    with open('dataset/{}_iw_dict.txt'.format(dataset), 'w') as dictout:
+    with open("dataset/{}_iw_dict.txt".format(dataset), "w") as dictout:
         dictout.write(str(idx2word_dict))
 
-    print('total tokens: ', len(word2idx_dict))
+    print("total tokens: ", len(word2idx_dict))
 
 
 def load_dict(dataset):
     """Load dictionary from local files"""
-    iw_path = 'dataset/{}_iw_dict.txt'.format(dataset)
-    wi_path = 'dataset/{}_wi_dict.txt'.format(dataset)
+    iw_path = "dataset/{}_iw_dict.txt".format(dataset)
+    wi_path = "dataset/{}_wi_dict.txt".format(dataset)
 
-    if not os.path.exists(iw_path) or not os.path.exists(iw_path):  # initialize dictionaries
+    if not os.path.exists(iw_path) or not os.path.exists(
+        iw_path
+    ):  # initialize dictionaries
         init_dict(dataset)
 
-    with open(iw_path, 'r') as dictin:
+    with open(iw_path, "r") as dictin:
         idx2word_dict = eval(dictin.read().strip())
-    with open(wi_path, 'r') as dictin:
+    with open(wi_path, "r") as dictin:
         word2idx_dict = eval(dictin.read().strip())
 
     return word2idx_dict, idx2word_dict
@@ -115,7 +119,7 @@ def load_test_dict(dataset):
     """Build test data dictionary, extend from train data. For the classifier."""
     word2idx_dict, idx2word_dict = load_dict(dataset)  # train dict
     # tokens = get_tokenlized('dataset/testdata/{}_clas_test.txt'.format(dataset))
-    tokens = get_tokenlized('dataset/testdata/{}_test.txt'.format(dataset))
+    tokens = get_tokenlized("dataset/testdata/{}_test.txt".format(dataset))
     word_set = get_word_list(tokens)
     index = len(word2idx_dict)  # current index
 
@@ -157,7 +161,7 @@ def tokens_to_tensor(tokens, dictionary):
         while i < cfg.max_seq_len - 1:
             sent_ten.append(cfg.padding_idx)
             i += 1
-        tensor.append(sent_ten[:cfg.max_seq_len])
+        tensor.append(sent_ten[: cfg.max_seq_len])
     return torch.LongTensor(tensor)
 
 
@@ -180,32 +184,32 @@ def padding_token(tokens):
 
 def write_tokens(filename, tokens):
     """Write word tokens to a local file (For Real data)"""
-    with open(filename, 'w') as fout:
+    with open(filename, "w") as fout:
         for sent in tokens:
-            fout.write(' '.join(sent))
-            fout.write('\n')
+            fout.write(" ".join(sent))
+            fout.write("\n")
 
 
 def write_tensor(filename, tensor):
     """Write Tensor to a local file (For Oracle data)"""
-    with open(filename, 'w') as fout:
+    with open(filename, "w") as fout:
         for sent in tensor:
-            fout.write(' '.join([str(i) for i in sent.tolist()]))
-            fout.write('\n')
+            fout.write(" ".join([str(i) for i in sent.tolist()]))
+            fout.write("\n")
 
 
 def process_cat_text():
     import random
 
-    dataset = 'mr'
+    dataset = "mr"
 
     test_ratio = 0.3
     seq_len = 15
 
-    pos_file = 'dataset/{}/{}{}_cat1.txt'.format(dataset, dataset, seq_len)
-    neg_file = 'dataset/{}/{}{}_cat0.txt'.format(dataset, dataset, seq_len)
-    pos_sent = open(pos_file, 'r').readlines()
-    neg_sent = open(neg_file, 'r').readlines()
+    pos_file = "dataset/{}/{}{}_cat1.txt".format(dataset, dataset, seq_len)
+    neg_file = "dataset/{}/{}{}_cat0.txt".format(dataset, dataset, seq_len)
+    pos_sent = open(pos_file, "r").readlines()
+    neg_sent = open(neg_file, "r").readlines()
 
     pos_len = int(test_ratio * len(pos_sent))
     neg_len = int(test_ratio * len(neg_sent))
@@ -218,10 +222,14 @@ def process_cat_text():
     random.shuffle(all_sent_test)
     random.shuffle(all_sent_train)
 
-    f_pos_train = open('dataset/{}{}_cat1.txt'.format(dataset, seq_len), 'w')
-    f_neg_train = open('dataset/{}{}_cat0.txt'.format(dataset, seq_len), 'w')
-    f_pos_test = open('dataset/testdata/{}{}_cat1_test.txt'.format(dataset, seq_len), 'w')
-    f_neg_test = open('dataset/testdata/{}{}_cat0_test.txt'.format(dataset, seq_len), 'w')
+    f_pos_train = open("dataset/{}{}_cat1.txt".format(dataset, seq_len), "w")
+    f_neg_train = open("dataset/{}{}_cat0.txt".format(dataset, seq_len), "w")
+    f_pos_test = open(
+        "dataset/testdata/{}{}_cat1_test.txt".format(dataset, seq_len), "w"
+    )
+    f_neg_test = open(
+        "dataset/testdata/{}{}_cat0_test.txt".format(dataset, seq_len), "w"
+    )
 
     for p_s in pos_sent[:pos_len]:
         f_pos_test.write(p_s)
@@ -232,10 +240,10 @@ def process_cat_text():
     for n_s in neg_sent[neg_len:]:
         f_neg_train.write(n_s)
 
-    with open('dataset/testdata/{}{}_test.txt'.format(dataset, seq_len), 'w') as fout:
+    with open("dataset/testdata/{}{}_test.txt".format(dataset, seq_len), "w") as fout:
         for sent in all_sent_test:
             fout.write(sent)
-    with open('dataset/{}{}.txt'.format(dataset, seq_len), 'w') as fout:
+    with open("dataset/{}{}.txt".format(dataset, seq_len), "w") as fout:
         for sent in all_sent_train:
             fout.write(sent)
 
@@ -246,20 +254,22 @@ def process_cat_text():
 
 
 def combine_amazon_text():
-    cat0_name = 'app'
-    cat1_name = 'book'
-    root_path = 'dataset/'
-    cat0_train = open(root_path + cat0_name + '.txt', 'r').readlines()
-    cat0_test = open(root_path + cat0_name + '_test.txt', 'r').readlines()
-    cat1_train = open(root_path + cat1_name + '.txt', 'r').readlines()
-    cat1_test = open(root_path + cat1_name + '_test.txt', 'r').readlines()
+    cat0_name = "app"
+    cat1_name = "book"
+    root_path = "dataset/"
+    cat0_train = open(root_path + cat0_name + ".txt", "r").readlines()
+    cat0_test = open(root_path + cat0_name + "_test.txt", "r").readlines()
+    cat1_train = open(root_path + cat1_name + ".txt", "r").readlines()
+    cat1_test = open(root_path + cat1_name + "_test.txt", "r").readlines()
 
-    with open(root_path + 'amazon_{}_{}.txt'.format(cat0_name, cat1_name), 'w') as fout:
+    with open(root_path + "amazon_{}_{}.txt".format(cat0_name, cat1_name), "w") as fout:
         for sent in cat0_train:
             fout.write(sent)
         for sent in cat1_train:
             fout.write(sent)
-    with open(root_path + 'testdata/amazon_{}_{}_test.txt'.format(cat0_name, cat1_name), 'w') as fout:
+    with open(
+        root_path + "testdata/amazon_{}_{}_test.txt".format(cat0_name, cat1_name), "w"
+    ) as fout:
         for sent in cat0_test:
             fout.write(sent)
         for sent in cat1_test:
@@ -267,21 +277,23 @@ def combine_amazon_text():
 
 
 def extend_clas_train_data():
-    data_name = 'mr'
-    dataset = 'mr20'
-    neg_filter_file = 'dataset/{}/{}_cat0.txt'.format(data_name, dataset)  # include train and test for generator
-    pos_filter_file = 'dataset/{}/{}_cat1.txt'.format(data_name, dataset)
-    neg_test_file = 'dataset/testdata/{}_cat0_test.txt'.format(dataset)
-    pos_test_file = 'dataset/testdata/{}_cat1_test.txt'.format(dataset)
-    neg_all_file = 'dataset/{}/{}_cat0.txt'.format(data_name, data_name)
-    pos_all_file = 'dataset/{}/{}_cat1.txt'.format(data_name, data_name)
+    data_name = "mr"
+    dataset = "mr20"
+    neg_filter_file = "dataset/{}/{}_cat0.txt".format(
+        data_name, dataset
+    )  # include train and test for generator
+    pos_filter_file = "dataset/{}/{}_cat1.txt".format(data_name, dataset)
+    neg_test_file = "dataset/testdata/{}_cat0_test.txt".format(dataset)
+    pos_test_file = "dataset/testdata/{}_cat1_test.txt".format(dataset)
+    neg_all_file = "dataset/{}/{}_cat0.txt".format(data_name, data_name)
+    pos_all_file = "dataset/{}/{}_cat1.txt".format(data_name, data_name)
 
-    neg_filter = open(neg_filter_file, 'r').readlines()
-    pos_filter = open(pos_filter_file, 'r').readlines()
-    neg_test = open(neg_test_file, 'r').readlines()
-    pos_test = open(pos_test_file, 'r').readlines()
-    neg_all = open(neg_all_file, 'r').readlines()
-    pos_all = open(pos_all_file, 'r').readlines()
+    neg_filter = open(neg_filter_file, "r").readlines()
+    pos_filter = open(pos_filter_file, "r").readlines()
+    neg_test = open(neg_test_file, "r").readlines()
+    pos_test = open(pos_test_file, "r").readlines()
+    neg_all = open(neg_all_file, "r").readlines()
+    pos_all = open(pos_all_file, "r").readlines()
 
     # print('neg filter:', len(neg_filter))
     # print('neg test:', len(neg_test))
@@ -290,62 +302,67 @@ def extend_clas_train_data():
     # print('pos test:', len(pos_test))
     # print('pos all:', len(pos_all))
 
-    print('neg before:', len(neg_test))
+    print("neg before:", len(neg_test))
     for line in neg_all:
         if line not in neg_filter:
             neg_test.append(line)
-    print('neg after:', len(neg_test))
+    print("neg after:", len(neg_test))
 
-    print('pos before:', len(pos_test))
+    print("pos before:", len(pos_test))
     for line in pos_all:
         if line not in pos_filter:
             pos_test.append(line)
-    print('pos after:', len(pos_test))
+    print("pos after:", len(pos_test))
 
-    with open('dataset/testdata/{}_cat0_clas_test.txt'.format(dataset), 'w') as fout:
+    with open("dataset/testdata/{}_cat0_clas_test.txt".format(dataset), "w") as fout:
         for line in neg_test:
             fout.write(line)
-    with open('dataset/testdata/{}_cat1_clas_test.txt'.format(dataset), 'w') as fout:
+    with open("dataset/testdata/{}_cat1_clas_test.txt".format(dataset), "w") as fout:
         for line in pos_test:
             fout.write(line)
-    with open('dataset/testdata/{}_clas_test.txt'.format(dataset), 'w') as fout:
+    with open("dataset/testdata/{}_clas_test.txt".format(dataset), "w") as fout:
         for line in neg_test:
             fout.write(line)
         for line in pos_test:
             fout.write(line)
 
 
-def load_word_vec(path, word2idx_dict=None, type='glove'):
+def load_word_vec(path, word2idx_dict=None, type="glove"):
     """Load word embedding from local file"""
-    fin = open(path, 'r', encoding='utf-8', newline='\n', errors='ignore')
-    if type == 'glove':
+    fin = open(path, "r", encoding="utf-8", newline="\n", errors="ignore")
+    if type == "glove":
         word2vec_dict = {}
         for line in fin:
             tokens = line.rstrip().split()
             if word2idx_dict is None or tokens[0] in word2idx_dict.keys():
-                word2vec_dict[tokens[0]] = np.asarray(tokens[1:], dtype='float32')
-    elif type == 'word2vec':
+                word2vec_dict[tokens[0]] = np.asarray(tokens[1:], dtype="float32")
+    elif type == "word2vec":
         import gensim
-        word2vec_dict = gensim.models.KeyedVectors.load_word2vec_format(path, binary=True)
+
+        word2vec_dict = gensim.models.KeyedVectors.load_word2vec_format(
+            path, binary=True
+        )
     else:
-        raise NotImplementedError('No such type: %s' % type)
+        raise NotImplementedError("No such type: %s" % type)
     return word2vec_dict
 
 
 def build_embedding_matrix(dataset):
     """Load or build Glove embedding matrix."""
-    embed_filename = 'dataset/glove_embedding_300d_{}.pt'.format(dataset)
+    embed_filename = "dataset/glove_embedding_300d_{}.pt".format(dataset)
     if os.path.exists(embed_filename):
-        print('Loading embedding:', embed_filename)
+        print("Loading embedding:", embed_filename)
         embedding_matrix = torch.load(embed_filename)
     else:
-        print('Loading Glove word vectors...')
+        print("Loading Glove word vectors...")
         word2idx_dict, _ = load_dict(dataset)
-        embedding_matrix = np.random.random((len(word2idx_dict) + 2, 300))  # 2 for padding token and start token
-        fname = '../glove.42B.300d.txt'  # Glove file
+        embedding_matrix = np.random.random(
+            (len(word2idx_dict) + 2, 300)
+        )  # 2 for padding token and start token
+        fname = "../glove.42B.300d.txt"  # Glove file
         # fname = '../GoogleNews-vectors-negative300.bin' # Google Word2Vec file
-        word2vec_dict = load_word_vec(fname, word2idx_dict=word2idx_dict, type='glove')
-        print('Building embedding matrix:', embed_filename)
+        word2vec_dict = load_word_vec(fname, word2idx_dict=word2idx_dict, type="glove")
+        print("Building embedding matrix:", embed_filename)
         for word, i in word2idx_dict.items():
             if word in word2vec_dict:
                 # words not found in embedding index will be randomly initialized.
@@ -354,8 +371,9 @@ def build_embedding_matrix(dataset):
         torch.save(embedding_matrix, embed_filename)
     return embedding_matrix
 
+
 def pad_sequences(
-    sequence, w2v, target_len: int = 52, embedding_size: int = 300, padding_token = None
+    sequence, w2v, target_len: int = 52, embedding_size: int = 300, padding_token=None
 ) -> np.array:
     sequence = np.array(sequence)
     current_length = sequence.shape[0]
@@ -363,11 +381,19 @@ def pad_sequences(
     if current_length >= target_len:
         return sequence[-target_len:]
 
-    padding = np.repeat(np.array([w2v.wv[padding_token]]), target_len - current_length,axis=0) if padding_token else np.zeros((target_len - current_length, embedding_size))
+    padding = (
+        np.repeat(
+            np.array([w2v.wv[padding_token]]), target_len - current_length, axis=0
+        )
+        if padding_token
+        else np.zeros((target_len - current_length, embedding_size))
+    )
     return np.concatenate((padding, sequence), axis=0)
 
 
-def vectorize_sentence(tokens, w2v, target_len: int = 52, embedding_size: int = 300, padding_token=None):
+def vectorize_sentence(
+    tokens, w2v, target_len: int = 52, embedding_size: int = 300, padding_token=None
+):
     vectorized = pad_sequences(
         [w2v.wv[token] for token in tokens],
         w2v,

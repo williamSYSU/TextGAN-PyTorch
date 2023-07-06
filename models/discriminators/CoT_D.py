@@ -14,8 +14,12 @@ from models.generators.generator import LSTMGenerator
 
 
 class Cot_D(LSTMGenerator):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
-        super(Cot_D, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
+    def __init__(
+        self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False
+    ):
+        super(Cot_D, self).__init__(
+            embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu
+        )
 
     def get_pred(self, input, target):
         pred = self.forward(input, self.init_hidden(input.size(0)))

@@ -14,9 +14,13 @@ from models.generators.generator import LSTMGenerator
 
 
 class CoT_G(LSTMGenerator):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
-        super(CoT_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
-        self.name = 'cot'
+    def __init__(
+        self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False
+    ):
+        super(CoT_G, self).__init__(
+            embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu
+        )
+        self.name = "cot"
 
     def get_loss(self, input, rewards):
         """
@@ -25,7 +29,9 @@ class CoT_G(LSTMGenerator):
         @param rewards: rewards form mediator, (batch size * seq_len) * vocab_size
         @return:
         """
-        log_pred = self.forward(input, self.init_hidden(input.size(0)))  # (batch_size * seq_len) * vocab_size
+        log_pred = self.forward(
+            input, self.init_hidden(input.size(0))
+        )  # (batch_size * seq_len) * vocab_size
         g_pred = torch.exp(log_pred)
         loss = -torch.sum(g_pred * (rewards - log_pred)) / rewards.size(0)
         return loss

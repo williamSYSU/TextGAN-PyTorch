@@ -16,9 +16,13 @@ from utils.data_loader import GenDataIter
 
 
 class DPGAN_D(LSTMGenerator):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
-        super(DPGAN_D, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
-        self.name = 'dpgan_d'
+    def __init__(
+        self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False
+    ):
+        super(DPGAN_D, self).__init__(
+            embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu
+        )
+        self.name = "dpgan_d"
 
     def getReward(self, samples):
         """
@@ -30,7 +34,9 @@ class DPGAN_D(LSTMGenerator):
         hidden = self.init_hidden(batch_size)
         pred = self.forward(inp, hidden)
 
-        word_reward = F.nll_loss(pred, target.view(-1), reduction='none').view(batch_size, -1)
+        word_reward = F.nll_loss(pred, target.view(-1), reduction="none").view(
+            batch_size, -1
+        )
         sentence_reward = torch.mean(word_reward, dim=-1, keepdim=True)
 
         return word_reward, sentence_reward

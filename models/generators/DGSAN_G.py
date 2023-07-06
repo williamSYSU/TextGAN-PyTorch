@@ -11,6 +11,10 @@ from models.generators.generator import LSTMGenerator
 
 
 class DGSAN_G(LSTMGenerator):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
-        super(DGSAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
-        self.name = 'dgsan'
+    def __init__(
+        self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False
+    ):
+        super(DGSAN_G, self).__init__(
+            embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu
+        )
+        self.name = "dgsan"

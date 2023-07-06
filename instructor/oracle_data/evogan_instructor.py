@@ -30,13 +30,39 @@ class EvoGANInstructor(BasicInstructor):
         super(EvoGANInstructor, self).__init__(opt)
 
         # generator, discriminator
-        self.gen = EvoGAN_G(cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim, cfg.gen_hidden_dim,
-                            cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        self.parents = [EvoGAN_G(cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim, cfg.gen_hidden_dim,
-                                 cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA).state_dict()
-                        for _ in range(cfg.n_parent)]  # list of Generator state_dict
-        self.dis = EvoGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
-                            cfg.padding_idx, gpu=cfg.CUDA)
+        self.gen = EvoGAN_G(
+            cfg.mem_slots,
+            cfg.num_heads,
+            cfg.head_size,
+            cfg.gen_embed_dim,
+            cfg.gen_hidden_dim,
+            cfg.vocab_size,
+            cfg.max_seq_len,
+            cfg.padding_idx,
+            gpu=cfg.CUDA,
+        )
+        self.parents = [
+            EvoGAN_G(
+                cfg.mem_slots,
+                cfg.num_heads,
+                cfg.head_size,
+                cfg.gen_embed_dim,
+                cfg.gen_hidden_dim,
+                cfg.vocab_size,
+                cfg.max_seq_len,
+                cfg.padding_idx,
+                gpu=cfg.CUDA,
+            ).state_dict()
+            for _ in range(cfg.n_parent)
+        ]  # list of Generator state_dict
+        self.dis = EvoGAN_D(
+            cfg.dis_embed_dim,
+            cfg.max_seq_len,
+            cfg.num_rep,
+            cfg.vocab_size,
+            cfg.padding_idx,
+            gpu=cfg.CUDA,
+        )
 
         self.init_model()
 
@@ -44,37 +70,59 @@ class EvoGANInstructor(BasicInstructor):
         self.gen_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_lr)
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
-        self.parent_mle_opts = [copy.deepcopy(self.gen_opt.state_dict())
-                                for _ in range(cfg.n_parent)]
-        self.parent_adv_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
-                                for _ in range(cfg.n_parent)]  # list of optimizer state dict
+        self.parent_mle_opts = [
+            copy.deepcopy(self.gen_opt.state_dict()) for _ in range(cfg.n_parent)
+        ]
+        self.parent_adv_opts = [
+            copy.deepcopy(self.gen_adv_opt.state_dict()) for _ in range(cfg.n_parent)
+        ]  # list of optimizer state dict
 
         # Criterion
-        self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
-        self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
+        self.G_criterion = [
+            GANLoss(loss_mode, "G", cfg.d_type, CUDA=cfg.CUDA)
+            for loss_mode in cfg.mu_type.split()
+        ]
+        self.D_criterion = GANLoss(cfg.loss_type, "D", cfg.d_type, CUDA=cfg.CUDA)
 
     def init_model(self):
         if cfg.oracle_pretrain:
             if not os.path.exists(cfg.oracle_state_dict_path):
                 create_oracle()
-            self.oracle.load_state_dict(torch.load(cfg.oracle_state_dict_path, map_location='cuda:%d' % cfg.device))
+            self.oracle.load_state_dict(
+                torch.load(
+                    cfg.oracle_state_dict_path, map_location="cuda:%d" % cfg.device
+                )
+            )
 
         if cfg.dis_pretrain:
             self.log.info(
-                'Load pretrained discriminator: {}'.format(cfg.pretrained_dis_path))
-            self.dis.load_state_dict(torch.load(cfg.pretrained_dis_path, map_location='cuda:{}'.format(cfg.device)))
+                "Load pretrained discriminator: {}".format(cfg.pretrained_dis_path)
+            )
+            self.dis.load_state_dict(
+                torch.load(
+                    cfg.pretrained_dis_path, map_location="cuda:{}".format(cfg.device)
+                )
+            )
 
         if cfg.gen_pretrain:
             for i in range(cfg.n_parent):
-                self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-                self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
+                self.log.info(
+                    "Load MLE pretrained generator gen: {}".format(
+                        cfg.pretrained_gen_path + "%d" % i
+                    )
+                )
+                self.parents[i] = torch.load(
+                    cfg.pretrained_gen_path + "%d" % 0, map_location="cpu"
+                )
 
         if cfg.CUDA:
             self.oracle = self.oracle.cuda()
             self.gen = self.gen.cuda()
 
             if cfg.multi_gpu:
-                self.dis = torch.nn.parallel.DataParallel(self.dis, device_ids=cfg.devices)
+                self.dis = torch.nn.parallel.DataParallel(
+                    self.dis, device_ids=cfg.devices
+                )
             self.dis = self.dis.cuda()
 
     def load_gen(self, parent, parent_opt, mle=False):
@@ -89,44 +137,72 @@ class EvoGANInstructor(BasicInstructor):
     def _run(self):
         # ===PRE-TRAINING (GENERATOR)===
         if not cfg.gen_pretrain:
-            for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_mle_opts)):
-                self.log.info('Starting Generator-{} MLE Training...'.format(i))
+            for i, (parent, parent_opt) in enumerate(
+                zip(self.parents, self.parent_mle_opts)
+            ):
+                self.log.info("Starting Generator-{} MLE Training...".format(i))
                 self.load_gen(parent, parent_opt, mle=True)  # load state dict
                 self.pretrain_generator(cfg.MLE_train_epoch)
-                self.parents[i] = copy.deepcopy(self.gen.state_dict())  # save state dict
+                self.parents[i] = copy.deepcopy(
+                    self.gen.state_dict()
+                )  # save state dict
                 if cfg.if_save and not cfg.if_test:
-                    torch.save(self.gen.state_dict(), cfg.pretrained_gen_path + '%d' % i)
-                    self.log.info('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path + '%d' % i))
+                    torch.save(
+                        self.gen.state_dict(), cfg.pretrained_gen_path + "%d" % i
+                    )
+                    self.log.info(
+                        "Save pre-trained generator: {}".format(
+                            cfg.pretrained_gen_path + "%d" % i
+                        )
+                    )
 
         # # ===ADVERSARIAL TRAINING===
-        self.log.info('Starting Adversarial Training...')
+        self.log.info("Starting Adversarial Training...")
         progress = tqdm(range(cfg.ADV_train_epoch))
         for adv_epoch in progress:
             if cfg.temperature == 1:
                 score, fit_score, select_mu = self.evolve_generator(cfg.ADV_g_step)
             else:  # evolve with temperature
-                score, fit_score, select_mu = self.evolve_generator_with_temp(adv_epoch, cfg.ADV_g_step)
+                score, fit_score, select_mu = self.evolve_generator_with_temp(
+                    adv_epoch, cfg.ADV_g_step
+                )
             d_loss = self.evolve_discriminator(cfg.ADV_d_step)
 
             best_id = int(np.argmax(score))
-            progress.set_description('mu: %s, d_loss = %.4f, temp = %.4f' % (
-                ' '.join(select_mu), d_loss, self.parents[best_id]['temperature'].item()))
+            progress.set_description(
+                "mu: %s, d_loss = %.4f, temp = %.4f"
+                % (
+                    " ".join(select_mu),
+                    d_loss,
+                    self.parents[best_id]["temperature"].item(),
+                )
+            )
 
             # TEST
-            if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
+            if (
+                adv_epoch % cfg.adv_log_step == 0
+                or adv_epoch == cfg.ADV_train_epoch - 1
+            ):
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 
                 # self.log.info('[ADV] epoch %d: temp = %.4f' % (adv_epoch, self.gen.temperature.item()))
                 # self.log.info(fit_score[best_id])
-                self.log.info('[ADV] epoch %d: temp = %.4f, d_loss = %.4f, %s' % (
-                    adv_epoch, self.gen.temperature.item(), d_loss, self.cal_metrics(fmt_str=True)))
+                self.log.info(
+                    "[ADV] epoch %d: temp = %.4f, d_loss = %.4f, %s"
+                    % (
+                        adv_epoch,
+                        self.gen.temperature.item(),
+                        d_loss,
+                        self.cal_metrics(fmt_str=True),
+                    )
+                )
 
                 if cfg.if_save and not cfg.if_test:
-                    self._save('ADV', adv_epoch)
+                    self._save("ADV", adv_epoch)
 
     def _test(self):
-        print('>>> Begin test...')
+        print(">>> Begin test...")
 
         self._run()
 
@@ -140,17 +216,21 @@ class EvoGANInstructor(BasicInstructor):
             self.sig.update()
             if self.sig.pre_sig:
                 # ===Train===
-                pre_loss = self.train_gen_epoch(self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt)
+                pre_loss = self.train_gen_epoch(
+                    self.gen, self.oracle_data.loader, self.mle_criterion, self.gen_opt
+                )
 
                 # ===Test===
                 if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                     self.log.info(
-                        '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (epoch, pre_loss, self.cal_metrics(fmt_str=True)))
+                        "[MLE-GEN] epoch %d : pre_loss = %.4f, %s"
+                        % (epoch, pre_loss, self.cal_metrics(fmt_str=True))
+                    )
 
                     if cfg.if_save and not cfg.if_test:
-                        self._save('MLE', epoch)
+                        self._save("MLE", epoch)
             else:
-                self.log.info('>>> Stop by pre signal, skip to adversarial training...')
+                self.log.info(">>> Stop by pre signal, skip to adversarial training...")
                 break
 
     def evolve_generator(self, evo_g_step):
@@ -167,12 +247,16 @@ class EvoGANInstructor(BasicInstructor):
 
         # all children share the same real data output from Discriminator
         with torch.no_grad():
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            real_samples = F.one_hot(
+                self.oracle_data.random_batch()["target"], cfg.vocab_size
+            ).float()
             if cfg.CUDA:
                 real_samples = real_samples.cuda()
             self.d_out_real = self.dis(real_samples)
 
-        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
+        for i, (parent, parent_opt) in enumerate(
+            zip(self.parents, self.parent_adv_opts)
+        ):
             for j, criterionG in enumerate(self.G_criterion):
                 # Variation
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
@@ -206,7 +290,9 @@ class EvoGANInstructor(BasicInstructor):
                         best_score[id_replace] = score
                         best_fit[id_replace] = [Fq, Fd, score]
                         best_child[id_replace] = copy.deepcopy(self.gen.state_dict())
-                        best_child_opt[id_replace] = copy.deepcopy(self.gen_adv_opt.state_dict())
+                        best_child_opt[id_replace] = copy.deepcopy(
+                            self.gen_adv_opt.state_dict()
+                        )
                         best_fake_samples[id_replace] = self.eval_fake_samples
                         selected_mutation[id_replace] = criterionG.loss_mode
                 count += 1
@@ -230,16 +316,20 @@ class EvoGANInstructor(BasicInstructor):
 
         # all children share the same real data output from Discriminator
         with torch.no_grad():
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            real_samples = F.one_hot(
+                self.oracle_data.random_batch()["target"], cfg.vocab_size
+            ).float()
             if cfg.CUDA:
                 real_samples = real_samples.cuda()
             self.d_out_real = self.dis(real_samples)
 
-        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
+        for i, (parent, parent_opt) in enumerate(
+            zip(self.parents, self.parent_adv_opts)
+        ):
             for j, criterionG in enumerate(self.G_criterion):
                 all_temp = self.get_evo_temp(cur_adv_step)  # get evo temp
 
-                temp_score = float('-inf')
+                temp_score = float("-inf")
                 temp_fit = None
                 temp_child = None
                 temp_child_opt = None
@@ -255,8 +345,10 @@ class EvoGANInstructor(BasicInstructor):
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    _, _, t_score = self.evaluation('Ra')  # for temp evolutionary
-                    loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
+                    _, _, t_score = self.evaluation("Ra")  # for temp evolutionary
+                    loss_Fq, loss_Fd, loss_score = self.evaluation(
+                        cfg.eval_type
+                    )  # for loss evolutionary
 
                     if t_score > temp_score:
                         temp_score = loss_score
@@ -308,13 +400,17 @@ class EvoGANInstructor(BasicInstructor):
 
         # all children share the same real data output from Discriminator
         with torch.no_grad():
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
+            real_samples = F.one_hot(
+                self.oracle_data.random_batch()["target"], cfg.vocab_size
+            ).float()
             if cfg.CUDA:
                 real_samples = real_samples.cuda()
             self.d_out_real = self.dis(real_samples)
 
         # evaluate all parents
-        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
+        for i, (parent, parent_opt) in enumerate(
+            zip(self.parents, self.parent_adv_opts)
+        ):
             self.load_gen(parent, parent_opt)
             self.prepare_eval_fake_data()
             Fq, Fd, score = self.evaluation(cfg.eval_type)
@@ -328,7 +424,9 @@ class EvoGANInstructor(BasicInstructor):
         # randomly choose a parent, variation
         target_idx = random.randint(0, len(self.parents) - 1)
         for j, criterionG in enumerate(self.G_criterion):
-            self.load_gen(self.parents[target_idx], self.parent_adv_opts[target_idx])  # load generator
+            self.load_gen(
+                self.parents[target_idx], self.parent_adv_opts[target_idx]
+            )  # load generator
 
             # Variation
             self.variation(evo_g_step, criterionG)
@@ -344,7 +442,9 @@ class EvoGANInstructor(BasicInstructor):
                 best_score[id_replace] = score
                 best_fit[id_replace] = [Fq, Fd, score]
                 best_child[id_replace] = copy.deepcopy(self.gen.state_dict())
-                best_child_opt[id_replace] = copy.deepcopy(self.gen_adv_opt.state_dict())
+                best_child_opt[id_replace] = copy.deepcopy(
+                    self.gen_adv_opt.state_dict()
+                )
                 best_fake_samples[id_replace] = self.eval_fake_samples
                 selected_mutation.append(criterionG.loss_mode)
 
@@ -356,8 +456,12 @@ class EvoGANInstructor(BasicInstructor):
     def evolve_discriminator(self, evo_d_step):
         total_loss = 0
         for step in range(evo_d_step):
-            real_samples = F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
-            gen_samples = self.best_fake_samples[step * cfg.batch_size:(step + 1) * cfg.batch_size]
+            real_samples = F.one_hot(
+                self.oracle_data.random_batch()["target"], cfg.vocab_size
+            ).float()
+            gen_samples = self.best_fake_samples[
+                step * cfg.batch_size : (step + 1) * cfg.batch_size
+            ]
             if cfg.CUDA:
                 real_samples, gen_samples = real_samples.cuda(), gen_samples.cuda()
 
@@ -388,7 +492,9 @@ class EvoGANInstructor(BasicInstructor):
                 # mixture variation: double loss
                 rand_w = torch.rand(1).cuda()
                 cri_1, cri_2 = criterionG
-                g_loss = rand_w * cri_1(self.d_out_real, d_out_fake) + (1 - rand_w) * cri_2(self.d_out_real, d_out_fake)
+                g_loss = rand_w * cri_1(self.d_out_real, d_out_fake) + (
+                    1 - rand_w
+                ) * cri_2(self.d_out_real, d_out_fake)
 
                 # all loss
                 # rand_w = F.softmax(torch.rand(len(criterionG)).cuda(), dim=0)
@@ -407,7 +513,9 @@ class EvoGANInstructor(BasicInstructor):
     def evaluation(self, eval_type):
         """Evaluation all children, update child score. Note that the eval data should be the same"""
 
-        eval_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size)
+        eval_samples = self.gen.sample(
+            cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size
+        )
         gen_data = GenDataIter(eval_samples)
 
         # Fd
@@ -416,18 +524,24 @@ class EvoGANInstructor(BasicInstructor):
         else:
             Fd = 0
 
-        if eval_type == 'standard':
+        if eval_type == "standard":
             Fq = self.eval_d_out_fake.mean().cpu().item()
-        elif eval_type == 'rsgan':
-            g_loss, d_loss = get_losses(self.eval_d_out_real, self.eval_d_out_fake, 'rsgan')
+        elif eval_type == "rsgan":
+            g_loss, d_loss = get_losses(
+                self.eval_d_out_real, self.eval_d_out_fake, "rsgan"
+            )
             Fq = d_loss.item()
-        elif eval_type == 'nll':
+        elif eval_type == "nll":
             if cfg.lambda_fq != 0:
-                Fq = -NLL.cal_nll(self.oracle, gen_data.loader, self.mle_criterion)  # NLL_Oracle
+                Fq = -NLL.cal_nll(
+                    self.oracle, gen_data.loader, self.mle_criterion
+                )  # NLL_Oracle
             else:
                 Fq = 0
-        elif eval_type == 'Ra':
-            g_loss = torch.sigmoid(self.eval_d_out_fake - torch.mean(self.eval_d_out_real)).sum()
+        elif eval_type == "Ra":
+            g_loss = torch.sigmoid(
+                self.eval_d_out_fake - torch.mean(self.eval_d_out_real)
+            ).sum()
             Fq = g_loss.item()
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
@@ -438,22 +552,31 @@ class EvoGANInstructor(BasicInstructor):
     def prepare_eval_real_data(self):
         with torch.no_grad():
             self.eval_real_samples = torch.cat(
-                [F.one_hot(self.oracle_data.random_batch()['target'], cfg.vocab_size).float()
-                 for _ in range(cfg.eval_b_num)], dim=0)
+                [
+                    F.one_hot(
+                        self.oracle_data.random_batch()["target"], cfg.vocab_size
+                    ).float()
+                    for _ in range(cfg.eval_b_num)
+                ],
+                dim=0,
+            )
             if cfg.CUDA:
                 self.eval_real_samples = self.eval_real_samples.cuda()
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
+            if cfg.eval_type == "rsgan" or cfg.eval_type == "Ra":
                 self.eval_d_out_real = self.dis(self.eval_real_samples)
 
     def prepare_eval_fake_data(self):
         with torch.no_grad():
-            self.eval_fake_samples = self.gen.sample(cfg.eval_b_num * cfg.batch_size,
-                                                     cfg.eval_b_num * cfg.batch_size, one_hot=True)
+            self.eval_fake_samples = self.gen.sample(
+                cfg.eval_b_num * cfg.batch_size,
+                cfg.eval_b_num * cfg.batch_size,
+                one_hot=True,
+            )
             if cfg.CUDA:
                 self.eval_fake_samples = self.eval_fake_samples.cuda()
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
+            if cfg.eval_type == "rsgan" or cfg.eval_type == "Ra":
                 self.eval_d_out_fake = self.dis(self.eval_fake_samples)
 
     @staticmethod
@@ -463,14 +586,30 @@ class EvoGANInstructor(BasicInstructor):
         all_temp = list()
 
         # all_temp.append(get_fixed_temperature(1.0, 0, 0, 'no'))  # temp=1.0
-        all_temp.append(get_fixed_temperature(cfg.temperature, cur_step, cfg.ADV_train_epoch,
-                                              random.choice(mu_temp_type)))  # current step
         all_temp.append(
-            get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
-                                  random.choice(mu_temp_type)))
+            get_fixed_temperature(
+                cfg.temperature,
+                cur_step,
+                cfg.ADV_train_epoch,
+                random.choice(mu_temp_type),
+            )
+        )  # current step
+        all_temp.append(
+            get_fixed_temperature(
+                cfg.temperature,
+                cur_step + cfg.evo_temp_step,
+                cfg.ADV_train_epoch,
+                random.choice(mu_temp_type),
+            )
+        )
         if cur_step > cfg.evo_temp_step:
             all_temp.append(
-                get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
-                                      random.choice(mu_temp_type)))
+                get_fixed_temperature(
+                    cfg.temperature,
+                    cur_step - cfg.evo_temp_step,
+                    cfg.ADV_train_epoch,
+                    random.choice(mu_temp_type),
+                )
+            )
 
         return torch.Tensor(all_temp)  # three temp

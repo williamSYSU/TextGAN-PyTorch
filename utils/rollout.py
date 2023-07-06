@@ -4,7 +4,7 @@
 # @FileName     : rollout.py
 # @Time         : Created at 2019-03-15
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 
 import copy
@@ -18,8 +18,8 @@ class ROLLOUT:
         self.old_model = copy.deepcopy(gen)
         self.max_seq_len = gen.max_seq_len
         self.vocab_size = gen.vocab_size
-        self.step_size = gen.step_size if gen.name == 'leakgan' else 0
-        self.goal_out_size = gen.goal_out_size if gen.name == 'leakgan' else 0
+        self.step_size = gen.step_size if gen.name == "leakgan" else 0
+        self.goal_out_size = gen.goal_out_size if gen.name == "leakgan" else 0
         self.gpu = gpu
 
     def rollout_mc_search(self, sentences, given_num):
@@ -73,7 +73,7 @@ class ROLLOUT:
         for i in range(given_num):
             # Get feature.
             dis_inp = torch.zeros(batch_size, seq_len).long()
-            dis_inp[:, :i + 1] = sentences[:, :i + 1]  # cut sentences
+            dis_inp[:, : i + 1] = sentences[:, : i + 1]  # cut sentences
             leak_inp = sentences[:, i]
             if self.gpu:
                 dis_inp = dis_inp.cuda()
@@ -82,13 +82,14 @@ class ROLLOUT:
 
             # Get output of one token
             # cur_goal: batch_size * 1 * goal_out_size
-            out, cur_goal, work_hidden, mana_hidden = self.gen(i, leak_inp, work_hidden, mana_hidden,
-                                                               feature, real_goal, train=True)
+            out, cur_goal, work_hidden, mana_hidden = self.gen(
+                i, leak_inp, work_hidden, mana_hidden, feature, real_goal, train=True
+            )
 
             # Save goal and update last_goal
             goal_array[:, i, :] = cur_goal.squeeze(1)
             if i > 0 and i % self.step_size == 0:
-                real_goal = torch.sum(goal_array[:, i - 3:i + 1, :], dim=1)
+                real_goal = torch.sum(goal_array[:, i - 3 : i + 1, :], dim=1)
                 if i / self.step_size == 1:
                     real_goal += self.gen.goal_init[:batch_size, :]
 
@@ -98,7 +99,9 @@ class ROLLOUT:
         # MC search
         for i in range(given_num, self.max_seq_len):
             # Sample one token
-            out = torch.multinomial(torch.exp(out), 1).view(-1)  # [num_samples] (sampling from each row)
+            out = torch.multinomial(torch.exp(out), 1).view(
+                -1
+            )  # [num_samples] (sampling from each row)
             samples[:, i] = out.data
 
             # Get feature
@@ -110,13 +113,14 @@ class ROLLOUT:
 
             # Get output of one token
             # cur_goal: batch_size * 1 * goal_out_size
-            out, cur_goal, work_hidden, mana_hidden = self.gen(i, leak_inp, work_hidden, mana_hidden,
-                                                               feature, real_goal, train=True)
+            out, cur_goal, work_hidden, mana_hidden = self.gen(
+                i, leak_inp, work_hidden, mana_hidden, feature, real_goal, train=True
+            )
 
             # Save goal and update last_goal
             goal_array[:, i, :] = cur_goal.squeeze(1)
             if i > 0 and i % self.step_size == 0:
-                real_goal = torch.sum(goal_array[:, i - 3:i + 1, :], dim=1)
+                real_goal = torch.sum(goal_array[:, i - 3 : i + 1, :], dim=1)
                 if i / self.step_size == 1:
                     real_goal += self.gen.goal_init[:batch_size, :]
 
@@ -150,7 +154,9 @@ class ROLLOUT:
                     idx += 1
 
         # rewards = torch.mean(rewards, dim=0)
-        rewards = torch.mean(rewards.view(batch_size, self.max_seq_len, rollout_num), dim=-1)
+        rewards = torch.mean(
+            rewards.view(batch_size, self.max_seq_len, rollout_num), dim=-1
+        )
         return rewards
 
     def get_reward_leakgan(self, sentences, rollout_num, dis, current_k):
@@ -165,7 +171,9 @@ class ROLLOUT:
         """
         with torch.no_grad():
             batch_size = sentences.size(0)
-            rewards = torch.zeros([rollout_num * (self.max_seq_len // self.step_size), batch_size]).float()
+            rewards = torch.zeros(
+                [rollout_num * (self.max_seq_len // self.step_size), batch_size]
+            ).float()
             if self.gpu:
                 rewards = rewards.cuda()
             idx = 0
@@ -179,7 +187,9 @@ class ROLLOUT:
                     rewards[idx] = reward
                     idx += 1
 
-        rewards = rewards.view(batch_size, self.max_seq_len // self.step_size, rollout_num)
+        rewards = rewards.view(
+            batch_size, self.max_seq_len // self.step_size, rollout_num
+        )
         rewards = torch.mean(rewards, dim=-1)
         return rewards
 

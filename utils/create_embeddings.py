@@ -11,7 +11,7 @@ class MultipleFilesEmbeddingIterator:
         self.files = files
 
     def __iter__(self):
-        for file in tqdm(self.files, desc='iterating files'):
+        for file in tqdm(self.files, desc="iterating files"):
             for tokens in text_file_iterator(file):
                 yield [cfg.padding_token] * 5 + tokens
 

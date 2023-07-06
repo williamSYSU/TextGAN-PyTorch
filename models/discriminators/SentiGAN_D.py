@@ -19,9 +19,18 @@ clas_num_filters = [200]
 
 
 class SentiGAN_D(CNNDiscriminator):
-    def __init__(self, k_label, embed_dim, vocab_size, padding_idx, gpu=False, dropout=0.2):
-        super(SentiGAN_D, self).__init__(embed_dim, vocab_size, dis_filter_sizes, dis_num_filters, padding_idx, gpu,
-                                         dropout)
+    def __init__(
+        self, k_label, embed_dim, vocab_size, padding_idx, gpu=False, dropout=0.2
+    ):
+        super(SentiGAN_D, self).__init__(
+            embed_dim,
+            vocab_size,
+            dis_filter_sizes,
+            dis_num_filters,
+            padding_idx,
+            gpu,
+            dropout,
+        )
 
         self.feature2out = nn.Linear(self.feature_dim, k_label + 1)
 
@@ -30,9 +39,29 @@ class SentiGAN_D(CNNDiscriminator):
 
 # Classifier
 class SentiGAN_C(CNNClassifier):
-    def __init__(self, k_label, embed_dim, max_seq_len, num_rep, vocab_size, padding_idx, gpu=False, dropout=0.25):
-        super(SentiGAN_C, self).__init__(k_label, embed_dim, max_seq_len, num_rep, vocab_size, clas_filter_sizes,
-                                         clas_num_filters, padding_idx, gpu, dropout)
+    def __init__(
+        self,
+        k_label,
+        embed_dim,
+        max_seq_len,
+        num_rep,
+        vocab_size,
+        padding_idx,
+        gpu=False,
+        dropout=0.25,
+    ):
+        super(SentiGAN_C, self).__init__(
+            k_label,
+            embed_dim,
+            max_seq_len,
+            num_rep,
+            vocab_size,
+            clas_filter_sizes,
+            clas_num_filters,
+            padding_idx,
+            gpu,
+            dropout,
+        )
 
         # Use Glove
         # self.embeddings.from_pretrained(build_embedding_matrix(cfg.dataset))

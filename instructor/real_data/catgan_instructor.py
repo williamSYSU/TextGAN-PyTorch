@@ -27,21 +27,54 @@ from utils.text_process import tensor_to_tokens, write_tokens
 
 
 class CatGANInstructor(BasicInstructor):
-
     def __init__(self, opt):
         super(CatGANInstructor, self).__init__(opt)
 
         # generator, discriminator
-        self.gen = CatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
-                            cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA)
-        self.parents = [CatGAN_G(cfg.k_label, cfg.mem_slots, cfg.num_heads, cfg.head_size, cfg.gen_embed_dim,
-                                 cfg.gen_hidden_dim, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx,
-                                 gpu=cfg.CUDA).state_dict()
-                        for _ in range(cfg.n_parent)]  # list of Generator state_dict
-        self.dis = CatGAN_D(cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.vocab_size,
-                            cfg.padding_idx, gpu=cfg.CUDA)
-        self.clas = CatGAN_C(cfg.k_label, cfg.dis_embed_dim, cfg.max_seq_len, cfg.num_rep, cfg.extend_vocab_size,
-                             cfg.padding_idx, gpu=cfg.CUDA)
+        self.gen = CatGAN_G(
+            cfg.k_label,
+            cfg.mem_slots,
+            cfg.num_heads,
+            cfg.head_size,
+            cfg.gen_embed_dim,
+            cfg.gen_hidden_dim,
+            cfg.vocab_size,
+            cfg.max_seq_len,
+            cfg.padding_idx,
+            gpu=cfg.CUDA,
+        )
+        self.parents = [
+            CatGAN_G(
+                cfg.k_label,
+                cfg.mem_slots,
+                cfg.num_heads,
+                cfg.head_size,
+                cfg.gen_embed_dim,
+                cfg.gen_hidden_dim,
+                cfg.vocab_size,
+                cfg.max_seq_len,
+                cfg.padding_idx,
+                gpu=cfg.CUDA,
+            ).state_dict()
+            for _ in range(cfg.n_parent)
+        ]  # list of Generator state_dict
+        self.dis = CatGAN_D(
+            cfg.dis_embed_dim,
+            cfg.max_seq_len,
+            cfg.num_rep,
+            cfg.vocab_size,
+            cfg.padding_idx,
+            gpu=cfg.CUDA,
+        )
+        self.clas = CatGAN_C(
+            cfg.k_label,
+            cfg.dis_embed_dim,
+            cfg.max_seq_len,
+            cfg.num_rep,
+            cfg.extend_vocab_size,
+            cfg.padding_idx,
+            gpu=cfg.CUDA,
+        )
 
         self.init_model()
 
@@ -50,14 +83,19 @@ class CatGANInstructor(BasicInstructor):
         self.gen_adv_opt = optim.Adam(self.gen.parameters(), lr=cfg.gen_adv_lr)
         self.dis_opt = optim.Adam(self.dis.parameters(), lr=cfg.dis_lr)
         self.clas_opt = optim.Adam(self.clas.parameters(), lr=cfg.clas_lr)
-        self.parent_mle_opts = [copy.deepcopy(self.gen_opt.state_dict())
-                                for _ in range(cfg.n_parent)]
-        self.parent_adv_opts = [copy.deepcopy(self.gen_adv_opt.state_dict())
-                                for _ in range(cfg.n_parent)]  # list of optimizer state dict
+        self.parent_mle_opts = [
+            copy.deepcopy(self.gen_opt.state_dict()) for _ in range(cfg.n_parent)
+        ]
+        self.parent_adv_opts = [
+            copy.deepcopy(self.gen_adv_opt.state_dict()) for _ in range(cfg.n_parent)
+        ]  # list of optimizer state dict
 
         # Criterion
-        self.G_criterion = [GANLoss(loss_mode, 'G', cfg.d_type, CUDA=cfg.CUDA) for loss_mode in cfg.mu_type.split()]
-        self.D_criterion = GANLoss(cfg.loss_type, 'D', cfg.d_type, CUDA=cfg.CUDA)
+        self.G_criterion = [
+            GANLoss(loss_mode, "G", cfg.d_type, CUDA=cfg.CUDA)
+            for loss_mode in cfg.mu_type.split()
+        ]
+        self.D_criterion = GANLoss(cfg.loss_type, "D", cfg.d_type, CUDA=cfg.CUDA)
 
         # DataLoader
         self.all_train_data = CatGenDataIter(self.train_samples_list)
@@ -68,13 +106,21 @@ class CatGANInstructor(BasicInstructor):
     def init_model(self):
         if cfg.gen_pretrain:
             for i in range(cfg.n_parent):
-                self.log.info('Load MLE pretrained generator gen: {}'.format(cfg.pretrained_gen_path + '%d' % i))
-                self.parents[i] = torch.load(cfg.pretrained_gen_path + '%d' % 0, map_location='cpu')
+                self.log.info(
+                    "Load MLE pretrained generator gen: {}".format(
+                        cfg.pretrained_gen_path + "%d" % i
+                    )
+                )
+                self.parents[i] = torch.load(
+                    cfg.pretrained_gen_path + "%d" % 0, map_location="cpu"
+                )
 
         if cfg.CUDA:
             self.gen = self.gen.cuda()
             if cfg.multi_gpu:
-                self.dis = torch.nn.parallel.DataParallel(self.dis, device_ids=cfg.devices)
+                self.dis = torch.nn.parallel.DataParallel(
+                    self.dis, device_ids=cfg.devices
+                )
             self.dis = self.dis.cuda()
             self.clas = self.clas.cuda()
 
@@ -90,19 +136,29 @@ class CatGANInstructor(BasicInstructor):
     def _run(self):
         # ===Pre-train Classifier with real data===
         if cfg.use_clas_acc:
-            self.log.info('Start training Classifier...')
+            self.log.info("Start training Classifier...")
             self.train_classifier(cfg.PRE_clas_epoch)
 
         # ===Pre-train Generator===
         if not cfg.gen_pretrain:
-            for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_mle_opts)):
-                self.log.info('Starting Generator-{} MLE Training...'.format(i))
+            for i, (parent, parent_opt) in enumerate(
+                zip(self.parents, self.parent_mle_opts)
+            ):
+                self.log.info("Starting Generator-{} MLE Training...".format(i))
                 self.load_gen(parent, parent_opt, mle=True)  # load state dict
                 self.pretrain_generator(cfg.MLE_train_epoch)
-                self.parents[i] = copy.deepcopy(self.gen.state_dict())  # save state dict
+                self.parents[i] = copy.deepcopy(
+                    self.gen.state_dict()
+                )  # save state dict
                 if cfg.if_save and not cfg.if_test:
-                    torch.save(self.gen.state_dict(), cfg.pretrained_gen_path + '%d' % i)
-                    self.log.info('Save pre-trained generator: {}'.format(cfg.pretrained_gen_path + '%d' % i))
+                    torch.save(
+                        self.gen.state_dict(), cfg.pretrained_gen_path + "%d" % i
+                    )
+                    self.log.info(
+                        "Save pre-trained generator: {}".format(
+                            cfg.pretrained_gen_path + "%d" % i
+                        )
+                    )
 
         # ===Adv-train===
         progress = tqdm(range(cfg.ADV_train_epoch))
@@ -110,27 +166,45 @@ class CatGANInstructor(BasicInstructor):
             if cfg.temperature == 1:
                 score, fit_score, select_mu = self.evolve_generator(cfg.ADV_g_step)
             else:  # evolve with temperature
-                score, fit_score, select_mu = self.evolve_generator_with_temp(adv_epoch, cfg.ADV_g_step)
+                score, fit_score, select_mu = self.evolve_generator_with_temp(
+                    adv_epoch, cfg.ADV_g_step
+                )
             d_loss = self.evolve_discriminator(cfg.ADV_d_step)
 
             best_id = int(np.argmax(score))
-            progress.set_description('mu: %s, d_loss = %.4f, temp = %.4f' % (
-                ' '.join(select_mu), d_loss, self.parents[best_id]['temperature'].item()))
+            progress.set_description(
+                "mu: %s, d_loss = %.4f, temp = %.4f"
+                % (
+                    " ".join(select_mu),
+                    d_loss,
+                    self.parents[best_id]["temperature"].item(),
+                )
+            )
 
             # ===Test===
-            if adv_epoch % cfg.adv_log_step == 0 or adv_epoch == cfg.ADV_train_epoch - 1:
+            if (
+                adv_epoch % cfg.adv_log_step == 0
+                or adv_epoch == cfg.ADV_train_epoch - 1
+            ):
                 best_id = int(np.argmax(score))
                 self.load_gen(self.parents[best_id], self.parent_adv_opts[best_id])
 
-                self.log.info('[ADV] epoch %d: temp = %.4f, d_loss: %.4f, %s' % (
-                    adv_epoch, self.gen.temperature.item(), d_loss, self.comb_metrics(fmt_str=True)))
+                self.log.info(
+                    "[ADV] epoch %d: temp = %.4f, d_loss: %.4f, %s"
+                    % (
+                        adv_epoch,
+                        self.gen.temperature.item(),
+                        d_loss,
+                        self.comb_metrics(fmt_str=True),
+                    )
+                )
 
                 if cfg.if_save and not cfg.if_test:
                     for label_i in range(cfg.k_label):
-                        self._save('ADV', adv_epoch, label_i)
+                        self._save("ADV", adv_epoch, label_i)
 
     def _test(self):
-        self.log.debug('>>> Begin test...')
+        self.log.debug(">>> Begin test...")
 
         self._run()
         pass
@@ -141,17 +215,20 @@ class CatGANInstructor(BasicInstructor):
         """
         for epoch in range(epochs):
             # ===Train===
-            pre_loss = self.train_gen_epoch(self.gen, self.all_train_data.loader, self.mle_criterion, self.gen_opt)
+            pre_loss = self.train_gen_epoch(
+                self.gen, self.all_train_data.loader, self.mle_criterion, self.gen_opt
+            )
 
             # ===Test===
             if epoch % cfg.pre_log_step == 0 or epoch == epochs - 1:
                 self.log.info(
-                    '[MLE-GEN] epoch %d : pre_loss = %.4f, %s' % (
-                        epoch, pre_loss, self.comb_metrics(fmt_str=True)))
+                    "[MLE-GEN] epoch %d : pre_loss = %.4f, %s"
+                    % (epoch, pre_loss, self.comb_metrics(fmt_str=True))
+                )
 
                 if not cfg.if_test and cfg.if_save:
                     for label_i in range(cfg.k_label):
-                        self._save('MLE', epoch, label_i)
+                        self._save("MLE", epoch, label_i)
 
     def evolve_generator(self, evo_g_step):
         # evaluation real data
@@ -167,13 +244,21 @@ class CatGANInstructor(BasicInstructor):
 
         # all child share the same real data output from Discriminator
         with torch.no_grad():
-            real_samples = [F.one_hot(self.train_data_list[i].random_batch()['target'], cfg.vocab_size).float()
-                            for i in range(cfg.k_label)]
+            real_samples = [
+                F.one_hot(
+                    self.train_data_list[i].random_batch()["target"], cfg.vocab_size
+                ).float()
+                for i in range(cfg.k_label)
+            ]
             if cfg.CUDA:
                 real_samples = [real_samples[i].cuda() for i in range(cfg.k_label)]
-            self.d_out_real = [self.dis(real_samples[i]) for i in range(cfg.k_label)]  # d_out_real for each label
+            self.d_out_real = [
+                self.dis(real_samples[i]) for i in range(cfg.k_label)
+            ]  # d_out_real for each label
 
-        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
+        for i, (parent, parent_opt) in enumerate(
+            zip(self.parents, self.parent_adv_opts)
+        ):
             for j, criterionG in enumerate(self.G_criterion):
                 # Variation
                 self.load_gen(parent, parent_opt)  # load state dict to self.gen
@@ -198,7 +283,9 @@ class CatGANInstructor(BasicInstructor):
                         best_score[id_replace] = score
                         best_fit[id_replace] = [Fq, Fd, score]
                         best_child[id_replace] = copy.deepcopy(self.gen.state_dict())
-                        best_child_opt[id_replace] = copy.deepcopy(self.gen_adv_opt.state_dict())
+                        best_child_opt[id_replace] = copy.deepcopy(
+                            self.gen_adv_opt.state_dict()
+                        )
                         best_fake_samples[id_replace] = self.eval_fake_samples
                         selected_mutation[id_replace] = criterionG.loss_mode
                 count += 1
@@ -222,17 +309,25 @@ class CatGANInstructor(BasicInstructor):
 
         # all children share the same real data output from Discriminator
         with torch.no_grad():
-            real_samples = [F.one_hot(self.train_data_list[i].random_batch()['target'], cfg.vocab_size).float()
-                            for i in range(cfg.k_label)]
+            real_samples = [
+                F.one_hot(
+                    self.train_data_list[i].random_batch()["target"], cfg.vocab_size
+                ).float()
+                for i in range(cfg.k_label)
+            ]
             if cfg.CUDA:
                 real_samples = [real_samples[i].cuda() for i in range(cfg.k_label)]
-            self.d_out_real = [self.dis(real_samples[i]) for i in range(cfg.k_label)]  # d_out_real for each label
+            self.d_out_real = [
+                self.dis(real_samples[i]) for i in range(cfg.k_label)
+            ]  # d_out_real for each label
 
-        for i, (parent, parent_opt) in enumerate(zip(self.parents, self.parent_adv_opts)):
+        for i, (parent, parent_opt) in enumerate(
+            zip(self.parents, self.parent_adv_opts)
+        ):
             for j, criterionG in enumerate(self.G_criterion):
                 all_temp = self.get_evo_temp(cur_adv_step)
 
-                temp_score = float('-inf')
+                temp_score = float("-inf")
                 temp_fit = None
                 temp_child = None
                 temp_child_opt = None
@@ -248,8 +343,10 @@ class CatGANInstructor(BasicInstructor):
 
                     # Evaluation
                     self.prepare_eval_fake_data()  # evaluation fake data
-                    _, _, t_score = self.evaluation('Ra')  # for temp evolutionary
-                    loss_Fq, loss_Fd, loss_score = self.evaluation(cfg.eval_type)  # for loss evolutionary
+                    _, _, t_score = self.evaluation("Ra")  # for temp evolutionary
+                    loss_Fq, loss_Fd, loss_score = self.evaluation(
+                        cfg.eval_type
+                    )  # for loss evolutionary
 
                     if t_score > temp_score:
                         temp_score = loss_score
@@ -287,15 +384,21 @@ class CatGANInstructor(BasicInstructor):
         global dc_loss, dd_loss, d_loss
         total_loss = []
 
-        all_gen_samples_list = list(map(self.merge, *self.best_fake_samples))  # merge each label of data
-        self.all_gen_samples_list = self.shuffle_eval_samples(all_gen_samples_list)  # shuffle data
+        all_gen_samples_list = list(
+            map(self.merge, *self.best_fake_samples)
+        )  # merge each label of data
+        self.all_gen_samples_list = self.shuffle_eval_samples(
+            all_gen_samples_list
+        )  # shuffle data
         for step in range(evo_d_step):
-            dis_real_samples, dis_gen_samples = self.prepare_train_data('D', step)
+            dis_real_samples, dis_gen_samples = self.prepare_train_data("D", step)
 
             d_loss = 0
             all_d_out_real = []
             all_d_out_fake = []
-            for (real_samples, fake_samples) in zip(dis_real_samples, dis_gen_samples):  # for each label samples
+            for (real_samples, fake_samples) in zip(
+                dis_real_samples, dis_gen_samples
+            ):  # for each label samples
                 d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
                 d_loss += self.D_criterion(d_out_real, d_out_fake)
@@ -320,14 +423,16 @@ class CatGANInstructor(BasicInstructor):
         """Optimize one child (Generator)"""
         total_loss = []
         for step in range(g_step):
-            dis_real_samples, dis_gen_samples = self.prepare_train_data('G')
+            dis_real_samples, dis_gen_samples = self.prepare_train_data("G")
 
             # ===Train===
             g_loss = 0
             all_d_out_real = []
             all_d_out_fake = []
             # for i, (real_samples, fake_samples) in enumerate(zip(dis_real_samples, dis_gen_samples)):
-            for i, (d_out_real, fake_samples) in enumerate(zip(self.d_out_real, dis_gen_samples)):  # share real
+            for i, (d_out_real, fake_samples) in enumerate(
+                zip(self.d_out_real, dis_gen_samples)
+            ):  # share real
                 # d_out_real = self.dis(real_samples)
                 d_out_fake = self.dis(fake_samples)
                 g_loss += criterionG(d_out_real, d_out_fake)
@@ -350,30 +455,40 @@ class CatGANInstructor(BasicInstructor):
 
     def evaluation(self, eval_type):
         """Evaluation all children, update child score. Note that the eval data should be the same"""
-        eval_samples = [self.gen.sample(cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size, label_i=i) for i
-                        in range(cfg.k_label)]
+        eval_samples = [
+            self.gen.sample(
+                cfg.eval_b_num * cfg.batch_size, cfg.max_bn * cfg.batch_size, label_i=i
+            )
+            for i in range(cfg.k_label)
+        ]
 
         # Fd
         if cfg.lambda_fd != 0:
             nll_div = []
             for label_i in range(cfg.k_label):
                 gen_data = GenDataIter(eval_samples[label_i])
-                nll_div.append(NLL.cal_nll_with_label(self.gen, gen_data.loader, label_i, self.mle_criterion))
+                nll_div.append(
+                    NLL.cal_nll_with_label(
+                        self.gen, gen_data.loader, label_i, self.mle_criterion
+                    )
+                )
             Fd = sum(nll_div)
         else:
             Fd = 0
 
         # Fq
-        if 'bleu' in eval_type:
+        if "bleu" in eval_type:
             bleu_score = []
             for i in range(cfg.k_label):
                 bleu_score.append(self.bleu[i].get_score(given_gram=int(eval_type[-1])))
 
             Fq = sum(bleu_score)
-        elif 'Ra' in eval_type:
+        elif "Ra" in eval_type:
             g_loss = 0
             for i in range(cfg.k_label):
-                g_loss += torch.sigmoid(self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])).sum()
+                g_loss += torch.sigmoid(
+                    self.eval_d_out_fake[i] - torch.mean(self.eval_d_out_real[i])
+                ).sum()
             Fq = g_loss.item()
         else:
             raise NotImplementedError("Evaluation '%s' is not implemented" % eval_type)
@@ -384,7 +499,7 @@ class CatGANInstructor(BasicInstructor):
     def train_gen_epoch(self, model, data_loader, criterion, optimizer):
         total_loss = 0
         for i, data in enumerate(data_loader):
-            inp, target, label = data['input'], data['target'], data['label']
+            inp, target, label = data["input"], data["target"], data["label"]
             if cfg.CUDA:
                 inp, target, label = inp.cuda(), target.cuda(), label.cuda()
 
@@ -397,8 +512,13 @@ class CatGANInstructor(BasicInstructor):
 
     def _save(self, phase, epoch, label_i=None):
         assert type(label_i) == int
-        torch.save(self.gen.state_dict(), cfg.save_model_root + 'gen_{}_{:05d}.pt'.format(phase, epoch))
-        save_sample_path = cfg.save_samples_root + 'samples_c{}_{}_{:05d}.txt'.format(label_i, phase, epoch)
+        torch.save(
+            self.gen.state_dict(),
+            cfg.save_model_root + "gen_{}_{:05d}.pt".format(phase, epoch),
+        )
+        save_sample_path = cfg.save_samples_root + "samples_c{}_{}_{:05d}.txt".format(
+            label_i, phase, epoch
+        )
         samples = self.gen.sample(cfg.batch_size, cfg.batch_size, label_i=label_i)
         write_tokens(save_sample_path, tensor_to_tokens(samples, self.idx2word_dict))
 
@@ -409,50 +529,86 @@ class CatGANInstructor(BasicInstructor):
     def shuffle_eval_samples(self, all_eval_samples):
         temp = []
         for i in range(cfg.k_label):
-            temp.append(all_eval_samples[i][torch.randperm(all_eval_samples[i].size(0))])
+            temp.append(
+                all_eval_samples[i][torch.randperm(all_eval_samples[i].size(0))]
+            )
         return temp
 
     def prepare_train_data(self, which, step=None):
         """Prepare train data for both Generator and Discriminator, each samples_list contains k_label batches of data"""
-        assert which == 'D' or which == 'G', 'only support for D and G!!'
+        assert which == "D" or which == "G", "only support for D and G!!"
         real_samples_list = [
-            F.one_hot(self.train_data_list[i].random_batch()['target'][:cfg.batch_size],
-                      cfg.vocab_size).float().cuda()
-            for i in range(cfg.k_label)]
-        if which == 'D':
-            assert step is not None, 'missing step'
-            gen_samples_list = [self.all_gen_samples_list[i][step * cfg.batch_size:(step + 1) * cfg.batch_size]
-                                for i in range(cfg.k_label)]  # get a batch from each label
+            F.one_hot(
+                self.train_data_list[i].random_batch()["target"][: cfg.batch_size],
+                cfg.vocab_size,
+            )
+            .float()
+            .cuda()
+            for i in range(cfg.k_label)
+        ]
+        if which == "D":
+            assert step is not None, "missing step"
+            gen_samples_list = [
+                self.all_gen_samples_list[i][
+                    step * cfg.batch_size : (step + 1) * cfg.batch_size
+                ]
+                for i in range(cfg.k_label)
+            ]  # get a batch from each label
         else:  # 'G'
             gen_samples_list = [
                 self.gen.sample(cfg.batch_size, cfg.batch_size, one_hot=True, label_i=i)
-                for i in range(cfg.k_label)]
+                for i in range(cfg.k_label)
+            ]
 
         return real_samples_list, gen_samples_list
 
     def prepare_eval_real_data(self):
         """Prepare evaluation real data, contains k_label batches of data"""
         with torch.no_grad():
-            self.eval_real_samples = [torch.cat(
-                [F.one_hot(self.train_data_list[i].random_batch()['target'], cfg.vocab_size).float()
-                 for _ in range(cfg.eval_b_num)], dim=0) for i in range(cfg.k_label)]
+            self.eval_real_samples = [
+                torch.cat(
+                    [
+                        F.one_hot(
+                            self.train_data_list[i].random_batch()["target"],
+                            cfg.vocab_size,
+                        ).float()
+                        for _ in range(cfg.eval_b_num)
+                    ],
+                    dim=0,
+                )
+                for i in range(cfg.k_label)
+            ]
             if cfg.CUDA:
-                self.eval_real_samples = [self.eval_real_samples[i].cuda() for i in range(cfg.k_label)]
+                self.eval_real_samples = [
+                    self.eval_real_samples[i].cuda() for i in range(cfg.k_label)
+                ]
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
-                self.eval_d_out_real = [self.dis(self.eval_real_samples[i]) for i in range(cfg.k_label)]
+            if cfg.eval_type == "rsgan" or cfg.eval_type == "Ra":
+                self.eval_d_out_real = [
+                    self.dis(self.eval_real_samples[i]) for i in range(cfg.k_label)
+                ]
 
     def prepare_eval_fake_data(self):
         """Prepare evaluation fake data, contains k_label batches of data"""
         with torch.no_grad():
-            self.eval_fake_samples = [self.gen.sample(cfg.eval_b_num * cfg.batch_size,
-                                                      cfg.eval_b_num * cfg.batch_size, one_hot=True, label_i=i)
-                                      for i in range(cfg.k_label)]
+            self.eval_fake_samples = [
+                self.gen.sample(
+                    cfg.eval_b_num * cfg.batch_size,
+                    cfg.eval_b_num * cfg.batch_size,
+                    one_hot=True,
+                    label_i=i,
+                )
+                for i in range(cfg.k_label)
+            ]
             if cfg.CUDA:
-                self.eval_fake_samples = [self.eval_fake_samples[i].cuda() for i in range(cfg.k_label)]
+                self.eval_fake_samples = [
+                    self.eval_fake_samples[i].cuda() for i in range(cfg.k_label)
+                ]
 
-            if cfg.eval_type == 'rsgan' or cfg.eval_type == 'Ra':
-                self.eval_d_out_fake = [self.dis(self.eval_fake_samples[i]) for i in range(cfg.k_label)]
+            if cfg.eval_type == "rsgan" or cfg.eval_type == "Ra":
+                self.eval_d_out_fake = [
+                    self.dis(self.eval_fake_samples[i]) for i in range(cfg.k_label)
+                ]
 
     @staticmethod
     def get_evo_temp(cur_step):
@@ -461,14 +617,30 @@ class CatGANInstructor(BasicInstructor):
         all_temp = list()
 
         # all_temp.append(get_fixed_temperature(1.0, 0, 0, 'no'))  # temp=1.0
-        all_temp.append(get_fixed_temperature(cfg.temperature, cur_step, cfg.ADV_train_epoch,
-                                              random.choice(mu_temp_type)))  # current step
         all_temp.append(
-            get_fixed_temperature(cfg.temperature, cur_step + cfg.evo_temp_step, cfg.ADV_train_epoch,
-                                  random.choice(mu_temp_type)))
+            get_fixed_temperature(
+                cfg.temperature,
+                cur_step,
+                cfg.ADV_train_epoch,
+                random.choice(mu_temp_type),
+            )
+        )  # current step
+        all_temp.append(
+            get_fixed_temperature(
+                cfg.temperature,
+                cur_step + cfg.evo_temp_step,
+                cfg.ADV_train_epoch,
+                random.choice(mu_temp_type),
+            )
+        )
         if cur_step > cfg.evo_temp_step:
             all_temp.append(
-                get_fixed_temperature(cfg.temperature, cur_step - cfg.evo_temp_step, cfg.ADV_train_epoch,
-                                      random.choice(mu_temp_type)))
+                get_fixed_temperature(
+                    cfg.temperature,
+                    cur_step - cfg.evo_temp_step,
+                    cfg.ADV_train_epoch,
+                    random.choice(mu_temp_type),
+                )
+            )
 
         return torch.Tensor(all_temp)

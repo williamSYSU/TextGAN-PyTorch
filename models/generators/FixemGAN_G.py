@@ -18,10 +18,15 @@ import config as cfg
 from models.generators.generator import LSTMGenerator
 
 
-
 class Generator(LSTMGenerator):
     def __init__(self, complexity, noise_size, w2v, w2v_embedding_size):
-        super(Generator, self).__init__(cfg.gen_embed_dim, cfg.gen_hidden_dim, cfg.vocab_size, cfg.target_len, cfg.padding_idx)
+        super(Generator, self).__init__(
+            cfg.gen_embed_dim,
+            cfg.gen_hidden_dim,
+            cfg.vocab_size,
+            cfg.target_len,
+            cfg.padding_idx,
+        )
         alpha = 0.2
         added_dim_pe = 0
         include_batch_norm = True
@@ -34,7 +39,9 @@ class Generator(LSTMGenerator):
         self.main = nn.Sequential(
             # 1 layer
             Concatenate(1),
-            nn.Linear(cfg.noise_size + cfg.k_label, cfg.target_len // 2 // 2 * complexity),
+            nn.Linear(
+                cfg.noise_size + cfg.k_label, cfg.target_len // 2 // 2 * complexity
+            ),
             nn.BatchNorm1d(cfg.target_len // 2 // 2 * complexity),
             nn.LeakyReLU(alpha),
             Reshape(complexity, cfg.target_len // 2 // 2),
@@ -94,9 +101,10 @@ class Generator(LSTMGenerator):
             # 8 layer
             MyLSTMLayerNorm(
                 complexity,
-                complexity//2,
-            ) if include_lstm else Dummy(),
-
+                complexity // 2,
+            )
+            if include_lstm
+            else Dummy(),
             # 9 layer
             MyConvTransposeLayer(
                 complexity,
@@ -107,8 +115,10 @@ class Generator(LSTMGenerator):
             # 10 layer
             MyLSTMLayerNorm(
                 complexity,
-                complexity//2,
-            ) if include_lstm else Dummy(),
+                complexity // 2,
+            )
+            if include_lstm
+            else Dummy(),
             # 11 layer
             MyConvTransposeLayer(
                 complexity,
@@ -128,12 +138,16 @@ class Generator(LSTMGenerator):
         self.optimizer = get_optimizer(self.parameters())
 
     def forward(self, noise, target_labels):
-        target_labels = torch.nn.functional.one_hot(target_labels, num_classes=cfg.k_label)
+        target_labels = torch.nn.functional.one_hot(
+            target_labels, num_classes=cfg.k_label
+        )
         return self.main([noise, target_labels])
 
-    def sample(self, num_samples, batch_size, label_i = 'random', start_letter=cfg.start_letter):
+    def sample(
+        self, num_samples, batch_size, label_i="random", start_letter=cfg.start_letter
+    ):
         noise = create_noise(num_samples, self.noise_size, cfg.k_label)
-        if label_i != 'random':
+        if label_i != "random":
             noise = (noise[0], torch.tensor(label_i).expand_as(noise[1]))
 
         if cfg.CUDA:

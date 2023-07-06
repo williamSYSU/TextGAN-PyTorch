@@ -37,18 +37,24 @@ class CatGenDataIter:
             dataset=GANDataset(self.__read_data__(samples_list)),
             batch_size=self.batch_size,
             shuffle=self.shuffle,
-            drop_last=True)
+            drop_last=True,
+        )
 
-        self.input = self._all_data_('input')
-        self.target = self._all_data_('target')
-        self.label = self._all_data_('label')  # from 0 to k-1, different from Discriminator label
+        self.input = self._all_data_("input")
+        self.target = self._all_data_("target")
+        self.label = self._all_data_(
+            "label"
+        )  # from 0 to k-1, different from Discriminator label
 
     def __read_data__(self, samples_list):
         """
         input: same as target, but start with start_letter.
         """
         inp, target, label = self.prepare(samples_list)
-        all_data = [{'input': i, 'target': t, 'label': l} for (i, t, l) in zip(inp, target, label)]
+        all_data = [
+            {"input": i, "target": t, "label": l}
+            for (i, t, l) in zip(inp, target, label)
+        ]
         return all_data
 
     def random_batch(self):
@@ -57,7 +63,9 @@ class CatGenDataIter:
         return list(self.loader)[idx]
 
     def _all_data_(self, col):
-        return torch.cat([data[col].unsqueeze(0) for data in self.loader.dataset.data], 0)
+        return torch.cat(
+            [data[col].unsqueeze(0) for data in self.loader.dataset.data], 0
+        )
 
     def prepare(self, samples_list, gpu=False):
         """Add start_letter to samples as inp, target same as samples"""
@@ -65,12 +73,12 @@ class CatGenDataIter:
         target = all_samples
         inp = torch.zeros(all_samples.size()).long()
         inp[:, 0] = self.start_letter
-        inp[:, 1:] = target[:, :self.max_seq_len - 1]
+        inp[:, 1:] = target[:, : self.max_seq_len - 1]
 
         label = torch.zeros(all_samples.size(0)).long()
         for idx in range(len(samples_list)):
             start = sum([samples_list[i].size(0) for i in range(idx)])
-            label[start: start + samples_list[idx].size(0)] = idx
+            label[start : start + samples_list[idx].size(0)] = idx
 
         # shuffle
         perm = torch.randperm(inp.size(0))
@@ -105,14 +113,15 @@ class CatClasDataIter:
             dataset=GANDataset(self.__read_data__(samples_list, given_target)),
             batch_size=self.batch_size,
             shuffle=self.shuffle,
-            drop_last=True)
+            drop_last=True,
+        )
 
-        self.input = self._all_data_('input')
-        self.target = self._all_data_('target')
+        self.input = self._all_data_("input")
+        self.target = self._all_data_("target")
 
     def __read_data__(self, samples_list, given_target=None):
         inp, target = self.prepare(samples_list, given_target)
-        all_data = [{'input': i, 'target': t} for (i, t) in zip(inp, target)]
+        all_data = [{"input": i, "target": t} for (i, t) in zip(inp, target)]
         return all_data
 
     def random_batch(self):
@@ -121,7 +130,9 @@ class CatClasDataIter:
         # return next(iter(self.loader))
 
     def _all_data_(self, col):
-        return torch.cat([data[col].unsqueeze(0) for data in self.loader.dataset.data], 0)
+        return torch.cat(
+            [data[col].unsqueeze(0) for data in self.loader.dataset.data], 0
+        )
 
     @staticmethod
     def prepare(samples_list, given_target=None, detach=True, gpu=False):
@@ -135,7 +146,7 @@ class CatClasDataIter:
             - inp: sentences
             - target: label index, 0-label_0, 1-label_1, ..., k-label_k
         """
-        if type(samples_list[0][0][0]) == str: # directly generated text
+        if type(samples_list[0][0][0]) == str:  # directly generated text
             inp = torch.zeros(1)
             target = torch.zeros(1)
         elif len(samples_list) == 1 and given_target is not None:
@@ -154,7 +165,7 @@ class CatClasDataIter:
                 inp = inp.long()
             for idx in range(1, len(samples_list)):
                 start = sum([samples_list[i].size(0) for i in range(idx)])
-                target[start: start + samples_list[idx].size(0)] = idx
+                target[start : start + samples_list[idx].size(0)] = idx
 
         # shuffle
         perm = torch.randperm(inp.size(0))

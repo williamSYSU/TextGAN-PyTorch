@@ -10,29 +10,30 @@ from metrics.basic import Metrics
 
 class IOC(Metrics):
     def __init__(self, weight, name=None, test_text=None, real_text=None, if_use=True):
-        super(IOC, self).__init__('Index of Coincidence', weight, if_use)
+        super(IOC, self).__init__("Index of Coincidence", weight, if_use)
 
         self.if_use = if_use
         self.test_text = test_text
         self.real_text_ioc = self.calculate_ioc(real_text.tokens) if real_text else None
         if self.real_text_ioc:
-            print(f'Dataset Index of coincidence: {self.real_text_ioc}')
+            print(f"Dataset Index of coincidence: {self.real_text_ioc}")
         self.reference = None
         self.is_first = True
 
     def _reset(self, test_text=None, real_text=None):
         self.test_text = test_text if test_text is not None else self.test_text
-        self.real_text_ioc = self.get_ioc(real_text.tokens) if real_text is not None else self.real_text_ioc
+        self.real_text_ioc = (
+            self.get_ioc(real_text.tokens)
+            if real_text is not None
+            else self.real_text_ioc
+        )
 
     def calculate_metric(self):
         return self.calculate_ioc(self.test_text) / self.real_text_ioc
 
     def calculate_ioc(self, tokenized_text):
         """Index Of coincidence: probability of 2 random tokens in text to equal."""
-        tokenized_text = [
-          [str(token) for token in tokens]
-          for tokens in tokenized_text
-        ]
+        tokenized_text = [[str(token) for token in tokens] for tokens in tokenized_text]
         tokens = list(chain(*tokenized_text))
         counts = Counter(tokens)
         total = sum(ni * (ni - 1) for ni in counts.values())

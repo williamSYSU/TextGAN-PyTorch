@@ -11,7 +11,9 @@ from tqdm import tqdm, trange
 
 import config as cfg
 from instructor.oracle_data.instructor import BasicInstructor
-from instructor.real_data.fixem_instructor import FixemGANInstructor as RealDataFixemGANInstructor
+from instructor.real_data.fixem_instructor import (
+    FixemGANInstructor as RealDataFixemGANInstructor,
+)
 from utils.gan_loss import GANLoss
 from utils.text_process import text_file_iterator
 from utils.data_loader import DataSupplier, GANDataset
@@ -27,14 +29,21 @@ from models.discriminators.FixemGAN_D import Discriminator
 # check target real/fake to be right (Uniform or const)
 # random data portion generator - data supplier sample from randomint
 
+
 class FixemGANInstructor(BasicInstructor, RealDataFixemGANInstructor):
     def __init__(self, opt):
-        self.oracle = Oracle(32, 32, cfg.vocab_size, cfg.max_seq_len,cfg.padding_idx, gpu=cfg.CUDA)
+        self.oracle = Oracle(
+            32, 32, cfg.vocab_size, cfg.max_seq_len, cfg.padding_idx, gpu=cfg.CUDA
+        )
         if cfg.oracle_pretrain:
             if not os.path.exists(cfg.oracle_state_dict_path):
                 create_oracle()
             self.oracle.load_state_dict(
-                torch.load(cfg.oracle_state_dict_path, map_location='cuda:{}'.format(cfg.device)))
+                torch.load(
+                    cfg.oracle_state_dict_path,
+                    map_location="cuda:{}".format(cfg.device),
+                )
+            )
 
         if cfg.CUDA:
             self.oracle = self.oracle.cuda()

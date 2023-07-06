@@ -15,10 +15,22 @@ from models.generators.generator import LSTMGenerator
 
 
 class JSDGAN_G(LSTMGenerator):
-    def __init__(self, mem_slots, num_heads, head_size, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx,
-                 gpu=False):
-        super(JSDGAN_G, self).__init__(embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu)
-        self.name = 'jsdgan'
+    def __init__(
+        self,
+        mem_slots,
+        num_heads,
+        head_size,
+        embedding_dim,
+        hidden_dim,
+        vocab_size,
+        max_seq_len,
+        padding_idx,
+        gpu=False,
+    ):
+        super(JSDGAN_G, self).__init__(
+            embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu
+        )
+        self.name = "jsdgan"
 
         # RMC
 
@@ -43,8 +55,12 @@ class JSDGAN_G(LSTMGenerator):
         """
         batch_size, seq_len = inp.size()
         hidden = self.init_hidden(batch_size)
-        pred = self.forward(inp, hidden).view(batch_size, self.max_seq_len, self.vocab_size)
-        target_onehot = F.one_hot(target, self.vocab_size).float()  # batch_size * seq_len * vocab_size
+        pred = self.forward(inp, hidden).view(
+            batch_size, self.max_seq_len, self.vocab_size
+        )
+        target_onehot = F.one_hot(
+            target, self.vocab_size
+        ).float()  # batch_size * seq_len * vocab_size
         pred = torch.sum(pred * target_onehot, dim=-1)  # batch_size * seq_len
 
         # calculate probabilities of sentences
@@ -55,19 +71,26 @@ class JSDGAN_G(LSTMGenerator):
             prob_data = prob_data.cuda()
 
         # calculate the reward
-        reward = torch.log(1. - torch.div(prob_data, prob_data + prob_gen))  # batch_size
+        reward = torch.log(
+            1.0 - torch.div(prob_data, prob_data + prob_gen)
+        )  # batch_size
 
         # check if nan
         if torch.isnan(reward).sum() > 0:
-            print('Reward is nan!!!')
+            print("Reward is nan!!!")
             exit(1)
 
-        loss = torch.sum((prob_gen * reward).detach() * torch.sum(pred.double(), dim=-1))
+        loss = torch.sum(
+            (prob_gen * reward).detach() * torch.sum(pred.double(), dim=-1)
+        )
 
         return loss
 
     def min_max_normal(self, prob):
-        return torch.div(prob - torch.min(prob), torch.clamp(torch.max(prob) - torch.min(prob), min=1e-78))
+        return torch.div(
+            prob - torch.min(prob),
+            torch.clamp(torch.max(prob) - torch.min(prob), min=1e-78),
+        )
 
     def sigmoid_normal(self, prob):
         """push prob either close to 0 or 1"""

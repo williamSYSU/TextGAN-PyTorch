@@ -28,10 +28,13 @@ class NLL(Metrics):
     def calculate_metric(self):
         """note that NLL score need the updated model and data loader each time, use reset() before get_score()"""
         if self.leak_dis is not None:  # For LeakGAN
-            return self.cal_nll_with_leak_dis(self.model, self.data_loader, self.leak_dis, self.gpu)
+            return self.cal_nll_with_leak_dis(
+                self.model, self.data_loader, self.leak_dis, self.gpu
+            )
         if self.label_i is not None:  # For category text generation
-            return self.cal_nll_with_label(self.model, self.data_loader, self.label_i,
-                                           self.criterion, self.gpu)
+            return self.cal_nll_with_label(
+                self.model, self.data_loader, self.label_i, self.criterion, self.gpu
+            )
         return self.cal_nll(self.model, self.data_loader, self.criterion, self.gpu)
 
     def _reset(self, model=None, data_loader=None, label_i=None, leak_dis=None):
@@ -46,7 +49,7 @@ class NLL(Metrics):
         total_loss = 0
         with torch.no_grad():
             for i, data in enumerate(data_loader):
-                inp, target = data['input'], data['target']
+                inp, target = data["input"], data["target"]
                 if gpu:
                     inp, target = inp.cuda(), target.cuda()
 
@@ -59,17 +62,17 @@ class NLL(Metrics):
     @staticmethod
     def cal_nll_with_label(model, data_loader, label_i, criterion, gpu=cfg.CUDA):
         """NLL score for category text generation model."""
-        assert type(label_i) == int, 'missing label'
+        assert type(label_i) == int, "missing label"
         total_loss = 0
         with torch.no_grad():
             for i, data in enumerate(data_loader):
-                inp, target = data['input'], data['target']
+                inp, target = data["input"], data["target"]
                 label = torch.LongTensor([label_i] * data_loader.batch_size)
                 if gpu:
                     inp, target, label = inp.cuda(), target.cuda(), label.cuda()
 
                 hidden = model.init_hidden(data_loader.batch_size)
-                if model.name == 'oracle':
+                if model.name == "oracle":
                     pred = model.forward(inp, hidden)
                 else:
                     pred = model.forward(inp, hidden, label)
@@ -83,7 +86,7 @@ class NLL(Metrics):
         total_loss = 0
         with torch.no_grad():
             for i, data in enumerate(data_loader):
-                inp, target = data['input'], data['target']
+                inp, target = data["input"], data["target"]
                 if gpu:
                     inp, target = inp.cuda(), target.cuda()
 

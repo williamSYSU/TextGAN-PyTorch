@@ -16,10 +16,11 @@ from utils.helpers import truncated_normal_
 
 
 class LSTMGenerator(nn.Module):
-
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False):
+    def __init__(
+        self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, gpu=False
+    ):
         super(LSTMGenerator, self).__init__()
-        self.name = 'vanilla'
+        self.name = "vanilla"
 
         self.hidden_dim = hidden_dim
         self.embedding_dim = embedding_dim
@@ -30,7 +31,9 @@ class LSTMGenerator(nn.Module):
 
         self.temperature = 1.0
 
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
+        self.embeddings = nn.Embedding(
+            vocab_size, embedding_dim, padding_idx=padding_idx
+        )
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
         self.lstm2out = nn.Linear(hidden_dim, vocab_size)
         self.softmax = nn.LogSoftmax(dim=-1)
@@ -49,7 +52,9 @@ class LSTMGenerator(nn.Module):
             emb = emb.unsqueeze(1)  # batch_size * 1 * embedding_dim
 
         out, hidden = self.lstm(emb, hidden)  # out: batch_size * seq_len * hidden_dim
-        out = out.contiguous().view(-1, self.hidden_dim)  # out: (batch_size * len) * hidden_dim
+        out = out.contiguous().view(
+            -1, self.hidden_dim
+        )  # out: (batch_size * len) * hidden_dim
         out = self.lstm2out(out)  # (batch_size * seq_len) * vocab_size
         # out = self.temperature * out  # temperature
         pred = self.softmax(out)
@@ -75,9 +80,13 @@ class LSTMGenerator(nn.Module):
                 inp = inp.cuda()
 
             for i in range(self.max_seq_len):
-                out, hidden = self.forward(inp, hidden, need_hidden=True)  # out: batch_size * vocab_size
-                next_token = torch.multinomial(torch.exp(out), 1, replacement=True)  # batch_size * 1 (sampling from each row)
-                samples[b * batch_size:(b + 1) * batch_size, i] = next_token.view(-1)
+                out, hidden = self.forward(
+                    inp, hidden, need_hidden=True
+                )  # out: batch_size * vocab_size
+                next_token = torch.multinomial(
+                    torch.exp(out), 1, replacement=True
+                )  # batch_size * 1 (sampling from each row)
+                samples[b * batch_size : (b + 1) * batch_size, i] = next_token.view(-1)
                 inp = next_token.view(-1)
         samples = samples[:num_samples]
 
@@ -87,11 +96,11 @@ class LSTMGenerator(nn.Module):
         for param in self.parameters():
             if param.requires_grad and len(param.shape) > 0:
                 stddev = 1 / math.sqrt(param.shape[0])
-                if cfg.gen_init == 'uniform':
+                if cfg.gen_init == "uniform":
                     torch.nn.init.uniform_(param, a=-0.05, b=0.05)
-                elif cfg.gen_init == 'normal':
+                elif cfg.gen_init == "normal":
                     torch.nn.init.normal_(param, std=stddev)
-                elif cfg.gen_init == 'truncated_normal':
+                elif cfg.gen_init == "truncated_normal":
                     truncated_normal_(param, std=stddev)
 
     def init_hidden(self, batch_size=cfg.batch_size):

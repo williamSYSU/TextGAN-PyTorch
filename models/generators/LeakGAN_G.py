@@ -4,7 +4,7 @@
 # @FileName     : LeakGAN_G.py
 # @Time         : Created at 2019-04-25
 # @Blog         : http://zhiweil.ml/
-# @Description  : 
+# @Description  :
 # Copyrights (C) 2018. All Rights Reserved.
 import math
 import time
@@ -21,10 +21,19 @@ goal_out_size = sum(dis_num_filters)
 
 
 class LeakGAN_G(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, max_seq_len, padding_idx, goal_size,
-                 step_size, gpu=False):
+    def __init__(
+        self,
+        embedding_dim,
+        hidden_dim,
+        vocab_size,
+        max_seq_len,
+        padding_idx,
+        goal_size,
+        step_size,
+        gpu=False,
+    ):
         super(LeakGAN_G, self).__init__()
-        self.name = 'leakgan'
+        self.name = "leakgan"
 
         self.hidden_dim = hidden_dim
         self.embedding_dim = embedding_dim
@@ -37,7 +46,9 @@ class LeakGAN_G(nn.Module):
         self.gpu = gpu
         self.temperature = 1.5
 
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
+        self.embeddings = nn.Embedding(
+            vocab_size, embedding_dim, padding_idx=padding_idx
+        )
         self.worker = nn.LSTM(embedding_dim, hidden_dim)
         self.manager = nn.LSTM(goal_out_size, hidden_dim)
 
@@ -49,7 +60,17 @@ class LeakGAN_G(nn.Module):
 
         self.init_params()
 
-    def forward(self, idx, inp, work_hidden, mana_hidden, feature, real_goal, no_log=False, train=False):
+    def forward(
+        self,
+        idx,
+        inp,
+        work_hidden,
+        mana_hidden,
+        feature,
+        real_goal,
+        no_log=False,
+        train=False,
+    ):
         """
         Embeds input and sample on token at a time (seq_len = 1)
 
@@ -69,16 +90,25 @@ class LeakGAN_G(nn.Module):
         emb = self.embeddings(inp).unsqueeze(0)  # 1 * batch_size * embed_dim
 
         # Manager
-        mana_out, mana_hidden = self.manager(feature, mana_hidden)  # mana_out: 1 * batch_size * hidden_dim
-        mana_out = self.mana2goal(mana_out.permute([1, 0, 2]))  # batch_size * 1 * goal_out_size
+        mana_out, mana_hidden = self.manager(
+            feature, mana_hidden
+        )  # mana_out: 1 * batch_size * hidden_dim
+        mana_out = self.mana2goal(
+            mana_out.permute([1, 0, 2])
+        )  # batch_size * 1 * goal_out_size
         cur_goal = F.normalize(mana_out, dim=-1)
         _real_goal = self.goal2goal(real_goal)  # batch_size * goal_size
-        _real_goal = F.normalize(_real_goal, p=2, dim=-1).unsqueeze(-1)  # batch_size * goal_size * 1
+        _real_goal = F.normalize(_real_goal, p=2, dim=-1).unsqueeze(
+            -1
+        )  # batch_size * goal_size * 1
 
         # Worker
-        work_out, work_hidden = self.worker(emb, work_hidden)  # work_out: 1 * batch_size * hidden_dim
-        work_out = self.work2goal(work_out).view(-1, self.vocab_size,
-                                                 self.goal_size)  # batch_size * vocab_size * goal_size
+        work_out, work_hidden = self.worker(
+            emb, work_hidden
+        )  # work_out: 1 * batch_size * hidden_dim
+        work_out = self.work2goal(work_out).view(
+            -1, self.vocab_size, self.goal_size
+        )  # batch_size * vocab_size * goal_size
 
         # Sample token
         out = torch.matmul(work_out, _real_goal).squeeze(-1)  # batch_size * vocab_size
@@ -101,21 +131,31 @@ class LeakGAN_G(nn.Module):
 
         return out, cur_goal, work_hidden, mana_hidden
 
-    def sample(self, num_samples, batch_size, dis, start_letter=cfg.start_letter, train=False):
+    def sample(
+        self, num_samples, batch_size, dis, start_letter=cfg.start_letter, train=False
+    ):
         """
         Samples the network and returns num_samples samples of length max_seq_len.
         :return: samples: batch_size * max_seq_len
         """
         num_batch = num_samples // batch_size + 1 if num_samples != batch_size else 1
-        samples = torch.zeros(num_batch * batch_size, self.max_seq_len).long()  # larger than num_samples
+        samples = torch.zeros(
+            num_batch * batch_size, self.max_seq_len
+        ).long()  # larger than num_samples
         fake_sentences = torch.zeros((batch_size, self.max_seq_len))
 
         for b in range(num_batch):
-            leak_sample, _, _, _ = self.forward_leakgan(fake_sentences, dis, if_sample=True, no_log=False
-                                                        , start_letter=start_letter, train=False)
+            leak_sample, _, _, _ = self.forward_leakgan(
+                fake_sentences,
+                dis,
+                if_sample=True,
+                no_log=False,
+                start_letter=start_letter,
+                train=False,
+            )
 
             assert leak_sample.shape == (batch_size, self.max_seq_len)
-            samples[b * batch_size:(b + 1) * batch_size, :] = leak_sample
+            samples[b * batch_size : (b + 1) * batch_size, :] = leak_sample
 
         samples = samples[:num_samples, :]
 
@@ -130,16 +170,22 @@ class LeakGAN_G(nn.Module):
 
         """
         batch_size, seq_len = target.size()
-        _, feature_array, goal_array, leak_out_array = self.forward_leakgan(target, dis, if_sample=False, no_log=False,
-                                                                            start_letter=start_letter)
+        _, feature_array, goal_array, leak_out_array = self.forward_leakgan(
+            target, dis, if_sample=False, no_log=False, start_letter=start_letter
+        )
 
         # Manager loss
-        mana_cos_loss = self.manager_cos_loss(batch_size, feature_array,
-                                              goal_array)  # batch_size * (seq_len / step_size)
-        manager_loss = -torch.sum(mana_cos_loss) / (batch_size * (seq_len // self.step_size))
+        mana_cos_loss = self.manager_cos_loss(
+            batch_size, feature_array, goal_array
+        )  # batch_size * (seq_len / step_size)
+        manager_loss = -torch.sum(mana_cos_loss) / (
+            batch_size * (seq_len // self.step_size)
+        )
 
         # Worker loss
-        work_nll_loss = self.worker_nll_loss(target, leak_out_array)  # batch_size * seq_len
+        work_nll_loss = self.worker_nll_loss(
+            target, leak_out_array
+        )  # batch_size * seq_len
         work_loss = torch.sum(work_nll_loss) / (batch_size * seq_len)
 
         return manager_loss, work_loss
@@ -154,18 +200,31 @@ class LeakGAN_G(nn.Module):
             - rewards: batch_size * seq_len (discriminator rewards for each token)
         """
         batch_size, seq_len = target.size()
-        _, feature_array, goal_array, leak_out_array = self.forward_leakgan(target, dis, if_sample=False, no_log=False,
-                                                                            start_letter=start_letter, train=True)
+        _, feature_array, goal_array, leak_out_array = self.forward_leakgan(
+            target,
+            dis,
+            if_sample=False,
+            no_log=False,
+            start_letter=start_letter,
+            train=True,
+        )
 
         # Manager Loss
         t0 = time.time()
-        mana_cos_loss = self.manager_cos_loss(batch_size, feature_array,
-                                              goal_array)  # batch_size * (seq_len / step_size)
-        mana_loss = -torch.sum(rewards * mana_cos_loss) / (batch_size * (seq_len // self.step_size))
+        mana_cos_loss = self.manager_cos_loss(
+            batch_size, feature_array, goal_array
+        )  # batch_size * (seq_len / step_size)
+        mana_loss = -torch.sum(rewards * mana_cos_loss) / (
+            batch_size * (seq_len // self.step_size)
+        )
 
         # Worker Loss
-        work_nll_loss = self.worker_nll_loss(target, leak_out_array)  # batch_size * seq_len
-        work_cos_reward = self.worker_cos_reward(feature_array, goal_array)  # batch_size * seq_len
+        work_nll_loss = self.worker_nll_loss(
+            target, leak_out_array
+        )  # batch_size * seq_len
+        work_cos_reward = self.worker_cos_reward(
+            feature_array, goal_array
+        )  # batch_size * seq_len
         work_loss = -torch.sum(work_nll_loss * work_cos_reward) / (batch_size * seq_len)
 
         return mana_loss, work_loss
@@ -194,17 +253,23 @@ class LeakGAN_G(nn.Module):
         # ===LeakGAN origin===
         # get sub_feature and real_goal
         # batch_size, seq_len = sentences.size()
-        sub_feature = torch.zeros(batch_size, self.max_seq_len // self.step_size, self.goal_out_size)
-        real_goal = torch.zeros(batch_size, self.max_seq_len // self.step_size, self.goal_out_size)
+        sub_feature = torch.zeros(
+            batch_size, self.max_seq_len // self.step_size, self.goal_out_size
+        )
+        real_goal = torch.zeros(
+            batch_size, self.max_seq_len // self.step_size, self.goal_out_size
+        )
         for i in range(self.max_seq_len // self.step_size):
             idx = i * self.step_size
-            sub_feature[:, i, :] = feature_array[:, idx + self.step_size, :] - feature_array[:, idx, :]
+            sub_feature[:, i, :] = (
+                feature_array[:, idx + self.step_size, :] - feature_array[:, idx, :]
+            )
 
             if i == 0:
                 real_goal[:, i, :] = self.goal_init[:batch_size, :]
             else:
                 idx = (i - 1) * self.step_size + 1
-                real_goal[:, i, :] = torch.sum(goal_array[:, idx:idx + 4, :], dim=1)
+                real_goal[:, i, :] = torch.sum(goal_array[:, idx : idx + 4, :], dim=1)
 
         # L2 noramlization
         sub_feature = F.normalize(sub_feature, p=2, dim=-1)
@@ -220,7 +285,7 @@ class LeakGAN_G(nn.Module):
 
         :return loss: batch_size * seq_len
         """
-        loss_fn = nn.NLLLoss(reduction='none')
+        loss_fn = nn.NLLLoss(reduction="none")
         loss = loss_fn(leak_out_array.permute([0, 2, 1]), target)
 
         return loss
@@ -232,26 +297,52 @@ class LeakGAN_G(nn.Module):
         :return: cos_loss: batch_size * seq_len
         """
         for i in range(int(self.max_seq_len / self.step_size)):
-            real_feature = feature_array[:, i * self.step_size, :].unsqueeze(1).expand((-1, self.step_size, -1))
-            feature_array[:, i * self.step_size:(i + 1) * self.step_size, :] = real_feature
+            real_feature = (
+                feature_array[:, i * self.step_size, :]
+                .unsqueeze(1)
+                .expand((-1, self.step_size, -1))
+            )
+            feature_array[
+                :, i * self.step_size : (i + 1) * self.step_size, :
+            ] = real_feature
             if i > 0:
-                sum_goal = torch.sum(goal_array[:, (i - 1) * self.step_size:i * self.step_size, :], dim=1, keepdim=True)
+                sum_goal = torch.sum(
+                    goal_array[:, (i - 1) * self.step_size : i * self.step_size, :],
+                    dim=1,
+                    keepdim=True,
+                )
             else:
                 sum_goal = goal_array[:, 0, :].unsqueeze(1)
-            goal_array[:, i * self.step_size:(i + 1) * self.step_size, :] = sum_goal.expand((-1, self.step_size, -1))
+            goal_array[
+                :, i * self.step_size : (i + 1) * self.step_size, :
+            ] = sum_goal.expand((-1, self.step_size, -1))
 
-        offset_feature = feature_array[:, 1:, :]  # f_{t+1}, batch_size * seq_len * goal_out_size
-        goal_array = goal_array[:, :self.max_seq_len, :]  # batch_size * seq_len * goal_out_size
+        offset_feature = feature_array[
+            :, 1:, :
+        ]  # f_{t+1}, batch_size * seq_len * goal_out_size
+        goal_array = goal_array[
+            :, : self.max_seq_len, :
+        ]  # batch_size * seq_len * goal_out_size
         sub_feature = offset_feature - goal_array
 
         # L2 normalization
         sub_feature = F.normalize(sub_feature, p=2, dim=-1)
         all_goal = F.normalize(goal_array, p=2, dim=-1)
 
-        cos_loss = F.cosine_similarity(sub_feature, all_goal, dim=-1)  # batch_size * seq_len
+        cos_loss = F.cosine_similarity(
+            sub_feature, all_goal, dim=-1
+        )  # batch_size * seq_len
         return cos_loss
 
-    def forward_leakgan(self, sentences, dis, if_sample, no_log=False, start_letter=cfg.start_letter, train=False):
+    def forward_leakgan(
+        self,
+        sentences,
+        dis,
+        if_sample,
+        no_log=False,
+        start_letter=cfg.start_letter,
+        train=False,
+    ):
         """
         Get all feature and goals according to given sentences
         :param sentences: batch_size * max_seq_len, not include start token
@@ -298,14 +389,24 @@ class LeakGAN_G(nn.Module):
             if self.gpu:
                 dis_inp = dis_inp.cuda()
                 leak_inp = leak_inp.cuda()
-            feature = dis.get_feature(dis_inp).unsqueeze(0)  # !!!note: 1 * batch_size * total_num_filters
+            feature = dis.get_feature(dis_inp).unsqueeze(
+                0
+            )  # !!!note: 1 * batch_size * total_num_filters
 
             feature_array[:, i, :] = feature.squeeze(0)
 
             # Get output of one token
             # cur_goal: batch_size * 1 * goal_out_size
-            out, cur_goal, work_hidden, mana_hidden = self.forward(i, leak_inp, work_hidden, mana_hidden, feature,
-                                                                   real_goal, no_log=no_log, train=train)
+            out, cur_goal, work_hidden, mana_hidden = self.forward(
+                i,
+                leak_inp,
+                work_hidden,
+                mana_hidden,
+                feature,
+                real_goal,
+                no_log=no_log,
+                train=train,
+            )
             leak_out_array[:, i, :] = out
 
             # ===My implement according to paper===
@@ -320,14 +421,16 @@ class LeakGAN_G(nn.Module):
             # Save goal and update real_goal
             goal_array[:, i, :] = cur_goal.squeeze(1)
             if i > 0 and i % self.step_size == 0:
-                real_goal = torch.sum(goal_array[:, i - 3:i + 1, :], dim=1)
+                real_goal = torch.sum(goal_array[:, i - 3 : i + 1, :], dim=1)
                 if i / self.step_size == 1:
                     real_goal += self.goal_init[:batch_size, :]
 
             # Sample one token
             if not no_log:
                 out = torch.exp(out)
-            out = torch.multinomial(out, 1).view(-1)  # [batch_size] (sampling from each row)
+            out = torch.multinomial(out, 1).view(
+                -1
+            )  # [batch_size] (sampling from each row)
             samples[:, i] = out.data
             leak_inp = out
 
@@ -339,8 +442,9 @@ class LeakGAN_G(nn.Module):
     def batchNLLLoss(self, target, dis, start_letter=cfg.start_letter):
         # loss_fn = nn.NLLLoss()
         # batch_size, seq_len = target.size()
-        _, _, _, leak_out_array = self.forward_leakgan(target, dis, if_sample=False, no_log=False,
-                                                       start_letter=start_letter)
+        _, _, _, leak_out_array = self.forward_leakgan(
+            target, dis, if_sample=False, no_log=False, start_letter=start_letter
+        )
 
         nll_loss = torch.mean(self.worker_nll_loss(target, leak_out_array))
 
@@ -383,9 +487,9 @@ class LeakGAN_G(nn.Module):
         for param in self.parameters():
             if param.requires_grad and len(param.shape) > 0:
                 stddev = 1 / math.sqrt(param.shape[0])
-                if cfg.gen_init == 'uniform':
+                if cfg.gen_init == "uniform":
                     torch.nn.init.uniform_(param, a=-0.05, b=0.05)
-                elif cfg.gen_init == 'normal':
+                elif cfg.gen_init == "normal":
                     torch.nn.init.normal_(param, std=stddev)
-                elif cfg.gen_init == 'truncated_normal':
+                elif cfg.gen_init == "truncated_normal":
                     truncated_normal_(param, std=stddev)

@@ -17,7 +17,7 @@ import config as cfg
 from metrics.basic import Metrics
 from utils.text_process import write_tokens
 
-kenlm_path = '/home/zhiwei/kenlm'  # specify the kenlm path
+kenlm_path = "/home/zhiwei/kenlm"  # specify the kenlm path
 
 
 class PPL(Metrics):
@@ -30,7 +30,7 @@ class PPL(Metrics):
         @param n_gram: calculate with n-gram
         @param if_use: if use
         """
-        super(PPL, self).__init__('[PPL-F, PPL-R]', weight, if_use)
+        super(PPL, self).__init__("[PPL-F, PPL-R]", weight, if_use)
 
         self.n_gram = n_gram
         self.if_use = if_use
@@ -43,21 +43,33 @@ class PPL(Metrics):
         self.gen_tokens = gen_tokens
 
     def calculate_metric(self):
-        save_path = os.path.join("/tmp", ''.join(random.choice(
-            string.ascii_uppercase + string.digits) for _ in range(6)))
+        save_path = os.path.join(
+            "/tmp",
+            "".join(
+                random.choice(string.ascii_uppercase + string.digits) for _ in range(6)
+            ),
+        )
         output_path = save_path + ".arpa"
 
         write_tokens(save_path, self.gen_tokens)  # save to file
 
         # forward ppl
-        for_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=cfg.test_data,
-                                     output_path=output_path, n_gram=self.n_gram)
+        for_lm = self.train_ngram_lm(
+            kenlm_path=kenlm_path,
+            data_path=cfg.test_data,
+            output_path=output_path,
+            n_gram=self.n_gram,
+        )
         for_ppl = self.get_ppl(for_lm, self.gen_tokens)
 
         # reverse ppl
         try:
-            rev_lm = self.train_ngram_lm(kenlm_path=kenlm_path, data_path=save_path,
-                                         output_path=output_path, n_gram=self.n_gram)
+            rev_lm = self.train_ngram_lm(
+                kenlm_path=kenlm_path,
+                data_path=save_path,
+                output_path=output_path,
+                n_gram=self.n_gram,
+            )
 
             rev_ppl = self.get_ppl(rev_lm, self.test_data.tokens)
         except:
@@ -76,14 +88,21 @@ class PPL(Metrics):
 
         # create .arpa and .bin file of n-grams
         curdir = os.path.abspath(os.path.curdir)
-        cd_command = "cd " + os.path.join(kenlm_path, 'build')
-        command_1 = "bin/lmplz -o {} <{} >{} --discount_fallback &".format(str(n_gram), os.path.join(curdir, data_path),
-                                                                           output_path)
-        command_2 = "bin/build_binary -s {} {} &".format(output_path, output_path + ".bin")
+        cd_command = "cd " + os.path.join(kenlm_path, "build")
+        command_1 = "bin/lmplz -o {} <{} >{} --discount_fallback &".format(
+            str(n_gram), os.path.join(curdir, data_path), output_path
+        )
+        command_2 = "bin/build_binary -s {} {} &".format(
+            output_path, output_path + ".bin"
+        )
 
         while True:
-            subprocess.getstatusoutput(cd_command + " && " + command_1)  # call without logging output
-            subprocess.getstatusoutput(cd_command + " && " + command_2)  # call without logging output
+            subprocess.getstatusoutput(
+                cd_command + " && " + command_1
+            )  # call without logging output
+            subprocess.getstatusoutput(
+                cd_command + " && " + command_2
+            )  # call without logging output
             if os.path.exists(output_path + ".bin"):
                 break
 
@@ -99,8 +118,14 @@ class PPL(Metrics):
         total_nll = 0
         total_wc = 0
         for words in tokens:
-            nll = np.sum([-math.log(math.pow(10.0, score))
-                          for score, _, _ in lm.full_scores(' '.join(words), bos=True, eos=False)])
+            nll = np.sum(
+                [
+                    -math.log(math.pow(10.0, score))
+                    for score, _, _ in lm.full_scores(
+                        " ".join(words), bos=True, eos=False
+                    )
+                ]
+            )
             total_wc += len(words)
             total_nll += nll
         ppl = np.exp(total_nll / total_wc)

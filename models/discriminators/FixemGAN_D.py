@@ -1,8 +1,15 @@
 import torch.nn as nn
 
 import config as cfg
-from utils.nn_helpers import get_optimizer, MyConvLayer, MyTransformerEncoderLayer, Flatten, Dummy
+from utils.nn_helpers import (
+    get_optimizer,
+    MyConvLayer,
+    MyTransformerEncoderLayer,
+    Flatten,
+    Dummy,
+)
 from models.discriminators.discriminator import CNNDiscriminator
+
 
 class Discriminator(nn.Module):
     def __init__(self, complexity):
@@ -13,7 +20,9 @@ class Discriminator(nn.Module):
 
         self.main = nn.Sequential(
             # 1 layer
-            MyConvLayer(cfg.w2v_embedding_size, complexity, alpha=alpha, drop_rate=drop_rate),
+            MyConvLayer(
+                cfg.w2v_embedding_size, complexity, alpha=alpha, drop_rate=drop_rate
+            ),
             # 2 layer
             MyConvLayer(
                 complexity,
@@ -27,14 +36,12 @@ class Discriminator(nn.Module):
             # 4 layer
             MyConvLayer(complexity, complexity, alpha=alpha, drop_rate=drop_rate),
             # 5 layer
-
             MyTransformerEncoderLayer(
                 d_model=complexity,
                 n_layers=3,
             )
             if include_transformer
             else Dummy(),
-
             # 6 layer
             MyConvLayer(complexity, complexity, alpha=alpha, drop_rate=drop_rate),
             # MyLSTMLayer(complexity, complexity//2),
@@ -47,7 +54,6 @@ class Discriminator(nn.Module):
                 alpha=alpha,
                 drop_rate=drop_rate,
             ),
-
             MyConvLayer(
                 complexity,
                 complexity,
